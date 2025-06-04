@@ -41,22 +41,23 @@ class TileDownloader {
         }
     }
     
-    func getOrFetch(request: TileRequest, fetched: Fetched) -> Data? {
-        let tile = request.tile
+    func getCached(tile: Tile) -> Data? {
         let zoom = tile.z
         let x = tile.x
         let y = tile.y
-        let tileKey = "\(zoom)_\(x)_\(y)"
         let cachePath = cachePathFor(zoom: zoom, x: x, y: y)
-        
-        // Synchronously check cache and return tile if available
-        if let cachedData = loadCachedTile(at: cachePath) {
-            return cachedData
-        }
+        return loadCachedTile(at: cachePath)
+    }
+    
+    func download(request: TileRequest, fetched: Fetched) {
+        let zoom = request.tile.z
+        let x = request.tile.x
+        let y = request.tile.y
+        let tileKey = "\(zoom)_\(x)_\(y)"
         
         // Check if a download task already exists for this tile
         if ongoingTasks[tileKey] != nil {
-            return nil
+            return
         }
         
         // Create new download task
@@ -66,6 +67,7 @@ class TileDownloader {
             
             if let data = data, error == nil {
                 // Save to cache if download is successful
+                let cachePath = cachePathFor(zoom: zoom, x: x, y: y)
                 self.saveToCache(data: data, for: cachePath)
                 fetched.fetched(NewTile(data: data, request: request))
             } else if let error = error {
@@ -80,9 +82,6 @@ class TileDownloader {
         // Store and start the task
         ongoingTasks[tileKey] = task
         task.resume()
-        
-        // Return nil if tile needs to be downloaded
-        return nil
     }
     
     func clearAllCache() throws {

@@ -18,46 +18,44 @@ class TileMvtParser {
     
     // Parse
     let parsePolygon: ParsePolygon = ParsePolygon()
-    let localTileBounds: BoundingBox!
+    let parseLine: ParseLine = ParseLine()
     
     
     init(device: MTLDevice, determineFeatureStyle: DetermineFeatureStyle) {
         self.device = device
         self.determineFeatureStyle = determineFeatureStyle
-        let tileExtent = Double(Settings.tileExtent)
-        localTileBounds = BoundingBox(
-            southWest: Coordinate3D(latitude: 0.0, longitude: 0.0),
-            northEast: Coordinate3D(latitude: tileExtent, longitude: tileExtent)
-        )
     }
     
-    func parse(zoom: Int, x: Int, y: Int, mvtData: Data) -> ParsedTile {
-        let tile = VectorTile(data: mvtData, x: x, y: y, z: zoom, projection: .noSRID, indexed: .hilbert)!
+    func parse(tile: Tile, mvtData: Data, boundingBox: BoundingBox) -> ParsedTile {
+        let x = tile.x
+        let y = tile.y
+        let z = tile.z
+        let vectorTile = VectorTile(data: mvtData, x: x, y: y, z: z, projection: .noSRID, indexed: .hilbert)!
         
-        let readingStageResult = readingStage(tile: tile)
+        let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox)
         let unificationResult = unificationStage(readingStageResult: readingStageResult)
         
+        
         return ParsedTile(
-            drawingPolygonData: unificationResult.drawingPolygonData,
-            zoom: zoom,
-            x: x,
-            y: y
+            drawingPolygonBytes: unificationResult.drawingPolygonBytes,
+            tile: tile,
+            styles: readingStageResult.styles
         )
     }
     
-    private func tryParsePolygon(geometry: GeoJsonGeometry) -> ParsedPolygon? {
+    private func tryParsePolygon(geometry: GeoJsonGeometry, boundingBox: BoundingBox) -> ParsedPolygon? {
         if geometry.type != .polygon {return nil}
         guard let polygon = geometry as? Polygon else {return nil}
-        guard let clippedPolygon = polygon.clipped(to: localTileBounds) else {
+        guard let clippedPolygon = polygon.clipped(to: boundingBox) else {
             return nil
         }
         return parsePolygon.parse(polygon: clippedPolygon.coordinates)
     }
     
-    private func tryParseMultiPolygon(geometry: GeoJsonGeometry) -> [ParsedPolygon]? {
+    private func tryParseMultiPolygon(geometry: GeoJsonGeometry, boundingBox: BoundingBox) -> [ParsedPolygon]? {
         if geometry.type != .multiPolygon {return nil}
         guard let multiPolygon = geometry as? MultiPolygon else { return nil }
-        guard let clippedMultiPolygon = multiPolygon.clipped(to: localTileBounds) else {
+        guard let clippedMultiPolygon = multiPolygon.clipped(to: boundingBox) else {
             return nil
         }
         var parsedPolygons: [ParsedPolygon] = []
@@ -70,76 +68,136 @@ class TileMvtParser {
         return parsedPolygons
     }
     
-    func readingStage(tile: VectorTile) -> ReadingStageResult {
+    private func tryParseLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Float) -> [ParsedLineRawVertices]? {
+        if geometry.type != .lineString {return nil}
+        guard let line = geometry as? LineString else {return nil}
+        guard let clippedLine = line.clipped(to: boundingBox) else {return nil}
+        return parseLines(multiLine: clippedLine, width: width)
+    }
+    
+    private func tryParseMultiLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Float) -> [ParsedLineRawVertices]? {
+        if geometry.type != .multiLineString {return nil}
+        guard let multiLine = geometry as? MultiLineString else {return nil}
+        guard let clippedMultiLine = multiLine.clipped(to: boundingBox) else {return nil}
+        return parseLines(multiLine: clippedMultiLine, width: width)
+    }
+    
+    private func parseLines(multiLine: MultiLineString, width: Float) -> [ParsedLineRawVertices] {
+        var parsed: [ParsedLineRawVertices] = []
+        for line in multiLine.lineStrings {
+            let coordinates = line.coordinates
+            guard coordinates.count >= 2 else {continue}
+            let parsedLine = parseLine.parseRaw(line: coordinates, width: width)
+            parsed.append(parsedLine)
+        }
+        return parsed
+    }
+    
+    func readingStage(tile: VectorTile, boundingBox: BoundingBox) -> ReadingStageResult {
         var polygonByStyle: [UInt8: [ParsedPolygon]] = [:]
+        var rawLineByStyle: [UInt8: [ParsedLineRawVertices]] = [:]
+        var styles: [UInt8: FeatureStyle] = [:]
         for layerName in tile.layerNames {
             guard let features = tile.features(for: layerName) else { continue }
             
             features.forEach { feature in
-                let style = determineFeatureStyle.determine(data: DetFeatureStyleData(layerName: layerName))
+                let properties = feature.properties
+                let detStyleData = DetFeatureStyleData(layerName: layerName, properties: properties)
+                let style = determineFeatureStyle.makeStyle(data: detStyleData)
                 let styleKey = style.key
                 if styleKey == 0 {
                     // none defineded style
+                    PrintStyleHelper.printNotUsedStyleToSee(detFeatureStyleData: detStyleData)
                     return
                 }
                 
                 // Process each feature
                 let geometry = feature.geometry
+                let parseGeomStyleData = style.parseGeometryStyleData
+                if styles[styleKey] == nil {
+                    styles[styleKey] = style
+                }
                 
-                if let parsed = tryParsePolygon(geometry: geometry) { polygonByStyle[styleKey, default: []].append(parsed) }
-                if let parsed = tryParseMultiPolygon(geometry: geometry) { polygonByStyle[styleKey, default: []].append(contentsOf: parsed)}
+                if let parsed = tryParsePolygon(geometry: geometry,
+                                                boundingBox: boundingBox) {
+                    polygonByStyle[styleKey, default: []].append(parsed)
+                }
+                if let parsed = tryParseMultiPolygon(geometry: geometry,
+                                                     boundingBox: boundingBox) {
+                    polygonByStyle[styleKey, default: []].append(contentsOf: parsed)
+                }
+                if let parsed = tryParseLine(geometry: geometry,
+                                             boundingBox: boundingBox,
+                                             width: parseGeomStyleData.lineWidth
+                ) { rawLineByStyle[styleKey, default: []].append(contentsOf: parsed) }
+                if let parsed = tryParseMultiLine(geometry: geometry,
+                                                  boundingBox: boundingBox,
+                                                  width: parseGeomStyleData.lineWidth
+                ) { rawLineByStyle[styleKey, default: []].append(contentsOf: parsed) }
+                
             }
         }
         
         return ReadingStageResult(
-            polygonByStyle: polygonByStyle.filter { $0.value.isEmpty == false }
+            polygonByStyle: polygonByStyle.filter { $0.value.isEmpty == false },
+            rawLineByStyle: rawLineByStyle.filter { $0.value.isEmpty == false },
+            styles: styles
         )
     }
     
     func unificationStage(readingStageResult: ReadingStageResult) -> UnificationStageResult {
-        var drawingPolygonData: [UInt8 : DrawingPolygonData] = [:]
-        let polygonByStyle = readingStageResult.polygonByStyle
+        var drawingPolygonBytes: [UInt8 : DrawingPolygonBytes] = [:]
         
-        // Iterate through each style and its associated polygons
-        for (style, polygons) in polygonByStyle {
+        let polygonByStyle = readingStageResult.polygonByStyle
+        let rawLineByStyle = readingStageResult.rawLineByStyle
+        
+        for style in readingStageResult.styles.keys {
             var unifiedVertices: [SIMD2<Float>] = []
-            var unifiedIndices: [UInt16] = []
-            var currentVertexOffset: UInt16 = 0
+            var unifiedIndices: [UInt32] = []
+            var currentVertexOffset: UInt32 = 0
             
-            // Process each polygon for the current style
-            for polygon in polygons {
-                // Append vertices to unified array
-                unifiedVertices.append(contentsOf: polygon.vertices)
-                
-                // Adjust indices for the current polygon and append
-                let adjustedIndices = polygon.indices.map { index in
-                    return index + currentVertexOffset
+            if let polygons = polygonByStyle[style] {
+                // Process each polygon for the current style
+                for polygon in polygons {
+                    // Append vertices to unified array
+                    unifiedVertices.append(contentsOf: polygon.vertices)
+                    
+                    // Adjust indices for the current polygon and append
+                    let adjustedIndices = polygon.indices.map { index in
+                        return index + currentVertexOffset
+                    }
+                    unifiedIndices.append(contentsOf: adjustedIndices)
+                    
+                    // Update vertex offset for the next polygon
+                    currentVertexOffset += UInt32(polygon.vertices.count)
                 }
-                unifiedIndices.append(contentsOf: adjustedIndices)
-                
-                // Update vertex offset for the next polygon
-                currentVertexOffset += UInt16(polygon.vertices.count)
             }
             
-            let verticesBuffer = device.makeBuffer(
-                bytes: unifiedVertices,
-                length: unifiedVertices.count * MemoryLayout<SIMD2<Float>>.size,
-                options: .storageModeShared)!
-            let indicesBuffer = device.makeBuffer(
-                bytes: unifiedIndices,
-                length: unifiedIndices.count * MemoryLayout<UInt16>.size,
-                options: .storageModeShared)!
+            if let rawLines = rawLineByStyle[style] {
+                for rawLine in rawLines {
+                    // Append vertices to unified array
+                    unifiedVertices.append(contentsOf: rawLine.vertices)
+                    
+                    // Adjust indices for the current polygon and append
+                    let adjustedIndices = rawLine.indices.map { index in
+                        return index + currentVertexOffset
+                    }
+                    unifiedIndices.append(contentsOf: adjustedIndices)
+                    
+                    // Update vertex offset for the next polygon
+                    currentVertexOffset += UInt32(rawLine.vertices.count)
+                }
+            }
             
             // Create DrawingPolygonData for the current style
-            let polygonData = DrawingPolygonData(
+            let polygonData = DrawingPolygonBytes(
                 vertices: unifiedVertices,
                 indices: unifiedIndices,
-                indicesBuffer: indicesBuffer,
-                verticesBuffer: verticesBuffer
             )
             
-            drawingPolygonData[style] = polygonData
+            drawingPolygonBytes[style] = polygonData
         }
-        return UnificationStageResult(drawingPolygonData: drawingPolygonData)
+        
+        return UnificationStageResult(drawingPolygonBytes: drawingPolygonBytes)
     }
 }

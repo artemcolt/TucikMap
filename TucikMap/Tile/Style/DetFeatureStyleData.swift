@@ -7,4 +7,5 @@
 
 struct DetFeatureStyleData {
     let layerName: String
+    let properties: [String: Sendable]
 }

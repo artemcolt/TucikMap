@@ -6,5 +6,5 @@
 //
 
 struct UnificationStageResult {
-    var drawingPolygonData: [UInt8 : DrawingPolygonData]
+    var drawingPolygonBytes: [UInt8 : DrawingPolygonBytes]
 }

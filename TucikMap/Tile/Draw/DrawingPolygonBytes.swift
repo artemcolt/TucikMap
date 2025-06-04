@@ -6,11 +6,7 @@
 //
 import MetalKit
 
-struct DrawingPolygonData {
+struct DrawingPolygonBytes {
     var vertices: [SIMD2<Float>]
-    var indices: [UInt16]
-    var indicesBuffer: MTLBuffer
-    var verticesBuffer: MTLBuffer
+    var indices: [UInt32]
 }
-
-

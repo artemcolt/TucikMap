@@ -6,8 +6,7 @@
 //
 
 struct ParsedTile {
-    var drawingPolygonData: [UInt8 : DrawingPolygonData] = [:]
-    var zoom: Int
-    var x: Int
-    var y: Int
+    let drawingPolygonBytes: [UInt8 : DrawingPolygonBytes]
+    let tile: Tile
+    let styles: [UInt8 : FeatureStyle]
 }

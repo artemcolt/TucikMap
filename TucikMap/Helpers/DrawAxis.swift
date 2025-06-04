@@ -24,8 +24,8 @@ class DrawAxis {
     
     func createGeometryBuffers() {
         let geometry = GeometryUtils.createAxisGeometry(
-            axisLength: Settings.axisLength * mapState.mapScaleFactor,
-            axisThickness: Settings.axisThickness * mapState.mapScaleFactor
+            axisLength: Settings.axisLength,
+            axisThickness: Settings.axisThickness / mapState.powZoomLevel
         )
         let positions = geometry.0
         let colors = geometry.1
@@ -41,6 +41,7 @@ class DrawAxis {
     }
     
     func draw(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer) {
+        if !Settings.drawAxis { return }
         if previousZoom != mapState.zoomLevel {
             createGeometryBuffers()
             previousZoom = mapState.zoomLevel

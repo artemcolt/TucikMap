@@ -28,6 +28,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     
     // Text
     var textTools: TextTools!
+    var drawMapLabels: DrawMapLabels!
     
     // Map
     var mapZoomState: MapZoomState!
@@ -68,6 +69,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             pipelines = Pipelines(metalDevice: device)
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState)
             camera = Camera(mapZoomState: mapZoomState, device: device, textTools: textTools)
+            drawMapLabels = DrawMapLabels(textTools: textTools)
         }
     }
     
@@ -75,7 +77,6 @@ class Coordinator: NSObject, MTKViewDelegate {
         // Handle viewport size changes - update all uniform buffers
         drawUI.updateSize(size: size)
         camera.updateMap(view: view, size: size)
-        
     }
     
     // Three-step rendering process
@@ -120,14 +121,14 @@ class Coordinator: NSObject, MTKViewDelegate {
             pointSize: Settings.cameraCenterPointSize * mapZoomState.mapScaleFactor,
             position: camera.targetPosition
         )
-        //drawAxis.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
+        drawAxis.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
         
         pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)
+        //drawMapLabels.draw(renderEncoder: renderEncoder, uniforms: uniformsBuffer)
         if let text = camera.assembledMapUpdater?.assembledTileTitles {
             textTools.drawText.renderText(renderEncoder: renderEncoder, uniforms: uniformsBuffer, drawTextData: text)
         }
-        
-        drawUI.draw(renderCommandEncoder: renderEncoder)
+        drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder)
         
         
         renderEncoder.endEncoding()

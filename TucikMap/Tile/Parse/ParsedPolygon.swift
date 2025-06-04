@@ -9,5 +9,5 @@
 
 struct ParsedPolygon {
     var vertices: [SIMD2<Float>] = []
-    var indices: [UInt16] = []
+    var indices: [UInt32] = []
 }

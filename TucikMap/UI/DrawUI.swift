@@ -24,12 +24,17 @@ class DrawUI {
         cameraUI.updateMatrix(size: size)
     }
     
-    func draw(
+    func drawZoomUiText(
         renderCommandEncoder: MTLRenderCommandEncoder
     ) {
         let zoomLevelFloat = mapZoomState.zoomLevelFloat
         let drawTextData = textTools.textAssembler.assembleBytes(
-            lines: [TextAssembler.TextLineData(text: "z:\(zoomLevelFloat)", offsetX: 30, offsetY: Float(size.height) - Float(250.0), scale: 80)],
+            lines: [TextAssembler.TextLineData(
+                text: "z:\(zoomLevelFloat)",
+                offset: SIMD3<Float>(30, Float(size.height) - Float(250.0), 0),
+                rotation: SIMD3<Float>(0, 0, 0),
+                scale: 80)
+            ],
             font: textTools.font
         )
         

@@ -18,8 +18,8 @@ class TextAssembler {
     
     struct TextLineData {
         let text: String
-        let offsetX: Float
-        let offsetY: Float
+        let offset: SIMD3<Float>
+        let rotation: SIMD3<Float>
         let scale: Float
     }
     
@@ -31,8 +31,8 @@ class TextAssembler {
             let text = line.text
             let vertex = createTextGeometry.create(text: text, fontData: font.fontData, onGlyphCreated: { scalar in
                 glyphProps.append(GlyphGpuProp(
-                    translation: SIMD3<Float>(line.offsetX, line.offsetY, 0.0),
-                    rotation: SIMD3<Float>(),
+                    translation: line.offset,
+                    rotation: line.rotation,
                     scale: line.scale
                 ))
             })

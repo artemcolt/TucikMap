@@ -27,7 +27,10 @@ class TileTitlesAssembler {
             let text = "x:\(tile.x) y:\(tile.y) z:\(tile.z)"
             
             texts.append(TextAssembler.TextLineData(
-                text: text, offsetX: offsetX + offset.x, offsetY: offsetY + offset.y, scale: scale
+                text: text,
+                offset: SIMD3<Float>(offsetX + offset.x, offsetY + offset.y, 0),
+                rotation: SIMD3<Float>(0, 0, 0),
+                scale: scale
             ))
         }
         

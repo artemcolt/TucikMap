@@ -18,19 +18,29 @@ class TileMapAssembler {
         self.determineFeatureStyle = determineFeatureStyle
     }
     
+    private struct GeometryByStyle {
+        var vertices: [SIMD2<Float>]
+        var indices: [UInt32]
+        let style: FeatureStyle
+    }
+    
     func assemble(parsedTiles: [ParsedTile]) -> AssembledMap {
-        // Group polygons by style
-        var geometryByStyle: [UInt8: (vertices: [SIMD2<Float>], indices: [UInt32])] = [:]
+        let start = CFAbsoluteTimeGetCurrent()
         
-        for tile in parsedTiles {
-            let zoomFactor = pow(2.0, Float(tile.zoom))
+        // Group polygons by style
+        var geometryByStyle: [UInt8: GeometryByStyle] = [:]
+        
+        for parsedTile in parsedTiles {
+            let tile = parsedTile.tile
+            let zoomFactor = pow(2.0, Float(tile.z))
             let lastTileCoord = Int(zoomFactor) - 1
             let tileSize = mapSize / zoomFactor
             let offsetX = Float(tile.x) * tileSize - mapSize / 2.0
             let offsetY = Float(lastTileCoord - tile.y) * tileSize - mapSize / 2.0
             
-            for (style, polygonData) in tile.drawingPolygonData {
-                var styleGeometry = geometryByStyle[style, default: (vertices: [], indices: [])]
+            for (style, polygonData) in parsedTile.drawingPolygonBytes {
+                let featureStyle = parsedTile.styles[style]!
+                var styleGeometry = geometryByStyle[style, default: (GeometryByStyle(vertices: [], indices: [], style: featureStyle))]
                 let vertexOffset = UInt32(styleGeometry.vertices.count)
                 
                 // Transform vertices
@@ -55,7 +65,6 @@ class TileMapAssembler {
         
         // Create Metal buffers for each style
         var assembledMapFeature: [AssembledMapFeature] = []
-        
         for style in geometryByStyle.keys.sorted() {
             let geometry = geometryByStyle[style]!
             guard !geometry.vertices.isEmpty, !geometry.indices.isEmpty else { continue }
@@ -75,7 +84,7 @@ class TileMapAssembler {
             )!
             
             assembledMapFeature.append(AssembledMapFeature(
-                featureStyle: determineFeatureStyle.getStyle(key: style),
+                featureStyle: geometry.style,
                 verticesBuffer: vertexBuffer,
                 indicesBuffer: indexBuffer,
                 vertexCount: geometry.vertices.count,
@@ -83,6 +92,9 @@ class TileMapAssembler {
                 indexType: .uint32
             ))
         }
+        
+        let duration = (CFAbsoluteTimeGetCurrent() - start) * 1000
+        print("Assembling time = \(duration)s")
         
         return AssembledMap(polygonFeatures: assembledMapFeature)
     }

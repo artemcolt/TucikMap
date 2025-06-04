@@ -8,4 +8,5 @@
 struct FeatureStyle {
     let key: UInt8
     let color: SIMD4<Float>
+    let parseGeometryStyleData: ParseGeometryStyleData
 }
