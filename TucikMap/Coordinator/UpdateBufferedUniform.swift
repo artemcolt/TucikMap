@@ -75,10 +75,11 @@ class UpdateBufferedUniform {
     }
     
     private func createUniformBuffers() {
+        let totalSize = MemoryLayout<Uniforms>.stride
+        
         // Create multiple uniform buffers for triple buffering
         for _ in 0..<maxBuffersInFlight {
-            let buffer = device.makeBuffer(length: MemoryLayout<Uniforms>.stride,
-                                                options: .storageModeShared)!
+            let buffer = device.makeBuffer(length: totalSize, options: .storageModeShared)!
             uniformBuffers.append(buffer)
         }
     }

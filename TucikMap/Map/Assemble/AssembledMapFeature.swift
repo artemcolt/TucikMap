@@ -15,3 +15,7 @@ struct AssembledMapFeature {
     var indexCount: Int
     var indexType: MTLIndexType
 }
+
+struct AssembledMapStyle {
+    var featureStyle: FeatureStyle
+}

@@ -20,8 +20,12 @@ class Settings {
     
     static let mapSize: Float = 1000.0
     static let nullZoomCameraDistance: Float = 2200
+    
+    static let visibleTilesCount: Int = 9
     static let visibleTilesX: Int = 3
     static let visibleTilesY: Int = 3
+    
+    
     static let gridThickness: Float = 20
     static let cameraCenterPointSize: Float = 40
     static let axisLength: Float = 10_000
@@ -38,11 +42,11 @@ class Settings {
     static let tileTitleOffset: Float = 20.0
     
     static var drawAxis: Bool = false
-    static var drawGrid: Bool = false
-    static var drawTileCoordinates: Bool = false
+    static var drawGrid: Bool = true
+    static var drawTileCoordinates: Bool = true
     
     static var printNotUsedStyle: Bool = true
     static var filterNotUsedLayernName: String = "admin"
     
-    static var assemblingMapDebug: Bool = true    
+    static var assemblingMapDebug: Bool = true
 }

@@ -24,7 +24,8 @@ struct Uniforms {
 vertex Vertex vertex_main(uint vertexID [[vertex_id]],
                          constant float3 *positions [[buffer(0)]],
                          constant float4 *colors [[buffer(1)]],
-                         constant Uniforms &uniforms [[buffer(2)]]) {
+                         constant Uniforms &uniforms [[buffer(2)]]
+                         ) {
     
     float4 worldPosition = float4(positions[vertexID], 1.0);
     float4 viewPosition = uniforms.viewMatrix * worldPosition;
@@ -44,9 +45,10 @@ fragment float4 fragment_main(Vertex in [[stage_in]]) {
 vertex Vertex draw_polygon_vertex(uint vertexID [[vertex_id]],
                                   constant float2 *positions [[buffer(0)]],
                                   constant Uniforms &uniforms [[buffer(1)]],
-                                  constant float4& color [[buffer(2)]]) {
+                                  constant float4& color [[buffer(2)]],
+                                  constant float4x4 &modelMatrix [[buffer(3)]]) {
     
-    float4 worldPosition = float4(positions[vertexID], 0.0, 1.0);
+    float4 worldPosition = modelMatrix * float4(positions[vertexID], 0.0, 1.0);
     float4 viewPosition = uniforms.viewMatrix * worldPosition;
     float4 clipPosition = uniforms.projectionMatrix * viewPosition;
     

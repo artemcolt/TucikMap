@@ -33,6 +33,27 @@ struct MatrixUtils {
         )
     }
     
+    static func createTileModelMatrix(scaleX: Float, scaleY: Float, offsetX: Float, offsetY: Float) -> matrix_float4x4 {
+        // Матрица масштабирования
+        let scaleMatrix = matrix_float4x4(
+            SIMD4<Float>(scaleX, 0,      0, 0),
+            SIMD4<Float>(0,      scaleY, 0, 0),
+            SIMD4<Float>(0,      0,      1, 0),
+            SIMD4<Float>(0,      0,      0, 1)
+        )
+        
+        // Матрица смещения
+        let translationMatrix = matrix_float4x4(
+            SIMD4<Float>(1, 0, 0, 0),
+            SIMD4<Float>(0, 1, 0, 0),
+            SIMD4<Float>(0, 0, 1, 0),
+            SIMD4<Float>(offsetX, offsetY, 0, 1)
+        )
+        
+        // Комбинируем: сначала масштабирование, затем смещение
+        return translationMatrix * scaleMatrix
+    }
+    
     // Create a translation matrix
     static func translationMatrix(x: Float, y: Float, z: Float) -> matrix_float4x4 {
         var matrix = matrix_identity_float4x4

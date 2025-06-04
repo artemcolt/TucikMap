@@ -10,3 +10,9 @@ struct DrawingPolygonBytes {
     var vertices: [SIMD2<Float>]
     var indices: [UInt32]
 }
+
+struct DrawingPolygonBuffers {
+    var verticesBuffer: MTLBuffer
+    var indicesBuffer: MTLBuffer
+    var indicesCount: Int
+}

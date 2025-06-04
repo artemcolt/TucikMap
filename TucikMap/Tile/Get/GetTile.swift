@@ -14,8 +14,6 @@ class GetTile {
     private let tileParser: TileMvtParser!
     private let device: MTLDevice
     private var parsedTileCache: [String: ParsedTile] = [:]
-    
-    private var cacheDispatchQueue: DispatchQueue = DispatchQueue(label: "com.tucikMap.parsedTilesCache", qos: .userInteractive)
 
     init(determineFeatureStyle: DetermineFeatureStyle, device: MTLDevice) {
         self.tileDownloader = TileDownloader()
@@ -26,19 +24,12 @@ class GetTile {
     
     func getCachedTile(tile: Tile) -> ParsedTile? {
         let tileKey = "\(tile.z)_\(tile.x)_\(tile.y)"
-        let cachedParsedTile = cacheDispatchQueue.sync {
-            return parsedTileCache[tileKey]
+        if let parsedTileCached = parsedTileCache[tileKey] {
+            return parsedTileCached
         }
         
-        if let vectorTileFromDisk = tileDownloader.getCached(tile: tile) {
-            let parsedTile = tileParser.parse(tile: tile, mvtData: vectorTileFromDisk, boundingBox: TilesResolver.localTileBounds)
-            cacheDispatchQueue.async(execute: {
-                self.parsedTileCache[tileKey] = parsedTile
-            })
-            return parsedTile
-        }
         
-        return cachedParsedTile
+        return nil
     }
     
     func getTileClipped(tile: Tile, boundingBox: BoundingBox) -> ParsedTile? {
@@ -47,21 +38,31 @@ class GetTile {
         return parsedTile
     }
     
-    func downloadTile(request: TileRequest) {
+    func fetchTile(request: TileRequest) {
+        Task {
+            let tile = request.tile
+            let tileKey = "\(tile.z)_\(tile.x)_\(tile.y)"
+            if let vectorTileFromDisk = tileDownloader.getCached(tile: tile) {
+                let parsedTile = tileParser.parse(tile: tile, mvtData: vectorTileFromDisk, boundingBox: TilesResolver.localTileBounds)
+                DispatchQueue.main.async {
+                    self.parsedTileCache[tileKey] = parsedTile
+                }
+            }
+        }
+        
         tileDownloader.download(
             request: request,
             fetched: Fetched(fetched: { newTile in
                 let req = newTile.request
                 let tile = req.tile
                 let parsedTile = self.tileParser.parse(tile: tile, mvtData: newTile.data, boundingBox: req.boundingBox)
-                self.cacheDispatchQueue.async(execute: {
+                DispatchQueue.main.async {
                     if req.isBoundsLocal {
                         let tileKey = "\(tile.z)_\(tile.x)_\(tile.y)"
                         self.parsedTileCache[tileKey] = parsedTile
                     }
                     req.networkReady(newTile)
-                })
-
+                }
             })
         )
     }

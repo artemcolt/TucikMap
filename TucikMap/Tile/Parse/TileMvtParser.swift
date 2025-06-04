@@ -5,16 +5,17 @@
 //  Created by Artem on 5/28/25.
 //
 
-import Metal
 import Foundation
 import MVTTools
 import GISTools
 import SwiftEarcut
+import MetalKit
 
 
 class TileMvtParser {
     let device: MTLDevice
     let determineFeatureStyle: DetermineFeatureStyle
+    let mapSize = Settings.mapSize
     
     // Parse
     let parsePolygon: ParsePolygon = ParsePolygon()
@@ -35,11 +36,21 @@ class TileMvtParser {
         let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox)
         let unificationResult = unificationStage(readingStageResult: readingStageResult)
         
+        let zoomFactor = pow(2.0, Float(z))
+        let lastTileCoord = Int(zoomFactor) - 1
+        let tileSize = mapSize / zoomFactor
+        let offsetX = Float(x) * tileSize - mapSize / 2.0 + tileSize / 2.0
+        let offsetY = Float(lastTileCoord - y) * tileSize - mapSize / 2.0 + tileSize / 2.0
+        let scaleX = tileSize / 2.0
+        let scaleY = tileSize / 2.0
+        var modelMatrix = MatrixUtils.createTileModelMatrix(scaleX: scaleX, scaleY: scaleY, offsetX: offsetX, offsetY: offsetY)
+        let modelMatrixBuffer = device.makeBuffer(bytes: &modelMatrix, length: MemoryLayout<matrix_float4x4>.size)!
         
         return ParsedTile(
-            drawingPolygonBytes: unificationResult.drawingPolygonBytes,
+            drawingPolygonBuffers: unificationResult.drawingPolygonBuffers,
             tile: tile,
-            styles: readingStageResult.styles
+            styles: readingStageResult.styles,
+            modelMatrixBuffer: modelMatrixBuffer
         )
     }
     
@@ -146,7 +157,7 @@ class TileMvtParser {
     }
     
     func unificationStage(readingStageResult: ReadingStageResult) -> UnificationStageResult {
-        var drawingPolygonBytes: [UInt8 : DrawingPolygonBytes] = [:]
+        var drawingPolygonBuffers: [UInt8 : DrawingPolygonBuffers] = [:]
         
         let polygonByStyle = readingStageResult.polygonByStyle
         let rawLineByStyle = readingStageResult.rawLineByStyle
@@ -189,15 +200,20 @@ class TileMvtParser {
                 }
             }
             
+            guard unifiedIndices.isEmpty == false && unifiedVertices.isEmpty == false else { continue }
+            guard let verticesBuffer = device.makeBuffer(bytes: unifiedVertices, length: MemoryLayout<SIMD2<Float>>.size * unifiedVertices.count),
+                  let indicesBuffer = device.makeBuffer(bytes: unifiedIndices, length: MemoryLayout<UInt32>.size * unifiedIndices.count) else { continue }
+            
             // Create DrawingPolygonData for the current style
-            let polygonData = DrawingPolygonBytes(
-                vertices: unifiedVertices,
-                indices: unifiedIndices,
+            let polygonData = DrawingPolygonBuffers(
+                verticesBuffer: verticesBuffer,
+                indicesBuffer: indicesBuffer,
+                indicesCount: unifiedIndices.count
             )
             
-            drawingPolygonBytes[style] = polygonData
+            drawingPolygonBuffers[style] = polygonData
         }
         
-        return UnificationStageResult(drawingPolygonBytes: drawingPolygonBytes)
+        return UnificationStageResult(drawingPolygonBuffers: drawingPolygonBuffers)
     }
 }

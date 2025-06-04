@@ -19,6 +19,8 @@ class DetermineFeatureStyle {
         )
     }
     
+    static let stylesNumber = 10
+    
     func makeStyle(data: DetFeatureStyleData) -> FeatureStyle {
         let properties = data.properties
         let classValue = properties["class"] as? String

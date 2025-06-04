@@ -24,7 +24,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     
     // Tile
     var getTile: GetTile!
-    var drawPolygon: DrawPolygon!
+    var drawAssembledMap: DrawAssembledMap!
     
     // Text
     var textTools: TextTools!
@@ -65,7 +65,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             drawGrid = DrawGrid(metalDevice: device, mapZoomState: mapZoomState)
             drawPoint = DrawPoint(metalDevice: device)
             textTools = TextTools(metalDevice: metalDevice)
-            drawPolygon = DrawPolygon()
+            drawAssembledMap = DrawAssembledMap(metalDevice: metalDevice)
             pipelines = Pipelines(metalDevice: device)
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState)
             camera = Camera(mapZoomState: mapZoomState, device: device, textTools: textTools)
@@ -106,7 +106,11 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         
         pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
-        drawPolygon.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer, drawingPolygonFeature: camera.assembledMapUpdater!.assembledMap.polygonFeatures)
+        drawAssembledMap.drawAssembledMap(
+            renderEncoder: renderEncoder,
+            uniformsBuffer: uniformsBuffer,
+            map: camera.assembledMapUpdater!.assembledMap
+        )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
         drawGrid.draw(renderEncoder: renderEncoder,

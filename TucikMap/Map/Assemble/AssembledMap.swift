@@ -5,10 +5,12 @@
 //  Created by Artem on 5/29/25.
 //
 
+
 struct AssembledMap {
-    var polygonFeatures: [AssembledMapFeature]
+    var parsedTiles: [ParsedTile]
+    var allStyles: [UInt8]
     
     static func void() -> AssembledMap {
-        return AssembledMap(polygonFeatures: [])
+        return AssembledMap(parsedTiles: [], allStyles: [])
     }
 }
