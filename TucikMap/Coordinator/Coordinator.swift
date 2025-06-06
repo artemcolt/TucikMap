@@ -104,13 +104,14 @@ class Coordinator: NSObject, MTKViewDelegate {
         }
         let uniformsBuffer = camera.updateBufferedUnifrom!.getCurrentFrameBuffer()
         
-        
-        pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
-        drawAssembledMap.drawAssembledMap(
-            renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer,
-            map: camera.assembledMapUpdater!.assembledMap
-        )
+        if let assebledMap = camera.assembledMapUpdater!.assembledMap {
+            pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
+            drawAssembledMap.drawAssembledMap(
+                renderEncoder: renderEncoder,
+                uniformsBuffer: uniformsBuffer,
+                map: assebledMap
+            )
+        }
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
         drawGrid.draw(renderEncoder: renderEncoder,

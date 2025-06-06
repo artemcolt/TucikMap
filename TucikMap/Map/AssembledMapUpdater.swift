@@ -12,14 +12,13 @@ class AssembledMapUpdater {
     private let mapZoomState: MapZoomState!
     private let determineVisibleTiles: DetermineVisibleTiles!
     private let determineFeatureStyle: DetermineFeatureStyle!
-    private let tileMapAssembler: TileMapAssembler!
     private let tileTitleAssembler: TileTitlesAssembler!
     private var visibleTilesResult: DetVisTilesResult!
     private let textTools: TextTools
     private let camera: Camera
     private let tilesResolver: TilesResolver
     
-    var assembledMap: AssembledMap = AssembledMap.void()
+    var assembledMap: AssembledMap?
     var assembledTileTitles: DrawTextData?
     
     
@@ -30,29 +29,40 @@ class AssembledMapUpdater {
         determineFeatureStyle = DetermineFeatureStyle()
         determineVisibleTiles = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
         tilesResolver = TilesResolver(getTile: GetTile(determineFeatureStyle: determineFeatureStyle, device: device))
-        tileMapAssembler = TileMapAssembler()
         tileTitleAssembler = TileTitlesAssembler(textAssembler: textTools.textAssembler)
     }
     
     private func onNewTile(newTile: NewTile) {
         let request = newTile.request
         if self.visibleTilesResult.containsTile(tile: request.tile) {
-            if (Settings.assemblingMapDebug) {print("On new tile network update call")}
-            self.update(view: request.view)
+            if (Settings.assemblingMapDebug) {print("On new tile update call")}
+            self.update(view: request.view, useOnlyCached: true)
         }
     }
     
-    func update(view: MTKView) {
-        if (Settings.assemblingMapDebug) {print("Call assembling z:\(mapZoomState.zoomLevel) x:\(camera.centerTileX) y:\(camera.centerTileY)")}
-        self.visibleTilesResult = self.determineVisibleTiles.determine()
-        let visibleTiles = self.visibleTilesResult.visibleTiles
-        let tilesToAssemble = self.tilesResolver.resolveTiles(request: ResolveTileRequest(
+    func update(view: MTKView, useOnlyCached: Bool) {
+        visibleTilesResult = determineVisibleTiles.determine()
+        let visibleTiles = visibleTilesResult.visibleTiles
+        let resolvedTiles = tilesResolver.resolveTiles(request: ResolveTileRequest(
             view: view,
             networkReady: onNewTile,
-            tiles: visibleTiles
+            tiles: visibleTiles,
+            useOnlyCached: useOnlyCached
         ))
-        let assembledMap = self.tileMapAssembler.assemble(parsedTiles: tilesToAssemble)
+        let assembledMap = AssembledMap(
+            parsedTiles: resolvedTiles.tempTiles + resolvedTiles.actualTiles,
+        )
+        if (Settings.assemblingMapDebug) {
+            print("Assembling map, tempTiles: \(resolvedTiles.tempTiles.count), actual: \(resolvedTiles.actualTiles.count)")
+        }
         
+        updateTitles(visibleTiles: visibleTiles)
+        
+        self.assembledMap = assembledMap
+        view.setNeedsDisplay()
+    }
+    
+    private func updateTitles(visibleTiles: [Tile]) {
         let tileTitleOffset = Settings.tileTitleOffset / mapZoomState.powZoomLevel
         if Settings.drawTileCoordinates {
             let tileTitles = self.tileTitleAssembler.assemble(
@@ -63,8 +73,5 @@ class AssembledMapUpdater {
             )
             assembledTileTitles = tileTitles
         }
-        
-        self.assembledMap = assembledMap
-        view.setNeedsDisplay()
     }
 }

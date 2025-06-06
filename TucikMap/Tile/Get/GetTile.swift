@@ -28,42 +28,35 @@ class GetTile {
             return parsedTileCached
         }
         
-        
         return nil
-    }
-    
-    func getTileClipped(tile: Tile, boundingBox: BoundingBox) -> ParsedTile? {
-        guard let vectorTile = tileDownloader.getCached(tile: tile) else { return nil }
-        let parsedTile = tileParser.parse(tile: tile, mvtData: vectorTile, boundingBox: boundingBox)
-        return parsedTile
     }
     
     func fetchTile(request: TileRequest) {
         Task {
             let tile = request.tile
-            let tileKey = "\(tile.z)_\(tile.x)_\(tile.y)"
             if let vectorTileFromDisk = tileDownloader.getCached(tile: tile) {
-                let parsedTile = tileParser.parse(tile: tile, mvtData: vectorTileFromDisk, boundingBox: TilesResolver.localTileBounds)
-                DispatchQueue.main.async {
-                    self.parsedTileCache[tileKey] = parsedTile
-                }
+                onTileFetched(newTile: NewTile(data: vectorTileFromDisk, request: request))
+                return
+            }
+            
+            // if disk cache is unavailable then download tile
+            DispatchQueue.main.async {
+                self.tileDownloader.download(
+                    request: request,
+                    fetched: Fetched(fetched: self.onTileFetched)
+                )
             }
         }
-        
-        tileDownloader.download(
-            request: request,
-            fetched: Fetched(fetched: { newTile in
-                let req = newTile.request
-                let tile = req.tile
-                let parsedTile = self.tileParser.parse(tile: tile, mvtData: newTile.data, boundingBox: req.boundingBox)
-                DispatchQueue.main.async {
-                    if req.isBoundsLocal {
-                        let tileKey = "\(tile.z)_\(tile.x)_\(tile.y)"
-                        self.parsedTileCache[tileKey] = parsedTile
-                    }
-                    req.networkReady(newTile)
-                }
-            })
-        )
+    }
+    
+    private func onTileFetched(newTile: NewTile) {
+        let req = newTile.request
+        let tile = req.tile
+        let parsedTile = self.tileParser.parse(tile: tile, mvtData: newTile.data, boundingBox: req.boundingBox)
+        DispatchQueue.main.async {
+            let tileKey = "\(tile.z)_\(tile.x)_\(tile.y)"
+            self.parsedTileCache[tileKey] = parsedTile
+            req.tileReady(newTile)
+        }
     }
 }

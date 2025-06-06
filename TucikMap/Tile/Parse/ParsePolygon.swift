@@ -4,6 +4,8 @@
 //
 //  Created by Artem on 5/29/25.
 //
+
+import MetalKit
 import MVTTools
 import GISTools
 import SwiftEarcut

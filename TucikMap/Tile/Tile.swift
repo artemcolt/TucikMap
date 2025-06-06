@@ -6,6 +6,9 @@
 //
 
 // Структура для представления тайла
+import MetalKit
+import Foundation
+
 struct Tile {
     let x: Int
     let y: Int

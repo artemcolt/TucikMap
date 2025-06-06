@@ -49,4 +49,7 @@ class Settings {
     static var filterNotUsedLayernName: String = "admin"
     
     static var assemblingMapDebug: Bool = true
+    
+    static let maxConcurrentDownloads = 2
+    static let maxDownloadQueueSize = 6
 }

@@ -9,28 +9,6 @@ import GISTools
 import MetalKit
 
 class ParseLine {
-    func parse(line: [Coordinate3D]) -> ParsedLine {
-        var linePoints: [LinePoint] = []
-        
-        for i in 0..<line.count {
-            let current = SIMD2<Float>(Float(line[i].x), Float(line[i].y))
-            
-            var normal: SIMD2<Float>
-            if i < line.count - 1 {
-                let next = SIMD2<Float>(Float(line[i + 1].x), Float(line[i + 1].y))
-                let direction = next - current
-                normal = normalize(SIMD2<Float>(-direction.y, direction.x))
-            } else {
-                normal = linePoints.last!.normal
-            }
-            
-            let normalizedPoint = NormalizeLocalCoords.normalize(coord: current)
-            linePoints.append(LinePoint(point: normalizedPoint, normal: normal))
-        }
-        
-        return ParsedLine(points: linePoints)
-    }
-    
     func parseRaw(line: [Coordinate3D], width: Float) -> ParsedLineRawVertices {
         var vertices: [SIMD2<Float>] = []
         var indices: [UInt32] = []

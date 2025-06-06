@@ -8,8 +8,8 @@
 import MetalKit
 
 struct ParsedTile {
-    let drawingPolygonBuffers: [UInt8 : DrawingPolygonBuffers]
+    let drawingPolygonBuffers: DrawingPolygonBuffers
     let tile: Tile
-    let styles: [UInt8 : FeatureStyle]
+    let stylesBuffer: MTLBuffer
     let modelMatrixBuffer: MTLBuffer
 }

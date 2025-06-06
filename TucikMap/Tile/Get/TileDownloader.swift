@@ -13,8 +13,15 @@ class TileDownloader {
     private let baseURLString = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2"
     private let accessToken = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlbW91eWRwZzdldCJ9.EAByLTrB_zc7-ytI6GDGBw"
     private let session: URLSession
-    private var ongoingTasks: [String: URLSessionDataTask] = [:]
+    private var ongoingTasks: [String: Void] = [:]
+    private let maxConcurrentDownloads: Int = Settings.maxConcurrentDownloads
+    private let fifo: FIFOQueue<QueuedDownload> = FIFOQueue(capacity: Settings.maxDownloadQueueSize)
 
+    private struct QueuedDownload {
+        let request: TileRequest
+        let fetched: Fetched
+    }
+    
     init() {
         // Initialize cache directory
         let fileManager = FileManager.default
@@ -60,28 +67,39 @@ class TileDownloader {
             return
         }
         
+        if ongoingTasks.count >= maxConcurrentDownloads {
+            fifo.enqueue(QueuedDownload(request: request, fetched: fetched))
+            return
+        }
+        
+        if Settings.assemblingMapDebug { print("Download tile \(tileKey)") }
+        
         // Create new download task
         let tileURL = tileURLFor(zoom: zoom, x: x, y: y)
-        let task = session.dataTask(with: tileURL) { [weak self] data, response, error in
-            guard let self = self else { return }
+        let task = session.dataTask(with: tileURL) { data, response, error in
+            defer {
+                // Clean up on completion
+                DispatchQueue.main.async { [weak self] in
+                    self?.ongoingTasks[tileKey] = nil
+                    if let queuedDownload = self?.fifo.dequeue() {
+                        self?.download(request: queuedDownload.request, fetched: queuedDownload.fetched)
+                    }
+                }
+            }
             
             if let data = data, error == nil {
                 // Save to cache if download is successful
-                let cachePath = cachePathFor(zoom: zoom, x: x, y: y)
+                let cachePath = self.cachePathFor(zoom: zoom, x: x, y: y)
                 self.saveToCache(data: data, for: cachePath)
                 fetched.fetched(NewTile(data: data, request: request))
             } else if let error = error {
                 print("Failed to download tile \(tileKey): \(error)")
             }
-            
-            // Clean up
-            self.ongoingTasks[tileKey] = nil
-            //print("Tile loaded zoom:\(zoom) x:\(x) y:\(y)")
         }
+        task.resume()
         
         // Store and start the task
-        ongoingTasks[tileKey] = task
-        task.resume()
+        ongoingTasks[tileKey] = ()
     }
     
     func clearAllCache() throws {

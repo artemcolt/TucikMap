@@ -10,16 +10,12 @@ import Foundation
 
 class TilesResolver {
     private let getTile: GetTile!
-    static let localTileBounds = BoundingBox(
-            southWest: Coordinate3D(latitude: 0.0, longitude: 0.0),
-            northEast: Coordinate3D(latitude: Double(Settings.tileExtent), longitude: Double(Settings.tileExtent))
-    )
     
     init(getTile: GetTile!) {
         self.getTile = getTile
     }
     
-    func findAvailableParent(tile: Tile) -> Tile? {
+    func findAvailableParent(tile: Tile) -> ParsedTile? {
         var currentZ = tile.z
         var currentX = tile.x
         var currentY = tile.y
@@ -31,60 +27,71 @@ class TilesResolver {
             
             // Проверяем, есть ли тайл в кэше
             if let cachedTile = getTile.getCachedTile(tile: Tile(x: currentX, y: currentY, z: currentZ)) {
-                return cachedTile.tile
+                return cachedTile
             }
         }
         
         return nil
     }
     
-    func resolveTiles(request: ResolveTileRequest) -> [ParsedTile] {
-        var tileToAssemble: [ParsedTile] = []
+    func resolveTiles(request: ResolveTileRequest) -> ResolvedTiles {
+        var actualTiles: [ParsedTile] = []
+        var tempTiles: [ParsedTile] = []
+        
         for tile in request.tiles {
             // current visible tile is ready
             if let parsedTile = getTile.getCachedTile(tile: tile) {
-                tileToAssemble.append(parsedTile)
+                actualTiles.append(parsedTile)
                 continue
             }
             
             // try to fill using available parent
-//            if let parent = findAvailableParent(tile: tile) {
-//                let parentX = parent.x
-//                let parentY = parent.y
-//                let parentZ = parent.z
-//                
-//                let tileX = tile.x
-//                let tileY = tile.y
-//                let tileZ = tile.z
-//                
-//                let deltaZ = tileZ - parentZ
-//                let scale = pow(2.0, Double(deltaZ)) // 2^deltaZ
-//                
-//                // Размер тайла в системе координат родителя
-//                let tileSizeInParent = 4096.0 / scale
-//                
-//                // Рассчитываем координаты дочернего тайла в системе родителя
-//                let relativeX = Double(tileX - parentX * Int(scale)) * tileSizeInParent
-//                let relativeY = Double(tileY - parentY * Int(scale)) * tileSizeInParent
-//                
-//                // Определяем boundingBox для обрезки родительского тайла
-//                let boundingBox = BoundingBox(
-//                    southWest: Coordinate3D(x: relativeX, y: relativeY),
-//                    northEast: Coordinate3D(x: relativeX + tileSizeInParent, y: relativeY + tileSizeInParent)
-//                )
-//                let parsedTile = getTile.getTileClipped(tile: parent, boundingBox: boundingBox)!
-//                tileToAssemble.append(parsedTile)
-//            }
+            if isTileCovered(tile: tile, by: tempTiles) == false {
+                if let parent = findAvailableParent(tile: tile) {
+                    tempTiles.append(parent)
+                }
+            }
+            
+            // don't try to fetch unavailbale tiles
+            if request.useOnlyCached { continue }
             
             // download tile
             getTile.fetchTile(request: TileRequest(
                 tile: tile,
                 view: request.view,
-                boundingBox: TilesResolver.localTileBounds,
                 networkReady: request.networkReady
             ))
         }
         
-        return tileToAssemble
+        return ResolvedTiles(
+            actualTiles: actualTiles,
+            tempTiles: tempTiles
+        )
+    }
+    
+    private func isTileCovered(tile: Tile, by tempTiles: [ParsedTile]) -> Bool {
+        for tempTile in tempTiles {
+            let tempZ = tempTile.tile.z
+            let tempX = tempTile.tile.x
+            let tempY = tempTile.tile.y
+            let tileZ = tile.z
+            let tileX = tile.x
+            let tileY = tile.y
+
+            // Проверяем, является ли текущий тайл дочерним для временного тайла
+            if tempZ >= tileZ {
+                continue // Временный тайл с большим или равным зумом не может покрывать
+            }
+
+            // Вычисляем координаты родительского тайла на уровне зума временного тайла
+            let parentX = tileX >> (tileZ - tempZ)
+            let parentY = tileY >> (tileZ - tempZ)
+
+            // Если координаты совпадают, временный тайл покрывает пробел
+            if parentX == tempX && parentY == tempY {
+                return true
+            }
+        }
+        return false
     }
 }

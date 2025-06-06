@@ -7,7 +7,7 @@
 import MetalKit
 
 struct DrawingPolygonBytes {
-    var vertices: [SIMD2<Float>]
+    var vertices: [PolygonPipeline.VertexIn]
     var indices: [UInt32]
 }
 

@@ -7,8 +7,14 @@
 
 import MetalKit
 
+
 class PolygonPipeline {
     let pipelineState: MTLRenderPipelineState
+    
+    struct VertexIn {
+        let position: SIMD2<Float>
+        let styleIndex: simd_uchar1
+    }
     
     init(metalDevice: MTLDevice, library: MTLLibrary) {
         let vertexFunction = library.makeFunction(name: "draw_polygon_vertex")
@@ -18,7 +24,10 @@ class PolygonPipeline {
         vertexDescriptor.attributes[0].format = .float2
         vertexDescriptor.attributes[0].offset = 0
         vertexDescriptor.attributes[0].bufferIndex = 0
-        vertexDescriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride
+        vertexDescriptor.attributes[1].format = .uchar
+        vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.size
+        vertexDescriptor.attributes[1].bufferIndex = 0
+        vertexDescriptor.layouts[0].stride = MemoryLayout<VertexIn>.stride
         vertexDescriptor.layouts[0].stepFunction = .perVertex
         
         

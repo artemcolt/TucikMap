@@ -42,22 +42,3 @@ fragment float4 fragment_main(Vertex in [[stage_in]]) {
     return in.color;
 }
 
-vertex Vertex draw_polygon_vertex(uint vertexID [[vertex_id]],
-                                  constant float2 *positions [[buffer(0)]],
-                                  constant Uniforms &uniforms [[buffer(1)]],
-                                  constant float4& color [[buffer(2)]],
-                                  constant float4x4 &modelMatrix [[buffer(3)]]) {
-    
-    float4 worldPosition = modelMatrix * float4(positions[vertexID], 0.0, 1.0);
-    float4 viewPosition = uniforms.viewMatrix * worldPosition;
-    float4 clipPosition = uniforms.projectionMatrix * viewPosition;
-    
-    Vertex out;
-    out.position = clipPosition;
-    out.color = color;
-    return out;
-}
-
-fragment float4 draw_polygon_fragment(Vertex in [[stage_in]]) {
-    return in.color;
-}

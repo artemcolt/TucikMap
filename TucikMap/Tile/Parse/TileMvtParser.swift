@@ -35,6 +35,20 @@ class TileMvtParser {
         
         let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox)
         let unificationResult = unificationStage(readingStageResult: readingStageResult)
+        let modelMatrixBuffer = createModelMatrixBuffer(tile: tile)
+        
+        return ParsedTile(
+            drawingPolygonBuffers: unificationResult.drawingPolygonBuffers,
+            tile: tile,
+            stylesBuffer: unificationResult.stylesBuffer,
+            modelMatrixBuffer: modelMatrixBuffer
+        )
+    }
+    
+    private func createModelMatrixBuffer(tile: Tile) -> MTLBuffer {
+        let x = tile.x
+        let y = tile.y
+        let z = tile.z
         
         let zoomFactor = pow(2.0, Float(z))
         let lastTileCoord = Int(zoomFactor) - 1
@@ -44,14 +58,7 @@ class TileMvtParser {
         let scaleX = tileSize / 2.0
         let scaleY = tileSize / 2.0
         var modelMatrix = MatrixUtils.createTileModelMatrix(scaleX: scaleX, scaleY: scaleY, offsetX: offsetX, offsetY: offsetY)
-        let modelMatrixBuffer = device.makeBuffer(bytes: &modelMatrix, length: MemoryLayout<matrix_float4x4>.size)!
-        
-        return ParsedTile(
-            drawingPolygonBuffers: unificationResult.drawingPolygonBuffers,
-            tile: tile,
-            styles: readingStageResult.styles,
-            modelMatrixBuffer: modelMatrixBuffer
-        )
+        return device.makeBuffer(bytes: &modelMatrix, length: MemoryLayout<matrix_float4x4>.size)!
     }
     
     private func tryParsePolygon(geometry: GeoJsonGeometry, boundingBox: BoundingBox) -> ParsedPolygon? {
@@ -121,20 +128,22 @@ class TileMvtParser {
                     PrintStyleHelper.printNotUsedStyleToSee(detFeatureStyleData: detStyleData)
                     return
                 }
-                
-                // Process each feature
-                let geometry = feature.geometry
-                let parseGeomStyleData = style.parseGeometryStyleData
                 if styles[styleKey] == nil {
                     styles[styleKey] = style
                 }
                 
+                // Process each feature
+                let geometry = feature.geometry
+                let parseGeomStyleData = style.parseGeometryStyleData
+                
                 if let parsed = tryParsePolygon(geometry: geometry,
-                                                boundingBox: boundingBox) {
+                                                boundingBox: boundingBox
+                ) {
                     polygonByStyle[styleKey, default: []].append(parsed)
                 }
                 if let parsed = tryParseMultiPolygon(geometry: geometry,
-                                                     boundingBox: boundingBox) {
+                                                     boundingBox: boundingBox
+                ) {
                     polygonByStyle[styleKey, default: []].append(contentsOf: parsed)
                 }
                 if let parsed = tryParseLine(geometry: geometry,
@@ -157,21 +166,23 @@ class TileMvtParser {
     }
     
     func unificationStage(readingStageResult: ReadingStageResult) -> UnificationStageResult {
-        var drawingPolygonBuffers: [UInt8 : DrawingPolygonBuffers] = [:]
-        
         let polygonByStyle = readingStageResult.polygonByStyle
         let rawLineByStyle = readingStageResult.rawLineByStyle
         
-        for style in readingStageResult.styles.keys {
-            var unifiedVertices: [SIMD2<Float>] = []
-            var unifiedIndices: [UInt32] = []
-            var currentVertexOffset: UInt32 = 0
-            
-            if let polygons = polygonByStyle[style] {
+        var unifiedVertices: [PolygonPipeline.VertexIn] = []
+        var unifiedIndices: [UInt32] = []
+        var currentVertexOffset: UInt32 = 0
+        var styles: [TilePolygonStyle] = []
+        
+        var styleBufferIndex: simd_uchar1 = 0
+        for styleKey in readingStageResult.styles.keys.sorted() {
+            if let polygons = polygonByStyle[styleKey] {
                 // Process each polygon for the current style
                 for polygon in polygons {
                     // Append vertices to unified array
-                    unifiedVertices.append(contentsOf: polygon.vertices)
+                    unifiedVertices.append(contentsOf: polygon.vertices.map {
+                        position in PolygonPipeline.VertexIn(position: position, styleIndex: styleBufferIndex)
+                    })
                     
                     // Adjust indices for the current polygon and append
                     let adjustedIndices = polygon.indices.map { index in
@@ -184,10 +195,12 @@ class TileMvtParser {
                 }
             }
             
-            if let rawLines = rawLineByStyle[style] {
+            if let rawLines = rawLineByStyle[styleKey] {
                 for rawLine in rawLines {
                     // Append vertices to unified array
-                    unifiedVertices.append(contentsOf: rawLine.vertices)
+                    unifiedVertices.append(contentsOf: rawLine.vertices.map {
+                        position in PolygonPipeline.VertexIn(position: position, styleIndex: styleBufferIndex)
+                    })
                     
                     // Adjust indices for the current polygon and append
                     let adjustedIndices = rawLine.indices.map { index in
@@ -200,20 +213,25 @@ class TileMvtParser {
                 }
             }
             
-            guard unifiedIndices.isEmpty == false && unifiedVertices.isEmpty == false else { continue }
-            guard let verticesBuffer = device.makeBuffer(bytes: unifiedVertices, length: MemoryLayout<SIMD2<Float>>.size * unifiedVertices.count),
-                  let indicesBuffer = device.makeBuffer(bytes: unifiedIndices, length: MemoryLayout<UInt32>.size * unifiedIndices.count) else { continue }
-            
-            // Create DrawingPolygonData for the current style
-            let polygonData = DrawingPolygonBuffers(
+            let style = readingStageResult.styles[styleKey]!
+            styles.append(TilePolygonStyle(color: style.color))
+            styleBufferIndex += 1
+        }
+        
+        let verticesBufferLength = MemoryLayout<PolygonPipeline.VertexIn>.stride * unifiedVertices.count
+        let indicesBufferLength = MemoryLayout<UInt32>.stride * unifiedIndices.count
+        
+        let verticesBuffer = device.makeBuffer(bytes: unifiedVertices, length: verticesBufferLength)!
+        let indicesBuffer = device.makeBuffer(bytes: unifiedIndices, length: indicesBufferLength)!
+        let stylesBuffer = device.makeBuffer(bytes: styles, length: MemoryLayout<TilePolygonStyle>.stride * styles.count)!
+        
+        return UnificationStageResult(
+            drawingPolygonBuffers: DrawingPolygonBuffers(
                 verticesBuffer: verticesBuffer,
                 indicesBuffer: indicesBuffer,
                 indicesCount: unifiedIndices.count
-            )
-            
-            drawingPolygonBuffers[style] = polygonData
-        }
-        
-        return UnificationStageResult(drawingPolygonBuffers: drawingPolygonBuffers)
+            ),
+            stylesBuffer: stylesBuffer
+        )
     }
 }

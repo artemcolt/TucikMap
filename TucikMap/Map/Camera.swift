@@ -125,7 +125,7 @@ class Camera {
         // reassemble map if needed
         // if there are new visible tiles
         if changed {
-            assembledMapUpdater?.update(view: view)
+            assembledMapUpdater?.update(view: view, useOnlyCached: false)
         }
     }
     

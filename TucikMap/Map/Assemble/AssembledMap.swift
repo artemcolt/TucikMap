@@ -5,12 +5,8 @@
 //  Created by Artem on 5/29/25.
 //
 
+import MetalKit
 
 struct AssembledMap {
-    var parsedTiles: [ParsedTile]
-    var allStyles: [UInt8]
-    
-    static func void() -> AssembledMap {
-        return AssembledMap(parsedTiles: [], allStyles: [])
-    }
+    let parsedTiles: [ParsedTile]
 }

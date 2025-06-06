@@ -12,6 +12,7 @@ import MetalKit
 class UpdateBufferedUniform {
     // Triple buffering for uniforms
     private(set) var uniformBuffers: [MTLBuffer] = []
+    
     private(set) var currentBufferIndex = -1
     private(set) var semaphore: DispatchSemaphore!
     
