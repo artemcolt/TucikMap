@@ -48,8 +48,14 @@ class Settings {
     static var printNotUsedStyle: Bool = true
     static var filterNotUsedLayernName: String = "admin"
     
-    static var assemblingMapDebug: Bool = true
+    static var debugAssemblingMap: Bool = true
+    static var debugTransferingToGPU: Bool = true
     
     static let maxConcurrentDownloads = 2
     static let maxDownloadQueueSize = 6
+    
+    static let maxCachedTilesCount = 100
+    static let maxCachedTilesMemory = 80 * 1024 * 1024
+    
+    static let tilesCompleteDebounceInterval = 0.3 
 }

@@ -7,15 +7,16 @@
 
 import GISTools
 import Foundation
+import MetalKit
 
 class TilesResolver {
-    private let getTile: GetTile!
+    private let metalTiles: MetalTilesStorage!
     
-    init(getTile: GetTile!) {
-        self.getTile = getTile
+    init(determineStyle: DetermineFeatureStyle, metalDevice: MTLDevice, onProcessedTiles: @escaping () -> Void) {
+        metalTiles = MetalTilesStorage(determineStyle: determineStyle, metalDevice: metalDevice, onProcessedTiles: onProcessedTiles)
     }
     
-    func findAvailableParent(tile: Tile) -> ParsedTile? {
+    func findAvailableParent(tile: Tile) -> MetalTile? {
         var currentZ = tile.z
         var currentX = tile.x
         var currentY = tile.y
@@ -26,8 +27,8 @@ class TilesResolver {
             currentY /= 2 // Родительский Y (целочисленное деление)
             
             // Проверяем, есть ли тайл в кэше
-            if let cachedTile = getTile.getCachedTile(tile: Tile(x: currentX, y: currentY, z: currentZ)) {
-                return cachedTile
+            if let metalTile = metalTiles.getMetalTile(tile: Tile(x: currentX, y: currentY, z: currentZ)) {
+                return metalTile
             }
         }
         
@@ -35,13 +36,13 @@ class TilesResolver {
     }
     
     func resolveTiles(request: ResolveTileRequest) -> ResolvedTiles {
-        var actualTiles: [ParsedTile] = []
-        var tempTiles: [ParsedTile] = []
+        var actualTiles: [MetalTile] = []
+        var tempTiles: [MetalTile] = []
         
         for tile in request.tiles {
             // current visible tile is ready
-            if let parsedTile = getTile.getCachedTile(tile: tile) {
-                actualTiles.append(parsedTile)
+            if let metalTile = metalTiles.getMetalTile(tile: tile) {
+                actualTiles.append(metalTile)
                 continue
             }
             
@@ -55,12 +56,7 @@ class TilesResolver {
             // don't try to fetch unavailbale tiles
             if request.useOnlyCached { continue }
             
-            // download tile
-            getTile.fetchTile(request: TileRequest(
-                tile: tile,
-                view: request.view,
-                networkReady: request.networkReady
-            ))
+            metalTiles.requestMetalTile(tile: tile)
         }
         
         return ResolvedTiles(
@@ -69,7 +65,7 @@ class TilesResolver {
         )
     }
     
-    private func isTileCovered(tile: Tile, by tempTiles: [ParsedTile]) -> Bool {
+    private func isTileCovered(tile: Tile, by tempTiles: [MetalTile]) -> Bool {
         for tempTile in tempTiles {
             let tempZ = tempTile.tile.z
             let tempX = tempTile.tile.x

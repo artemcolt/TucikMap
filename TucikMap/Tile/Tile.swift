@@ -14,6 +14,10 @@ struct Tile {
     let y: Int
     let z: Int
     
+    func key() -> String {
+        return "\(z)_\(x)_\(y)"
+    }
+    
     init(x: Int, y: Int, z: Int) {
         self.x = x
         self.y = y

@@ -8,5 +8,5 @@
 import MetalKit
 
 struct AssembledMap {
-    let parsedTiles: [ParsedTile]
+    let tiles: [MetalTile]
 }

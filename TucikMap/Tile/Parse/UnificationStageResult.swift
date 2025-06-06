@@ -8,6 +8,6 @@
 import MetalKit
 
 struct UnificationStageResult {
-    var drawingPolygonBuffers: DrawingPolygonBuffers
-    var stylesBuffer: MTLBuffer
+    var drawingPolygon: DrawingPolygonBytes
+    var styles: [TilePolygonStyle]
 }

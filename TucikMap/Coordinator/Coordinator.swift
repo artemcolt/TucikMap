@@ -23,7 +23,6 @@ class Coordinator: NSObject, MTKViewDelegate {
     var drawPoint: DrawPoint!
     
     // Tile
-    var getTile: GetTile!
     var drawAssembledMap: DrawAssembledMap!
     
     // Text
@@ -85,33 +84,31 @@ class Coordinator: NSObject, MTKViewDelegate {
         // This ensures we don't try to update a buffer that's still in use
         _ = camera.updateBufferedUnifrom!.semaphore.wait(timeout: .distantFuture)
         
-        guard let drawable = view.currentDrawable,
-              let renderPassDescriptor = view.currentRenderPassDescriptor,
-              let commandBuffer = metalCommandQueue.makeCommandBuffer() else {
-            camera.updateBufferedUnifrom!.semaphore.signal()  // Signal the semaphore if we can't render
+        drawAssembledMap.setCurrentAssembledMap(assembledMap: camera.assembledMapUpdater?.assembledMap)
+        
+        guard let commandBuffer = metalCommandQueue.makeCommandBuffer() else {
+            renderComplete()
             return
         }
-        
         // Add completion handler to signal the semaphore when GPU work is done
         commandBuffer.addCompletedHandler { [weak self] _ in
-            self?.camera.updateBufferedUnifrom!.semaphore.signal()
+            self?.renderComplete()
         }
         
-        // Step 2: Prepare render command encoder
-        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
-            camera.updateBufferedUnifrom!.semaphore.signal()
+        guard let drawable = view.currentDrawable,
+              let renderPassDescriptor = view.currentRenderPassDescriptor,
+              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+            renderComplete()
             return
         }
+        
         let uniformsBuffer = camera.updateBufferedUnifrom!.getCurrentFrameBuffer()
         
-        if let assebledMap = camera.assembledMapUpdater!.assembledMap {
-            pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
-            drawAssembledMap.drawAssembledMap(
-                renderEncoder: renderEncoder,
-                uniformsBuffer: uniformsBuffer,
-                map: assebledMap
-            )
-        }
+        pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
+        drawAssembledMap.drawAssembledMap(
+            renderEncoder: renderEncoder,
+            uniformsBuffer: uniformsBuffer
+        )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
         drawGrid.draw(renderEncoder: renderEncoder,
@@ -137,10 +134,13 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         
         renderEncoder.endEncoding()
-        
         // Present the drawable to the screen
         commandBuffer.present(drawable)
         frameCounter.update(with: commandBuffer)
         commandBuffer.commit()
+    }
+    
+    private func renderComplete() {
+        camera.updateBufferedUnifrom!.semaphore.signal()
     }
 }

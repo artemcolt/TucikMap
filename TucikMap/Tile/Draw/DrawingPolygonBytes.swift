@@ -14,5 +14,7 @@ struct DrawingPolygonBytes {
 struct DrawingPolygonBuffers {
     var verticesBuffer: MTLBuffer
     var indicesBuffer: MTLBuffer
-    var indicesCount: Int
+    let indicesCount: Int
+    let verticesBufferSize: Int
+    let indicesBufferSize: Int
 }

@@ -13,7 +13,6 @@ import MetalKit
 
 
 class TileMvtParser {
-    let device: MTLDevice
     let determineFeatureStyle: DetermineFeatureStyle
     let mapSize = Settings.mapSize
     
@@ -22,12 +21,15 @@ class TileMvtParser {
     let parseLine: ParseLine = ParseLine()
     
     
-    init(device: MTLDevice, determineFeatureStyle: DetermineFeatureStyle) {
-        self.device = device
+    init(determineFeatureStyle: DetermineFeatureStyle) {
         self.determineFeatureStyle = determineFeatureStyle
     }
     
-    func parse(tile: Tile, mvtData: Data, boundingBox: BoundingBox) -> ParsedTile {
+    func parse(
+        tile: Tile,
+        mvtData: Data,
+        boundingBox: BoundingBox
+    ) -> ParsedTile {
         let x = tile.x
         let y = tile.y
         let z = tile.z
@@ -35,17 +37,17 @@ class TileMvtParser {
         
         let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox)
         let unificationResult = unificationStage(readingStageResult: readingStageResult)
-        let modelMatrixBuffer = createModelMatrixBuffer(tile: tile)
+        let modelMatrix = createModelMatrix(tile: tile)
         
         return ParsedTile(
-            drawingPolygonBuffers: unificationResult.drawingPolygonBuffers,
-            tile: tile,
-            stylesBuffer: unificationResult.stylesBuffer,
-            modelMatrixBuffer: modelMatrixBuffer
+            drawingPolygon: unificationResult.drawingPolygon,
+            styles: unificationResult.styles,
+            modelMatrix: modelMatrix,
+            tile: tile
         )
     }
     
-    private func createModelMatrixBuffer(tile: Tile) -> MTLBuffer {
+    private func createModelMatrix(tile: Tile) -> matrix_float4x4 {
         let x = tile.x
         let y = tile.y
         let z = tile.z
@@ -58,7 +60,7 @@ class TileMvtParser {
         let scaleX = tileSize / 2.0
         let scaleY = tileSize / 2.0
         var modelMatrix = MatrixUtils.createTileModelMatrix(scaleX: scaleX, scaleY: scaleY, offsetX: offsetX, offsetY: offsetY)
-        return device.makeBuffer(bytes: &modelMatrix, length: MemoryLayout<matrix_float4x4>.size)!
+        return modelMatrix
     }
     
     private func tryParsePolygon(geometry: GeoJsonGeometry, boundingBox: BoundingBox) -> ParsedPolygon? {
@@ -218,20 +220,12 @@ class TileMvtParser {
             styleBufferIndex += 1
         }
         
-        let verticesBufferLength = MemoryLayout<PolygonPipeline.VertexIn>.stride * unifiedVertices.count
-        let indicesBufferLength = MemoryLayout<UInt32>.stride * unifiedIndices.count
-        
-        let verticesBuffer = device.makeBuffer(bytes: unifiedVertices, length: verticesBufferLength)!
-        let indicesBuffer = device.makeBuffer(bytes: unifiedIndices, length: indicesBufferLength)!
-        let stylesBuffer = device.makeBuffer(bytes: styles, length: MemoryLayout<TilePolygonStyle>.stride * styles.count)!
-        
         return UnificationStageResult(
-            drawingPolygonBuffers: DrawingPolygonBuffers(
-                verticesBuffer: verticesBuffer,
-                indicesBuffer: indicesBuffer,
-                indicesCount: unifiedIndices.count
+            drawingPolygon: DrawingPolygonBytes(
+                vertices: unifiedVertices,
+                indices: unifiedIndices
             ),
-            stylesBuffer: stylesBuffer
+            styles: styles
         )
     }
 }

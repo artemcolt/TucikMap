@@ -6,6 +6,6 @@
 //
 
 struct ResolvedTiles {
-    let actualTiles: [ParsedTile]
-    let tempTiles: [ParsedTile]
+    let actualTiles: [MetalTile]
+    let tempTiles: [MetalTile]
 }

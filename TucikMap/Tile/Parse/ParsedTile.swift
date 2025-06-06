@@ -7,9 +7,16 @@
 
 import MetalKit
 
-struct ParsedTile {
-    let drawingPolygonBuffers: DrawingPolygonBuffers
+class ParsedTile {
+    let drawingPolygon: DrawingPolygonBytes
+    let styles: [TilePolygonStyle]
+    var modelMatrix: matrix_float4x4
     let tile: Tile
-    let stylesBuffer: MTLBuffer
-    let modelMatrixBuffer: MTLBuffer
+    
+    init(drawingPolygon: DrawingPolygonBytes, styles: [TilePolygonStyle], modelMatrix: matrix_float4x4, tile: Tile) {
+        self.drawingPolygon = drawingPolygon
+        self.modelMatrix = modelMatrix
+        self.styles = styles
+        self.tile = tile
+    }
 }

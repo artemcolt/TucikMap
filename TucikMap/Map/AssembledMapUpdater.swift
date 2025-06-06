@@ -9,14 +9,15 @@ import MetalKit
 import GISTools
 
 class AssembledMapUpdater {
-    private let mapZoomState: MapZoomState!
-    private let determineVisibleTiles: DetermineVisibleTiles!
-    private let determineFeatureStyle: DetermineFeatureStyle!
-    private let tileTitleAssembler: TileTitlesAssembler!
+    private var mapZoomState: MapZoomState!
+    private var determineVisibleTiles: DetermineVisibleTiles!
+    private var determineFeatureStyle: DetermineFeatureStyle!
+    private var tileTitleAssembler: TileTitlesAssembler!
     private var visibleTilesResult: DetVisTilesResult!
-    private let textTools: TextTools
-    private let camera: Camera
-    private let tilesResolver: TilesResolver
+    private var textTools: TextTools!
+    private var camera: Camera!
+    private var tilesResolver: TilesResolver!
+    private var savedView: MTKView!
     
     var assembledMap: AssembledMap?
     var assembledTileTitles: DrawTextData?
@@ -28,31 +29,26 @@ class AssembledMapUpdater {
         self.camera = camera
         determineFeatureStyle = DetermineFeatureStyle()
         determineVisibleTiles = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
-        tilesResolver = TilesResolver(getTile: GetTile(determineFeatureStyle: determineFeatureStyle, device: device))
         tileTitleAssembler = TileTitlesAssembler(textAssembler: textTools.textAssembler)
+        tilesResolver = TilesResolver(determineStyle: determineFeatureStyle, metalDevice: device, onProcessedTiles: self.onProcessedTiles)
     }
     
-    private func onNewTile(newTile: NewTile) {
-        let request = newTile.request
-        if self.visibleTilesResult.containsTile(tile: request.tile) {
-            if (Settings.assemblingMapDebug) {print("On new tile update call")}
-            self.update(view: request.view, useOnlyCached: true)
-        }
+    private func onProcessedTiles() {
+        self.update(view: savedView, useOnlyCached: true)
     }
     
     func update(view: MTKView, useOnlyCached: Bool) {
+        savedView = view
         visibleTilesResult = determineVisibleTiles.determine()
         let visibleTiles = visibleTilesResult.visibleTiles
         let resolvedTiles = tilesResolver.resolveTiles(request: ResolveTileRequest(
-            view: view,
-            networkReady: onNewTile,
             tiles: visibleTiles,
             useOnlyCached: useOnlyCached
         ))
         let assembledMap = AssembledMap(
-            parsedTiles: resolvedTiles.tempTiles + resolvedTiles.actualTiles,
+            tiles: resolvedTiles.tempTiles + resolvedTiles.actualTiles,
         )
-        if (Settings.assemblingMapDebug) {
+        if (Settings.debugAssemblingMap) {
             print("Assembling map, tempTiles: \(resolvedTiles.tempTiles.count), actual: \(resolvedTiles.actualTiles.count)")
         }
         
