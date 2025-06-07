@@ -27,6 +27,7 @@ class Camera {
     
     private var previousCenterTileX: Int = -1
     private var previousCenterTileY: Int = -1
+    private var previousZoomLevel: Int = -1
     
     init(mapZoomState: MapZoomState, device: MTLDevice, textTools: TextTools) {
         self.mapZoomState = mapZoomState
@@ -135,6 +136,7 @@ class Camera {
     
     private func updateCameraCenterTile() -> Bool {
         let tileSize = mapZoomState.tileSize
+        let zoomLevel = mapZoomState.zoomLevel
         let mapSize = Settings.mapSize
         let worldTilesHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
         
@@ -142,9 +144,10 @@ class Camera {
         centerTileX = (targetPosition.x + worldTilesHalf) / tileSize
         centerTileY = (mapSize - (targetPosition.y + worldTilesHalf)) / tileSize
         
-        let changed = Int(centerTileX) != previousCenterTileX || Int(centerTileY) != previousCenterTileY
+        let changed = Int(centerTileX) != previousCenterTileX || Int(centerTileY) != previousCenterTileY || zoomLevel != previousZoomLevel
         previousCenterTileX = Int(centerTileX)
         previousCenterTileY = Int(centerTileY)
+        previousZoomLevel = zoomLevel
         return changed
     }
 }

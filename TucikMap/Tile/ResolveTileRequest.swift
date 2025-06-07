@@ -9,6 +9,6 @@ import SwiftUI
 import MetalKit
 
 struct ResolveTileRequest {
-    let tiles: [Tile]
+    let visibleTiles: [Tile]
     let useOnlyCached: Bool
 }

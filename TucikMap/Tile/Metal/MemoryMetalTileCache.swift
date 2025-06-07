@@ -1,76 +1,84 @@
 //
-//  MemoryMetalTileCache.swift
+//  MetalTileCache.swift
 //  TucikMap
 //
-//  Created by Artem on 6/6/25.
+//  Created by Artem on 6/7/25.
 //
 
+import MetalKit
 import Foundation
 
 class MemoryMetalTileCache {
-    private let cache: NSCache<NSString, MetalTile>
-    
-    /// Initializes the cache with optional limits for object count and total memory.
-    /// - Parameters:
-    ///   - countLimit: Maximum number of tiles to store (default: 100).
-    ///   - totalCostLimit: Maximum memory size in bytes (default: 50 MB).
-    init(countLimit: Int = Settings.maxCachedTilesCount, totalCostLimit: Int = Settings.maxCachedTilesMemory) {
-        self.cache = NSCache<NSString, MetalTile>()
-        self.cache.countLimit = countLimit
-        self.cache.totalCostLimit = totalCostLimit
+    private struct CacheEntry {
+        let tile: MetalTile
+        let timestamp: Date
+        let sizeInBytes: Int
     }
     
-    /// Adds a MetalTile to the cache with the specified key.
-    /// - Parameters:
-    ///   - tile: The MetalTile object to cache.
-    ///   - key: The string key to associate with the tile.
-    func setTile(_ tile: MetalTile, forKey key: String) {
-        let cost = calculateTileMemoryCost(tile)
-        cache.setObject(tile, forKey: key as NSString, cost: cost)
+    private var cache: [String: CacheEntry] = [:]
+    private let maxSizeBytes: Int
+    private var currentSizeBytes: Int = 0
+    
+    // Максимальный размер кэша в байтах
+    init(maxSizeBytes: Int) {
+        self.maxSizeBytes = maxSizeBytes
     }
     
-    /// Retrieves a MetalTile from the cache for the specified key.
-    /// - Parameter key: The string key associated with the tile.
-    /// - Returns: The cached MetalTile, or nil if not found.
-    func tile(forKey key: String) -> MetalTile? {
-        return cache.object(forKey: key as NSString)
+    // Добавление тайла в кэш
+    func addTile(_ tile: MetalTile, forKey key: String) {
+        // Рассчитываем размер буферов тайла в байтах
+        let sizeInBytes = tile.verticesBuffer.allocatedSize +
+                         tile.indicesBuffer.allocatedSize +
+                         tile.stylesBuffer.allocatedSize +
+                         tile.modelMatrixBuffer.allocatedSize
+        
+        // Создаем запись кэша
+        let entry = CacheEntry(tile: tile, timestamp: Date(), sizeInBytes: sizeInBytes)
+        
+        // Добавляем в кэш
+        cache[key] = entry
+        currentSizeBytes += sizeInBytes
+        
+        // Очищаем кэш, если превышен максимальный размер
+        cleanCacheIfNeeded()
     }
     
-    /// Checks if a tile exists in the cache for the specified key.
-    /// - Parameter key: The string key to check.
-    /// - Returns: True if a tile exists for the key, false otherwise.
-    func containsTile(forKey key: String) -> Bool {
-        return cache.object(forKey: key as NSString) != nil
+    // Получение тайла из кэша
+    func getTile(forKey key: String) -> MetalTile? {
+        
+        if let entry = cache[key] {
+            // Обновляем временную метку при доступе
+            cache[key] = CacheEntry(tile: entry.tile, timestamp: Date(), sizeInBytes: entry.sizeInBytes)
+            return entry.tile
+        }
+        return nil
     }
     
-    /// Removes a MetalTile from the cache for the specified key.
-    /// - Parameter key: The string key associated with the tile.
+    // Удаление тайла из кэша
     func removeTile(forKey key: String) {
-        cache.removeObject(forKey: key as NSString)
+        if let entry = cache.removeValue(forKey: key) {
+            currentSizeBytes -= entry.sizeInBytes
+        }
     }
     
-    /// Removes all MetalTiles from the cache.
-    func removeAllTiles() {
-        cache.removeAllObjects()
+    // Очистка всего кэша
+    func clearCache() {
+        cache.removeAll()
+        currentSizeBytes = 0
     }
     
-    /// Updates the cache limits.
-    /// - Parameters:
-    ///   - countLimit: Maximum number of tiles to store.
-    ///   - totalCostLimit: Maximum memory size in bytes.
-    func updateCacheLimits(countLimit: Int, totalCostLimit: Int) {
-        cache.countLimit = countLimit
-        cache.totalCostLimit = totalCostLimit
+    // Очистка кэша до допустимого размера
+    private func cleanCacheIfNeeded() {
+        while currentSizeBytes > maxSizeBytes, !cache.isEmpty {
+            // Находим самый старый тайл
+            if let oldestEntry = cache.min(by: { $0.value.timestamp < $1.value.timestamp }) {
+                cache.removeValue(forKey: oldestEntry.key)
+            }
+        }
     }
     
-    /// Calculates the approximate memory cost of a MetalTile based on its buffers.
-    /// - Parameter tile: The MetalTile to evaluate.
-    /// - Returns: The estimated memory size in bytes.
-    private func calculateTileMemoryCost(_ tile: MetalTile) -> Int {
-        let vertexSize = tile.verticesBuffer.allocatedSize
-        let indicesSize = tile.indicesBuffer.allocatedSize
-        let stylesSize = tile.stylesBuffer.allocatedSize
-        let modelMatrixSize = tile.modelMatrixBuffer.allocatedSize
-        return vertexSize + indicesSize + stylesSize + modelMatrixSize
+    // Текущий размер кэша в МБ
+    var currentSizeMB: Double {
+        return Double(currentSizeBytes) / (1024 * 1024)
     }
 }

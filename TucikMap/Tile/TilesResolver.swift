@@ -38,8 +38,9 @@ class TilesResolver {
     func resolveTiles(request: ResolveTileRequest) -> ResolvedTiles {
         var actualTiles: [MetalTile] = []
         var tempTiles: [MetalTile] = []
+        metalTiles.setupTilesFilter(filterTiles: request.visibleTiles)
         
-        for tile in request.tiles {
+        for tile in request.visibleTiles {
             // current visible tile is ready
             if let metalTile = metalTiles.getMetalTile(tile: tile) {
                 actualTiles.append(metalTile)

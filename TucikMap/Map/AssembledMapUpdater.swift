@@ -42,7 +42,7 @@ class AssembledMapUpdater {
         visibleTilesResult = determineVisibleTiles.determine()
         let visibleTiles = visibleTilesResult.visibleTiles
         let resolvedTiles = tilesResolver.resolveTiles(request: ResolveTileRequest(
-            tiles: visibleTiles,
+            visibleTiles: visibleTiles,
             useOnlyCached: useOnlyCached
         ))
         let assembledMap = AssembledMap(

@@ -42,8 +42,8 @@ class Settings {
     static let tileTitleOffset: Float = 20.0
     
     static var drawAxis: Bool = false
-    static var drawGrid: Bool = true
-    static var drawTileCoordinates: Bool = true
+    static var drawGrid: Bool = false
+    static var drawTileCoordinates: Bool = false
     
     static var printNotUsedStyle: Bool = true
     static var filterNotUsedLayernName: String = "admin"
@@ -51,11 +51,11 @@ class Settings {
     static var debugAssemblingMap: Bool = true
     static var debugTransferingToGPU: Bool = true
     
-    static let maxConcurrentDownloads = 2
-    static let maxDownloadQueueSize = 6
+    static let maxConcurrentFetchs = 3
+    static let fetchTilesQueueCapacity = 6
     
     static let maxCachedTilesCount = 100
-    static let maxCachedTilesMemory = 80 * 1024 * 1024
+    static let maxCachedTilesMemory = 100 * 1024 * 1024
     
-    static let tilesCompleteDebounceInterval = 0.3 
+    static let tilesCompleteDebounceInterval = 0.05
 }

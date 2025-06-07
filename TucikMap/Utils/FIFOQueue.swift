@@ -21,10 +21,14 @@ class FIFOQueue<T> {
     // Добавление элемента в конец очереди
     @discardableResult
     func enqueue(_ element: T) -> Bool {
-        guard size < capacity else { return false } // Проверка на переполнение
         elements[tail] = element
         tail = (tail + 1) % capacity
-        size += 1
+        if size < capacity {
+            size += 1
+        } else {
+            // Если очередь полна, сдвигаем head, перезаписывая старый элемент
+            head = (head + 1) % capacity
+        }
         return true
     }
     

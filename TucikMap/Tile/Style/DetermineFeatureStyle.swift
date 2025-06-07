@@ -36,10 +36,17 @@ class DetermineFeatureStyle {
             "road_major": SIMD4<Float>(0.9, 0.9, 0.9, 1.0),       // Near-white
             "road_minor": SIMD4<Float>(0.7, 0.7, 0.7, 1.0),       // Light gray
             "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.9),         // Warm beige
-            "fallback": SIMD4<Float>(0.5, 0.5, 0.5, 0.5)          // Neutral gray
+            "fallback": SIMD4<Float>(0.5, 0.5, 0.5, 0.5),          // Neutral gray
+            "background": SIMD4<Float>(1.0, 1.0, 1.0, 1.0)
         ]
 
         switch data.layerName {
+        case "background":
+            return FeatureStyle(
+                key: 1,
+                color: colors["background"]!,
+                parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 0)
+            )
         case "landcover":
             if classValue == "forest" {
                 return FeatureStyle(

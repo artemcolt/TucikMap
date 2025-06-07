@@ -59,8 +59,7 @@ class TileMvtParser {
         let offsetY = Float(lastTileCoord - y) * tileSize - mapSize / 2.0 + tileSize / 2.0
         let scaleX = tileSize / 2.0
         let scaleY = tileSize / 2.0
-        var modelMatrix = MatrixUtils.createTileModelMatrix(scaleX: scaleX, scaleY: scaleY, offsetX: offsetX, offsetY: offsetY)
-        return modelMatrix
+        return MatrixUtils.createTileModelMatrix(scaleX: scaleX, scaleY: scaleY, offsetX: offsetX, offsetY: offsetY)
     }
     
     private func tryParsePolygon(geometry: GeoJsonGeometry, boundingBox: BoundingBox) -> ParsedPolygon? {
@@ -113,6 +112,23 @@ class TileMvtParser {
         return parsed
     }
     
+    private func addBackground(polygonByStyle: inout [UInt8: [ParsedPolygon]], styles: inout [UInt8: FeatureStyle]) {
+        let style = determineFeatureStyle.makeStyle(data: DetFeatureStyleData(layerName: "background", properties: [:]))
+        polygonByStyle[style.key] = [ParsedPolygon(
+            vertices: [
+                SIMD2<Float>(-1, -1),
+                SIMD2<Float>(1, -1),
+                SIMD2<Float>(1, 1),
+                SIMD2<Float>(-1, 1)
+            ],
+            indices: [
+                0, 1, 2,
+                0, 2, 3
+            ]
+        )]
+        styles[style.key] = style
+    }
+    
     func readingStage(tile: VectorTile, boundingBox: BoundingBox) -> ReadingStageResult {
         var polygonByStyle: [UInt8: [ParsedPolygon]] = [:]
         var rawLineByStyle: [UInt8: [ParsedLineRawVertices]] = [:]
@@ -156,9 +172,10 @@ class TileMvtParser {
                                                   boundingBox: boundingBox,
                                                   width: parseGeomStyleData.lineWidth
                 ) { rawLineByStyle[styleKey, default: []].append(contentsOf: parsed) }
-                
             }
         }
+        
+        addBackground(polygonByStyle: &polygonByStyle, styles: &styles)
         
         return ReadingStageResult(
             polygonByStyle: polygonByStyle.filter { $0.value.isEmpty == false },
