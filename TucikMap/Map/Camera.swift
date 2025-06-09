@@ -35,6 +35,20 @@ class Camera {
         self.assembledMapUpdater = AssembledMapUpdater(mapZoomState: mapZoomState, device: device, camera: self, textTools: textTools)
     }
     
+    func moveToTile(tileX x: Int, tileY y: Int, tileZ z: Int, view: MTKView, size: CGSize) {
+        let mapSize = Settings.mapSize
+        let zoomFactor = pow(2.0, Float(z))
+        let lastTileCoord = Int(zoomFactor) - 1
+        let tileSize = mapSize / zoomFactor
+        let offsetX = Float(x) * tileSize - mapSize / 2.0 + tileSize / 2.0
+        let offsetY = Float(lastTileCoord - y) * tileSize - mapSize / 2.0 + tileSize / 2.0
+        
+        targetPosition = SIMD3<Float>(offsetX, offsetY, 0)
+        cameraDistance = Settings.nullZoomCameraDistance / pow(2, Float(z))
+        
+        movement(view: view, size: size)
+    }
+    
     // Handle single-finger pan gesture for target translation
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }

@@ -13,15 +13,15 @@ class MetalTilesStorage {
     private var mapNeedsTile: MapNeedsTile!
     private var tileParser: TileMvtParser!
     private var memoryMetalTile: MemoryMetalTileCache!
-    private let onProcessedTiles: () -> Void
+    private let onMetalingTileEnd: (Tile) -> Void
     
     private let metalDevice: MTLDevice
     private var filterTiles: [Tile] = []
     
-    init(determineStyle: DetermineFeatureStyle, metalDevice: MTLDevice, onProcessedTiles: @escaping () -> Void) {
+    init(determineStyle: DetermineFeatureStyle, metalDevice: MTLDevice, onMetalingTileEnd: @escaping (Tile) -> Void) {
         self.metalDevice = metalDevice
-        self.onProcessedTiles = onProcessedTiles
-        memoryMetalTile = MemoryMetalTileCache(maxSizeBytes: Settings.maxCachedTilesMemory)
+        self.onMetalingTileEnd = onMetalingTileEnd
+        memoryMetalTile = MemoryMetalTileCache(maxCacheSizeInBytes: Settings.maxCachedTilesMemory)
         tileParser = TileMvtParser(determineFeatureStyle: determineStyle)
         mapNeedsTile = MapNeedsTile(onComplete: onTileComplete)
     }
@@ -64,9 +64,9 @@ class MetalTilesStorage {
                     tile: tile
                 )
                 
-                DispatchQueue.main.async {
-                    self.memoryMetalTile.addTile(metalTile, forKey: tile.key())
-                    self.onProcessedTiles()
+                await MainActor.run {
+                    self.memoryMetalTile.setTile(metalTile, forKey: tile.key())
+                    self.onMetalingTileEnd(tile)
                 }
             }
         }

@@ -12,14 +12,49 @@ class MapNeedsTile {
     private var tileDownloader: TileDownloader!
     private var tileDiskCaching: TileDiskCaching!
     private var onComplete: (Data?, Tile) -> Void
-    private var ongoingTasks: [String: Void] = [:]
+    private var ongoingTasks: [String: Task<Void, Never>] = [:]
     private let maxConcurrentFetchs: Int = Settings.maxConcurrentFetchs
     private let fifo: FIFOQueue<Tile> = FIFOQueue(capacity: Settings.fetchTilesQueueCapacity)
-
+    
     init(onComplete: @escaping (Data?, Tile) -> Void) {
         self.onComplete = onComplete
-        tileDiskCaching = TileDiskCaching(onComplete: onTileDiskComplete)
-        tileDownloader = TileDownloader(onComplete: onTileNetworkComplete)
+        
+        tileDiskCaching = TileDiskCaching()
+        tileDownloader = TileDownloader()
+    }
+    
+    func please(tile: Tile) {
+        if ongoingTasks[tile.key()] != nil {
+            if Settings.debugAssemblingMap { print("Requested already tile \(tile)") }
+            return
+        }
+        
+        if ongoingTasks.count >= maxConcurrentFetchs {
+            fifo.enqueue(tile)
+            if Settings.debugAssemblingMap { print("Request fifo enque tile \(tile)") }
+            return
+        }
+        
+        if Settings.debugAssemblingMap { print("Request tile \(tile)") }
+        let task = Task {
+            if Settings.enabledThrottling { try? await Task.sleep(nanoseconds: UInt64.random(in: 0...Settings.throttlingNanoSeconds))}
+            if let data = await tileDiskCaching.requestDiskCached(tile: tile) {
+                if (Settings.debugAssemblingMap) {print("Fetched disk tile: \(tile.key())")}
+                await MainActor.run {
+                    _onComplete(data: data, tile: tile)
+                }
+                return
+            }
+            
+            if let data = await tileDownloader.download(tile: tile) {
+                await MainActor.run {
+                    _onComplete(data: data, tile: tile)
+                }
+                return
+            }
+        }
+        
+        ongoingTasks[tile.key()] = task
     }
     
     private func _onComplete(data: Data?, tile: Tile) {
@@ -28,39 +63,5 @@ class MapNeedsTile {
             please(tile: deqeueTile)
         }
         onComplete(data, tile)
-    }
-    
-    private func onTileDiskComplete(data: Data?, tile: Tile) {
-        if let data = data {
-            if (Settings.debugAssemblingMap) {print("Fetched disk tile: \(tile.key())")}
-            _onComplete(data: data, tile: tile)
-            return
-        }
-        
-        tileDownloader.download(tile: tile)
-    }
-    
-    private func onTileNetworkComplete(data: Data?, tile: Tile) {
-        if data != nil {
-            if (Settings.debugAssemblingMap) {print("Fetched network tile: \(tile.key())")}
-        }
-        _onComplete(data: data, tile: tile)
-    }
-    
-    func please(tile: Tile) {
-        if Settings.debugAssemblingMap { print("Request tile: \(tile)") }
-        
-        // Check if a fetch task already exists for this tile
-        if ongoingTasks[tile.key()] != nil {
-            return
-        }
-        
-        if ongoingTasks.count >= maxConcurrentFetchs {
-            fifo.enqueue(tile)
-            return
-        }
-        
-        tileDiskCaching.requestDiskCached(tile: tile) // starts with disk
-        ongoingTasks[tile.key()] = ()
     }
 }

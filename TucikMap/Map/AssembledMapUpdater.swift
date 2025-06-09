@@ -8,6 +8,7 @@
 import MetalKit
 import GISTools
 
+
 class AssembledMapUpdater {
     private var mapZoomState: MapZoomState!
     private var determineVisibleTiles: DetermineVisibleTiles!
@@ -16,8 +17,8 @@ class AssembledMapUpdater {
     private var visibleTilesResult: DetVisTilesResult!
     private var textTools: TextTools!
     private var camera: Camera!
-    private var tilesResolver: TilesResolver!
     private var savedView: MTKView!
+    private var metalTiles: MetalTilesStorage!
     
     var assembledMap: AssembledMap?
     var assembledTileTitles: DrawTextData?
@@ -30,10 +31,14 @@ class AssembledMapUpdater {
         determineFeatureStyle = DetermineFeatureStyle()
         determineVisibleTiles = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
         tileTitleAssembler = TileTitlesAssembler(textAssembler: textTools.textAssembler)
-        tilesResolver = TilesResolver(determineStyle: determineFeatureStyle, metalDevice: device, onProcessedTiles: self.onProcessedTiles)
+        metalTiles = MetalTilesStorage(
+            determineStyle: determineFeatureStyle,
+            metalDevice: device,
+            onMetalingTileEnd: onMetalingTileEnd
+        )
     }
     
-    private func onProcessedTiles() {
+    private func onMetalingTileEnd(tile: Tile) {
         self.update(view: savedView, useOnlyCached: true)
     }
     
@@ -41,20 +46,46 @@ class AssembledMapUpdater {
         savedView = view
         visibleTilesResult = determineVisibleTiles.determine()
         let visibleTiles = visibleTilesResult.visibleTiles
-        let resolvedTiles = tilesResolver.resolveTiles(request: ResolveTileRequest(
-            visibleTiles: visibleTiles,
-            useOnlyCached: useOnlyCached
-        ))
-        let assembledMap = AssembledMap(
-            tiles: resolvedTiles.tempTiles + resolvedTiles.actualTiles,
-        )
+        metalTiles.setupTilesFilter(filterTiles: visibleTiles)
+        
+        var replacements = Set<MetalTile>()
+        var actual: [MetalTile] = []
+        let actualZ = visibleTiles[0].z
+        for i in 0..<visibleTiles.count {
+            let tile = visibleTiles[i]
+            
+            // current visible tile is ready
+            if let metalTile = metalTiles.getMetalTile(tile: tile) {
+                actual.append(metalTile)
+                continue
+            }
+            
+            // find replacement for actual
+            if let tiles = assembledMap?.tiles {
+                for scTile in tiles {
+                    if scTile.tile.covers(tile) || tile.covers(scTile.tile) {
+                        replacements.insert(scTile)
+                    }
+                }
+            }
+            
+            // don't try to fetch unavailbale tiles
+            if useOnlyCached { continue }
+            
+            metalTiles.requestMetalTile(tile: tile)
+        }
+        
         if (Settings.debugAssemblingMap) {
-            print("Assembling map, tempTiles: \(resolvedTiles.tempTiles.count), actual: \(resolvedTiles.actualTiles.count)")
+            print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
         updateTitles(visibleTiles: visibleTiles)
         
-        self.assembledMap = assembledMap
+        let replsArray = replacements.sorted {
+            abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
+        }
+        
+        self.assembledMap = AssembledMap(tiles: replsArray + actual)
         view.setNeedsDisplay()
     }
     

@@ -7,7 +7,17 @@
 
 import MetalKit
 
-class MetalTile {
+class MetalTile: Hashable {
+    static func == (lhs: MetalTile, rhs: MetalTile) -> Bool {
+        return lhs.tile.x == rhs.tile.x && lhs.tile.z == rhs.tile.z && lhs.tile.y == rhs.tile.y
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(tile.x)
+        hasher.combine(tile.y)
+        hasher.combine(tile.z)
+    }
+    
     let verticesBuffer: MTLBuffer
     let indicesBuffer: MTLBuffer
     let indicesCount: Int

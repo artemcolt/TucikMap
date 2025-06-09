@@ -11,16 +11,14 @@ class TileDownloader {
     private let baseURLString = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2"
     private let accessToken = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlbW91eWRwZzdldCJ9.EAByLTrB_zc7-ytI6GDGBw"
     private let session: URLSession
-    private let onComplete: (Data, Tile) -> Void
 
-    init(onComplete: @escaping (Data, Tile) -> Void) {
+    init() {
         let config = URLSessionConfiguration.default
         config.tlsMaximumSupportedProtocolVersion = .TLSv12
         session = URLSession(configuration: config)
-        self.onComplete = onComplete
     }
     
-    func download(tile: Tile) {
+    func download(tile: Tile) async -> Data? {
         let zoom = tile.z
         let x = tile.x
         let y = tile.y
@@ -30,21 +28,13 @@ class TileDownloader {
         
         // Create new download task
         let tileURL = tileURLFor(zoom: zoom, x: x, y: y)
-        let task = session.dataTask(with: tileURL) { data, response, error in
-            self.networkResult(data: data, response: response, error: error, tile: tile)
+        if let response = try? await session.data(from: tileURL) {
+            if Settings.debugAssemblingMap { print("Tile is downloaded \(tile)") }
+            return response.0
         }
-        task.resume()
-    }
-    
-    private func networkResult(data: Data?, response: URLResponse?, error: Error?, tile: Tile) {
-        if Settings.debugAssemblingMap { print("Tile is downloaded \(tile)") }
-        DispatchQueue.main.async { [weak self] in
-            if let data = data, error == nil {
-                self?.onComplete(data, tile)
-            } else if let error = error {
-                print("Failed to download tile \(error)")
-            }
-        }
+        
+        if Settings.debugAssemblingMap { print("Downloading tile failed \(tile)") }
+        return nil
     }
     
     private func tileURLFor(zoom: Int, x: Int, y: Int) -> URL {

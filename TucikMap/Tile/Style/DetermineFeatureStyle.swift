@@ -29,7 +29,7 @@ class DetermineFeatureStyle {
         let colors = [
             "admin_boundary": SIMD4<Float>(0.65, 0.65, 0.75, 1.0), // Soft purple-gray
             "admin_level_1": SIMD4<Float>(0.45, 0.55, 0.85, 1.0), // Deeper blue
-            "water": SIMD4<Float>(0.3, 0.6, 0.9, 0.8),           // Light blue
+            "water": SIMD4<Float>(0.3, 0.6, 0.9, 1.0),           // Light blue
             "river": SIMD4<Float>(0.2, 0.5, 0.8, 1.0),           // Slightly darker blue
             "landcover_forest": SIMD4<Float>(0.2, 0.6, 0.4, 0.7), // Forest green
             "landcover_grass": SIMD4<Float>(0.4, 0.7, 0.4, 0.7),  // Grass green

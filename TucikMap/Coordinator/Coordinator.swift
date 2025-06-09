@@ -76,6 +76,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         // Handle viewport size changes - update all uniform buffers
         drawUI.updateSize(size: size)
         camera.updateMap(view: view, size: size)
+        
+        camera.moveToTile(tileX: 18, tileY: 10, tileZ: 5, view: view, size: size)
     }
     
     // Three-step rendering process

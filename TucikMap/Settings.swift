@@ -10,7 +10,7 @@ class Settings {
     static let panSensitivity: Float = 2.6
     static let rotationSensitivity: Float = 0.2
     static let twoFingerPanSensitivity: Float = 0.003
-    static let pinchSensitivity: Float = 1300
+    static let pinchSensitivity: Float = 1600
     
     static let farPlaneIncreaseFactor: Float = 2.0
     static let planesNearDelta: Float = -20.0
@@ -32,7 +32,7 @@ class Settings {
     static let axisThickness: Float = 20
     static let tileExtent = 4096
     
-    static let clearDownloadedOnDiskTiles: Bool = false
+    static let clearDownloadedOnDiskTiles: Bool = true
 
     static let spaceUnicodeNumber: Int = 32
     static let spaceSize: Float = 0.2
@@ -48,14 +48,14 @@ class Settings {
     static var printNotUsedStyle: Bool = true
     static var filterNotUsedLayernName: String = "admin"
     
-    static var debugAssemblingMap: Bool = true
-    static var debugTransferingToGPU: Bool = true
+    static var debugAssemblingMap: Bool = false
     
     static let maxConcurrentFetchs = 3
-    static let fetchTilesQueueCapacity = 6
+    static let fetchTilesQueueCapacity = Settings.visibleTilesCount // can't be lesser than visible tiles count
     
     static let maxCachedTilesCount = 100
-    static let maxCachedTilesMemory = 100 * 1024 * 1024
+    static let maxCachedTilesMemory = 500 * 1024 * 1024
     
-    static let tilesCompleteDebounceInterval = 0.05
+    static let enabledThrottling = false
+    static let throttlingNanoSeconds: UInt64 = 4_000_000_000
 }

@@ -10,14 +10,12 @@ import Foundation
 class TileDiskCaching {
     private let cacheDirectory: URL
     private let cacheDuration: TimeInterval = 7 * 24 * 60 * 60 // 1 week in seconds
-    private let onComplete: (Data?, Tile) -> Void
     
-    init(onComplete: @escaping (Data?, Tile) -> Void) {
+    init() {
         // Initialize cache directory
         let fileManager = FileManager.default
         let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
         self.cacheDirectory = cachesDirectory.appendingPathComponent("MapTiles")
-        self.onComplete = onComplete
         
         // Create cache directory if it doesn't exist
         do {
@@ -35,17 +33,13 @@ class TileDiskCaching {
         }
     }
     
-    func requestDiskCached(tile: Tile) {
+    func requestDiskCached(tile: Tile) async -> Data? {
         let zoom = tile.z
         let x = tile.x
         let y = tile.y
-        Task {
-            let cachePath = cachePathFor(zoom: zoom, x: x, y: y)
-            let data = loadCachedTile(at: cachePath)
-            DispatchQueue.main.async {
-                self.onComplete(data, tile)
-            }
-        }
+        let cachePath = cachePathFor(zoom: zoom, x: x, y: y)
+        let data = loadCachedTile(at: cachePath)
+        return data
     }
     
     func clearAllCache() throws {
