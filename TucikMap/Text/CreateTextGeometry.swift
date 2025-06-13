@@ -7,7 +7,37 @@
 
 import MetalKit
 
+struct MeasuredText {
+    let width: simd_float1
+    let top: simd_float1
+    let bottom: simd_float1
+}
+
 class CreateTextGeometry {
+    func measureText(text: String, fontData: FontData) -> MeasuredText {
+        var totalWidth: Float = 0
+        var maxTop: Float = 0
+        var maxBottom: Float = 0
+        for char in text.unicodeScalars {
+            let unicode = Int(char.value)
+            if unicode == Settings.spaceUnicodeNumber { // space unicode
+                totalWidth += Settings.spaceSize
+            }
+            if let glyph = fontData.glyphs.first(where: { $0.unicode == unicode }) {
+                totalWidth += glyph.advance
+                if let planeBounds = glyph.planeBounds {
+                    if maxTop < planeBounds.top {
+                        maxTop = planeBounds.top
+                    }
+                    if maxBottom > planeBounds.bottom {
+                        maxBottom = planeBounds.bottom
+                    }
+                }
+            }
+        }
+        return MeasuredText(width: totalWidth, top: maxTop, bottom: maxBottom)
+    }
+    
     func create(text: String, fontData: FontData, onGlyphCreated: ((_: Unicode.Scalar) -> Void)?) -> [TextVertex] {
         var vertices: [TextVertex] = []
         var shiftX: Float = 0

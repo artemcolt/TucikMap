@@ -13,10 +13,11 @@ class UpdateBufferedUniform {
     // Triple buffering for uniforms
     private(set) var uniformBuffers: [MTLBuffer] = []
     
-    private(set) var currentBufferIndex = -1
+    private var currentBufferIndex = -1
     private(set) var semaphore: DispatchSemaphore!
+    private(set) var lastUniforms: Uniforms!
     
-    private let maxBuffersInFlight = 3
+    private let maxBuffersInFlight = Settings.maxBuffersInFlight
     private let device: MTLDevice
     private let mapZoomState: MapZoomState
     private let camera: Camera
@@ -24,7 +25,7 @@ class UpdateBufferedUniform {
     
     init(device: MTLDevice, mapZoomState: MapZoomState, camera: Camera) {
         // Initialize semaphore for triple buffering
-        self.semaphore = DispatchSemaphore(value: 3)
+        self.semaphore = DispatchSemaphore(value: Settings.maxBuffersInFlight)
         self.device = device
         self.mapZoomState = mapZoomState
         self.camera = camera
@@ -33,6 +34,10 @@ class UpdateBufferedUniform {
     
     func getCurrentFrameBuffer() -> MTLBuffer {
         return uniformBuffers[currentBufferIndex]
+    }
+    
+    func getCurrentFrameBufferIndex() -> Int {
+        return currentBufferIndex
     }
     
     func updateUniforms(viewportSize: CGSize) {
@@ -66,13 +71,14 @@ class UpdateBufferedUniform {
         )
         
         // Update uniforms
-        var uniforms = Uniforms(
+        lastUniforms = Uniforms(
             projectionMatrix: projectionMatrix,
             viewMatrix: viewMatrix,
+            viewportSize: SIMD2<Float>(Float(viewportSize.width), Float(viewportSize.height))
         )
         
         let buffer = uniformBuffers[currentBufferIndex]
-        memcpy(buffer.contents(), &uniforms, MemoryLayout<Uniforms>.size)
+        memcpy(buffer.contents(), &lastUniforms, MemoryLayout<Uniforms>.size)
     }
     
     private func createUniformBuffers() {

@@ -10,6 +10,7 @@ import MetalKit
 class TextTools {
     let createTextGeometry = CreateTextGeometry()
     let textAssembler: TextAssembler
+    let mapLabelsAssembler: MapLabelsAssembler
     let font: Font
     let drawText: DrawText
     private let fontLoader: FontLoader
@@ -21,5 +22,6 @@ class TextTools {
         font = fontLoader.load(fontName: "Roboto-Regular")
         drawText = DrawText(metalDevice: metalDevice)
         textAssembler = TextAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice)
+        mapLabelsAssembler = MapLabelsAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice)
     }
 }

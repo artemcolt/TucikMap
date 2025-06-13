@@ -10,12 +10,11 @@ import Foundation
 class TileDownloader {
     private let baseURLString = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2"
     private let accessToken = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlbW91eWRwZzdldCJ9.EAByLTrB_zc7-ytI6GDGBw"
-    private let session: URLSession
+    private let configuration: URLSessionConfiguration
 
     init() {
-        let config = URLSessionConfiguration.default
-        config.tlsMaximumSupportedProtocolVersion = .TLSv12
-        session = URLSession(configuration: config)
+        configuration = URLSessionConfiguration.default
+        configuration.tlsMaximumSupportedProtocolVersion = .TLSv12
     }
     
     func download(tile: Tile) async -> Data? {
@@ -28,6 +27,7 @@ class TileDownloader {
         
         // Create new download task
         let tileURL = tileURLFor(zoom: zoom, x: x, y: y)
+        let session: URLSession = URLSession(configuration: configuration)
         if let response = try? await session.data(from: tileURL) {
             if Settings.debugAssemblingMap { print("Tile is downloaded \(tile)") }
             return response.0

@@ -18,6 +18,7 @@ struct MetalView: UIViewRepresentable {
         mtkView.depthStencilPixelFormat = .depth32Float
         mtkView.colorPixelFormat = .bgra8Unorm
         mtkView.enableSetNeedsDisplay = true
+        mtkView.preferredFramesPerSecond = Settings.preferredFramesPerSecond
         
         let camera = context.coordinator.camera!
         let delegate = context.coordinator.controlsDelegate
@@ -43,6 +44,7 @@ struct MetalView: UIViewRepresentable {
         let pinchGesture = UIPinchGestureRecognizer(target: camera, action: #selector(camera.handlePinch(_:)))
         pinchGesture.delegate = delegate
         mtkView.addGestureRecognizer(pinchGesture)
+        
         
         return mtkView
     }

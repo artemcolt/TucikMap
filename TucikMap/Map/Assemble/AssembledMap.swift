@@ -7,6 +7,14 @@
 
 import MetalKit
 
-struct AssembledMap {
-    let tiles: [MetalTile]
+class AssembledMap {
+    var tiles: [MetalTile]
+    var drawLabelsData: DrawMapLabelsData?
+    var metaLines: [MapLabelLineMeta]
+    
+    init(tiles: [MetalTile], drawLabelsData: DrawMapLabelsData? = nil, metaLines: [MapLabelLineMeta]) {
+        self.tiles = tiles
+        self.drawLabelsData = drawLabelsData
+        self.metaLines = metaLines
+    }
 }

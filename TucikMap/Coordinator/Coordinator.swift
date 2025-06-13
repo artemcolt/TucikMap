@@ -8,10 +8,13 @@ import SwiftUI
 import MetalKit
 
 class Coordinator: NSObject, MTKViewDelegate {
-    var parent: MetalView
+    var parent: MetalView!
     var metalDevice: MTLDevice!
     var metalCommandQueue: MTLCommandQueue!
     let controlsDelegate: ControlsDelegate!
+    var renderFrameControl: RenderFrameControl!
+    var mapCADisplayLoop: MapCADisplayLoop!
+    var renderFrameCount: RenderFrameCount!
     
     var depthStencilState: MTLDepthStencilState!
     var frameCounter: FrameCounter!
@@ -23,18 +26,19 @@ class Coordinator: NSObject, MTKViewDelegate {
     var drawPoint: DrawPoint!
     
     // Tile
-    var drawAssembledMap: DrawAssembledMap!
+    var assembledMapWrapper: DrawAssembledMap!
     
     // Text
     var textTools: TextTools!
-    var drawMapLabels: DrawMapLabels!
     
     // Map
     var mapZoomState: MapZoomState!
     var camera: Camera!
+    var mapLabelsIntersection: MapLabelsIntersection!
     
     // UI
     var drawUI: DrawUI!
+    var screenUniforms: ScreenUniforms!
     
     // Pipelines
     var pipelines: Pipelines!
@@ -46,6 +50,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     init(_ parent: MetalView) {
         self.parent = parent
         self.controlsDelegate = ControlsDelegate()
+        self.renderFrameCount = RenderFrameCount()
         super.init()
         
         if let device = MTLCreateSystemDefaultDevice() {
@@ -59,57 +64,80 @@ class Coordinator: NSObject, MTKViewDelegate {
             
             frameCounter = FrameCounter()
             mapZoomState = MapZoomState()
+            pipelines = Pipelines(metalDevice: device)
             drawTestCube = DrawTestCube(metalDevice: device)
             drawAxis = DrawAxis(metalDevice: device, mapState: mapZoomState)
             drawGrid = DrawGrid(metalDevice: device, mapZoomState: mapZoomState)
             drawPoint = DrawPoint(metalDevice: device)
             textTools = TextTools(metalDevice: metalDevice)
-            drawAssembledMap = DrawAssembledMap(metalDevice: metalDevice)
-            pipelines = Pipelines(metalDevice: device)
-            drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState)
-            camera = Camera(mapZoomState: mapZoomState, device: device, textTools: textTools)
-            drawMapLabels = DrawMapLabels(textTools: textTools)
+            screenUniforms = ScreenUniforms(metalDevice: device)
+            camera = Camera(
+                mapZoomState: mapZoomState,
+                device: device,
+                textTools: textTools,
+                renderFrameCount: renderFrameCount,
+            )
+            mapLabelsIntersection = MapLabelsIntersection(
+                metalDevice: metalDevice,
+                metalCommandQueue: metalCommandQueue,
+                transformWorldToScreenPositionPipeline: pipelines.transformToScreenPipeline,
+                screenUniforms: screenUniforms,
+                assembledMap: camera.assembledMapUpdater.assembledMap
+            )
+            assembledMapWrapper = DrawAssembledMap(
+                metalDevice: metalDevice,
+                screenUniforms: screenUniforms,
+            )
+            drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
+            mapCADisplayLoop = MapCADisplayLoop(mapLablesIntersection: mapLabelsIntersection, assembledMap: camera.assembledMapUpdater.assembledMap)
+            self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: mapCADisplayLoop, renderFrameCount: renderFrameCount)
         }
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        // Handle viewport size changes - update all uniform buffers
-        drawUI.updateSize(size: size)
-        camera.updateMap(view: view, size: size)
+        self.renderFrameControl.updateView(view: view)
         
-        camera.moveToTile(tileX: 18, tileY: 10, tileZ: 5, view: view, size: size)
+        // Handle viewport size changes - update all uniform buffers
+        screenUniforms.update(size: size)
+        camera.updateMap(view: view, size: size)
+        //camera.moveToTile(tileX: 18, tileY: 10, tileZ: 5, view: view, size: size)
+        
     }
     
     // Three-step rendering process
     func draw(in view: MTKView) {
         // Wait until the previous frame's GPU work has completed
         // This ensures we don't try to update a buffer that's still in use
-        _ = camera.updateBufferedUnifrom!.semaphore.wait(timeout: .distantFuture)
+        _ = camera.updateBufferedUniform!.semaphore.wait(timeout: .distantFuture)
         
-        drawAssembledMap.setCurrentAssembledMap(assembledMap: camera.assembledMapUpdater?.assembledMap)
+        camera.updateBufferedUniform!.updateUniforms(viewportSize: view.drawableSize)
         
-        guard let commandBuffer = metalCommandQueue.makeCommandBuffer() else {
-            renderComplete()
-            return
-        }
-        // Add completion handler to signal the semaphore when GPU work is done
-        commandBuffer.addCompletedHandler { [weak self] _ in
-            self?.renderComplete()
-        }
-        
-        guard let drawable = view.currentDrawable,
+        let uniformsBuffer = camera.updateBufferedUniform.getCurrentFrameBuffer()
+        guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
+              let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
             renderComplete()
             return
         }
         
-        let uniformsBuffer = camera.updateBufferedUnifrom!.getCurrentFrameBuffer()
+        // Add completion handler to signal the semaphore when GPU work is done
+        commandBuffer.addCompletedHandler { [weak self] _ in
+            self?.renderComplete()
+        }
         
         pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
-        drawAssembledMap.drawAssembledMap(
+        assembledMapWrapper.drawTiles(
             renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer
+            uniformsBuffer: uniformsBuffer,
+            tiles: camera.assembledMapUpdater.assembledMap.tiles
+        )
+        
+        pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
+        assembledMapWrapper.drawMapLabels(
+            renderEncoder: renderEncoder,
+            uniforms: uniformsBuffer,
+            drawLabelsData: camera.assembledMapUpdater.assembledMap.drawLabelsData
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
@@ -123,16 +151,17 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             pointSize: Settings.cameraCenterPointSize * mapZoomState.mapScaleFactor,
-            position: camera.targetPosition
+            position: camera.targetPosition,
+            color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
         drawAxis.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
         
+        
         pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)
-        //drawMapLabels.draw(renderEncoder: renderEncoder, uniforms: uniformsBuffer)
         if let text = camera.assembledMapUpdater?.assembledTileTitles {
             textTools.drawText.renderText(renderEncoder: renderEncoder, uniforms: uniformsBuffer, drawTextData: text)
         }
-        drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder)
+        drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder, size: view.drawableSize)
         
         
         renderEncoder.endEncoding()
@@ -143,6 +172,6 @@ class Coordinator: NSObject, MTKViewDelegate {
     }
     
     private func renderComplete() {
-        camera.updateBufferedUnifrom!.semaphore.signal()
+        camera.updateBufferedUniform!.semaphore.signal()
     }
 }

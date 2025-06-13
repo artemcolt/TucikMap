@@ -1,0 +1,109 @@
+//
+//  MapLabelsAssembler.swift
+//  TucikMap
+//
+//  Created by Artem on 6/10/25.
+//
+import MetalKit
+
+struct DrawMapLabelsData {
+    let vertexBuffer: MTLBuffer
+    let mapLabelSymbolMeta: MTLBuffer
+    let mapLabelLineMeta: MTLBuffer
+    var intersectionsBuffer: MTLBuffer
+    let verticesCount: Int
+    let atlas: MTLTexture
+}
+
+struct DrawMapLabelsBytes {
+    let vertices: [TextVertex]
+    let mapLabelSymbolMeta: [MapLabelSymbolMeta]
+    let mapLabelLineMeta: [MapLabelLineMeta]
+    let verticesCount: Int
+    let atlas: MTLTexture
+}
+
+class MapLabelsAssembler {
+    private let createTextGeometry: CreateTextGeometry
+    private let metalDevice: MTLDevice
+    
+    init(createTextGeometry: CreateTextGeometry, metalDevice: MTLDevice) {
+        self.createTextGeometry = createTextGeometry
+        self.metalDevice = metalDevice
+    }
+    
+    struct TextLineData {
+        let text: String
+        let scale: Float
+        let worldPosition: SIMD2<Float>
+    }
+    
+    func assembleBytes(lines: [TextLineData], font: Font) -> DrawMapLabelsBytes {
+        var mapLabelSymbolMeta: [MapLabelSymbolMeta] = []
+        var mapLabelLineMeta: [MapLabelLineMeta] = []
+        var vertices: [TextVertex] = []
+        
+        for i in 0..<lines.count {
+            let line = lines[i]
+            let text = line.text
+            let measuredText = createTextGeometry.measureText(text: text, fontData: font.fontData)
+            let textVertices = createTextGeometry.create(text: text, fontData: font.fontData, onGlyphCreated: { scalar in
+                mapLabelSymbolMeta.append(MapLabelSymbolMeta(
+                    lineMetaIndex: simd_int1(i)
+                ))
+            })
+            vertices.append(contentsOf: textVertices)
+            
+            mapLabelLineMeta.append(MapLabelLineMeta(
+                measuredText: measuredText,
+                scale: line.scale,
+                worldPosition: line.worldPosition
+            ))
+        }
+        
+        let verticesCount = vertices.count
+        return DrawMapLabelsBytes(
+            vertices: vertices,
+            mapLabelSymbolMeta: mapLabelSymbolMeta,
+            mapLabelLineMeta: mapLabelLineMeta,
+            verticesCount: verticesCount,
+            atlas: font.atlasTexture
+        )
+    }
+    
+    struct Result {
+        let drawMapLabelsData: DrawMapLabelsData
+        let metaLines: [MapLabelLineMeta]
+    }
+    
+    func assemble(lines: [TextLineData], font: Font) -> Result {
+        let assembledBytes = assembleBytes(lines: lines, font: font)
+        
+        let vertexBuffer = metalDevice.makeBuffer(
+            bytes: assembledBytes.vertices,
+            length: MemoryLayout<TextVertex>.stride * assembledBytes.verticesCount
+        )!
+        let mapLabelSymbolMetaBuffer = metalDevice.makeBuffer(
+            bytes: assembledBytes.mapLabelSymbolMeta,
+            length: MemoryLayout<MapLabelSymbolMeta>.stride * assembledBytes.mapLabelSymbolMeta.count
+        )!
+        let mapLabelLineMetaBuffer = metalDevice.makeBuffer(
+            bytes: assembledBytes.mapLabelLineMeta,
+            length: MemoryLayout<MapLabelLineMeta>.stride * assembledBytes.mapLabelLineMeta.count
+        )!
+        let intersectionsBuffer = metalDevice.makeBuffer(
+            bytes: Array(repeating: LabelIntersection(intersect: false), count: lines.count),
+            length: MemoryLayout<LabelIntersection>.stride * lines.count
+        )!
+        
+        let drawData = DrawMapLabelsData(
+            vertexBuffer: vertexBuffer,
+            mapLabelSymbolMeta: mapLabelSymbolMetaBuffer,
+            mapLabelLineMeta: mapLabelLineMetaBuffer,
+            intersectionsBuffer: intersectionsBuffer,
+            verticesCount: assembledBytes.verticesCount,
+            atlas: assembledBytes.atlas
+        )
+        return Result(drawMapLabelsData: drawData, metaLines: assembledBytes.mapLabelLineMeta)
+    }
+}

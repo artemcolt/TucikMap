@@ -8,6 +8,6 @@
 import MetalKit
 
 struct TextVertex {
-    let position: vector_float2
-    let texCoord: vector_float2
+    let position: SIMD2<Float>
+    let texCoord: SIMD2<Float>
 }

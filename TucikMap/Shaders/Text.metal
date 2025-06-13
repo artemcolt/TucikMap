@@ -7,6 +7,7 @@
 
 #include <metal_stdlib>
 using namespace metal;
+#include "Common.h"
 
 // Структура для вершинного шейдера
 struct VertexIn {
@@ -23,6 +24,7 @@ struct VertexOut {
 struct Uniforms {
     metal::float4x4 projectionMatrix;
     metal::float4x4 viewMatrix;
+    float2 viewportSize;
 };
 
 struct Glyph {
@@ -53,11 +55,6 @@ vertex VertexOut textVertexShader(VertexIn in [[stage_in]],
     out.texCoord = in.texCoord;
     
     return out;
-}
-
-// Функция для вычисления MSDF расстояния
-float median(float r, float g, float b) {
-    return max(min(r, g), min(max(r, g), b));
 }
 
 // Фрагментный шейдер для MSDF рендеринга

@@ -19,21 +19,29 @@ class AssembledMapUpdater {
     private var camera: Camera!
     private var savedView: MTKView!
     private var metalTiles: MetalTilesStorage!
+    private var renderFrameCount: RenderFrameCount!
     
-    var assembledMap: AssembledMap?
+    var assembledMap: AssembledMap = AssembledMap(tiles: [], drawLabelsData: nil, metaLines: [])
     var assembledTileTitles: DrawTextData?
     
-    
-    init(mapZoomState: MapZoomState, device: MTLDevice, camera: Camera, textTools: TextTools) {
+    init(
+        mapZoomState: MapZoomState,
+        device: MTLDevice,
+        camera: Camera,
+        textTools: TextTools,
+        renderFrameCount: RenderFrameCount,
+    ) {
         self.mapZoomState = mapZoomState
         self.textTools = textTools
         self.camera = camera
+        self.renderFrameCount = renderFrameCount
         determineFeatureStyle = DetermineFeatureStyle()
         determineVisibleTiles = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
         tileTitleAssembler = TileTitlesAssembler(textAssembler: textTools.textAssembler)
         metalTiles = MetalTilesStorage(
             determineStyle: determineFeatureStyle,
             metalDevice: device,
+            textTools: textTools,
             onMetalingTileEnd: onMetalingTileEnd
         )
     }
@@ -61,11 +69,9 @@ class AssembledMapUpdater {
             }
             
             // find replacement for actual
-            if let tiles = assembledMap?.tiles {
-                for scTile in tiles {
-                    if scTile.tile.covers(tile) || tile.covers(scTile.tile) {
-                        replacements.insert(scTile)
-                    }
+            for scTile in assembledMap.tiles {
+                if scTile.tile.covers(tile) || tile.covers(scTile.tile) {
+                    replacements.insert(scTile)
                 }
             }
             
@@ -74,19 +80,38 @@ class AssembledMapUpdater {
             
             metalTiles.requestMetalTile(tile: tile)
         }
+        let replsArray = replacements.sorted {
+            abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
+        }
+        self.assembledMap.tiles = replsArray + actual
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
         updateTitles(visibleTiles: visibleTiles)
-        
-        let replsArray = replacements.sorted {
-            abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
+        updateMapLabels(textLabelsBatch: actual.map { metalTile in metalTile.textLabels })
+        renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
+    }
+    
+    private func updateMapLabels(textLabelsBatch: [[ParsedTextLabel]]) {
+        Task {
+            var textLabels: [ParsedTextLabel] = []
+            for batch in textLabelsBatch {
+                textLabels.append(contentsOf: batch)
+            }
+            guard textLabels.isEmpty == false else { return }
+            let result = textTools.mapLabelsAssembler.assemble(
+                lines: textLabels.map { line in
+                    MapLabelsAssembler.TextLineData(text: line.nameEn, scale: 80, worldPosition: line.worldPoint)
+                },
+                font: textTools.font
+            )
+            await MainActor.run {
+                assembledMap.drawLabelsData = result.drawMapLabelsData
+                assembledMap.metaLines = result.metaLines
+            }
         }
-        
-        self.assembledMap = AssembledMap(tiles: replsArray + actual)
-        view.setNeedsDisplay()
     }
     
     private func updateTitles(visibleTiles: [Tile]) {

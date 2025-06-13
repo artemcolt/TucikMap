@@ -14,11 +14,18 @@ class MetalTilesStorage {
     private var tileParser: TileMvtParser!
     private var memoryMetalTile: MemoryMetalTileCache!
     private let onMetalingTileEnd: (Tile) -> Void
+    private let textTools: TextTools
     
     private let metalDevice: MTLDevice
     private var filterTiles: [Tile] = []
     
-    init(determineStyle: DetermineFeatureStyle, metalDevice: MTLDevice, onMetalingTileEnd: @escaping (Tile) -> Void) {
+    init(
+        determineStyle: DetermineFeatureStyle,
+        metalDevice: MTLDevice,
+        textTools: TextTools,
+        onMetalingTileEnd: @escaping (Tile) -> Void
+    ) {
+        self.textTools = textTools
         self.metalDevice = metalDevice
         self.onMetalingTileEnd = onMetalingTileEnd
         memoryMetalTile = MemoryMetalTileCache(maxCacheSizeInBytes: Settings.maxCachedTilesMemory)
@@ -61,6 +68,7 @@ class MetalTilesStorage {
                     indicesCount: parsedTile.drawingPolygon.indices.count,
                     stylesBuffer: stylesBuffer,
                     modelMatrixBuffer: modelMatrixBuffer,
+                    textLabels: parsedTile.textLabels,
                     tile: tile
                 )
                 

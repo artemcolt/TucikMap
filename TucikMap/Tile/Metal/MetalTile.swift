@@ -7,6 +7,7 @@
 
 import MetalKit
 
+
 class MetalTile: Hashable {
     static func == (lhs: MetalTile, rhs: MetalTile) -> Bool {
         return lhs.tile.x == rhs.tile.x && lhs.tile.z == rhs.tile.z && lhs.tile.y == rhs.tile.y
@@ -23,14 +24,25 @@ class MetalTile: Hashable {
     let indicesCount: Int
     let stylesBuffer: MTLBuffer
     let modelMatrixBuffer: MTLBuffer
+    let textLabels: [ParsedTextLabel]
     let tile: Tile
     
-    init(verticesBuffer: MTLBuffer, indicesBuffer: MTLBuffer, indicesCount: Int, stylesBuffer: MTLBuffer, modelMatrixBuffer: MTLBuffer, tile: Tile) {
+    
+    init(
+        verticesBuffer: MTLBuffer,
+        indicesBuffer: MTLBuffer,
+        indicesCount: Int,
+        stylesBuffer: MTLBuffer,
+        modelMatrixBuffer: MTLBuffer,
+        textLabels: [ParsedTextLabel],
+        tile: Tile
+    ) {
         self.verticesBuffer = verticesBuffer
         self.indicesBuffer = indicesBuffer
         self.indicesCount = indicesCount
         self.stylesBuffer = stylesBuffer
         self.modelMatrixBuffer = modelMatrixBuffer
         self.tile = tile
+        self.textLabels = textLabels
     }
 }

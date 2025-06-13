@@ -15,7 +15,13 @@ class DrawPoint {
         self.metalDevice = metalDevice
     }
     
-    func draw(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, pointSize: Float, position: SIMD3<Float>) {
+    func draw(
+        renderEncoder: MTLRenderCommandEncoder,
+        uniformsBuffer: MTLBuffer,
+        pointSize: Float,
+        position: SIMD3<Float>,
+        color: SIMD4<Float>
+    ) {
         var positions: [SIMD3<Float>] = []
         var colors: [SIMD4<Float>] = []
         
@@ -32,21 +38,12 @@ class DrawPoint {
         
         // Add red color for each vertex
         for _ in 0..<6 {
-            colors.append(SIMD4<Float>(1.0, 0.0, 0.0, 1.0))
+            colors.append(color)
         }
         
-        // Create temporary Metal buffers
-        let positionBuffer = metalDevice.makeBuffer(bytes: positions,
-                                                    length: positions.count * MemoryLayout<SIMD3<Float>>.stride,
-                                                    options: .storageModeShared)
-        
-        let colorBuffer = metalDevice.makeBuffer(bytes: colors,
-                                                 length: colors.count * MemoryLayout<SIMD4<Float>>.stride,
-                                                 options: .storageModeShared)
-        
         // Set vertex buffers
-        renderEncoder.setVertexBuffer(positionBuffer, offset: 0, index: 0)
-        renderEncoder.setVertexBuffer(colorBuffer, offset: 0, index: 1)
+        renderEncoder.setVertexBytes(&positions, length: MemoryLayout<SIMD3<Float>>.stride * positions.count, index: 0)
+        renderEncoder.setVertexBytes(&colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 1)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)
         
         // Draw the point as two triangles (6 vertices)

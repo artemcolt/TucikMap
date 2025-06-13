@@ -23,6 +23,7 @@ struct VertexOut {
 struct Uniforms {
     metal::float4x4 projectionMatrix;
     metal::float4x4 viewMatrix;
+    float2 viewportSize;
 };
 
 struct Style {

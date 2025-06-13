@@ -10,6 +10,7 @@ import MetalKit
 
 class Camera {
     let mapZoomState: MapZoomState
+    let renderFrameCount: RenderFrameCount
     
     // Camera properties
     private(set) var cameraPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0)
@@ -17,8 +18,8 @@ class Camera {
     private(set) var cameraDistance: Float = Settings.nullZoomCameraDistance // Расстояние от камеры до цели
     private(set) var cameraQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1) // Кватернион ориентации камеры
     private(set) var cameraYawQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
-    private(set) var updateBufferedUnifrom: UpdateBufferedUniform? = nil
-    private(set) var assembledMapUpdater: AssembledMapUpdater? = nil
+    private(set) var updateBufferedUniform: UpdateBufferedUniform!
+    private(set) var assembledMapUpdater: AssembledMapUpdater!
     private(set) var forward: SIMD3<Float> = SIMD3<Float>(0, 0, 1)
     
     private(set) var cameraPitch: Float = 0
@@ -29,10 +30,30 @@ class Camera {
     private var previousCenterTileY: Int = -1
     private var previousZoomLevel: Int = -1
     
-    init(mapZoomState: MapZoomState, device: MTLDevice, textTools: TextTools) {
+    private var pinchDeltaDistance: Float = 0
+    private var twoFingerDeltaPitch: Float = 0
+    private var rotationDeltaYaw: Float = 0
+    private var panDeltaX: Float = 0
+    private var panDeltaY: Float = 0
+    
+    private var lastTime: TimeInterval = 0
+    
+    init(
+        mapZoomState: MapZoomState,
+        device: MTLDevice,
+        textTools: TextTools,
+        renderFrameCount: RenderFrameCount,
+    ) {
+        self.renderFrameCount = renderFrameCount
         self.mapZoomState = mapZoomState
-        self.updateBufferedUnifrom = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self)
-        self.assembledMapUpdater = AssembledMapUpdater(mapZoomState: mapZoomState, device: device, camera: self, textTools: textTools)
+        self.updateBufferedUniform = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self)
+        self.assembledMapUpdater = AssembledMapUpdater(
+            mapZoomState: mapZoomState,
+            device: device,
+            camera: self,
+            textTools: textTools,
+            renderFrameCount: renderFrameCount
+        )
     }
     
     func moveToTile(tileX x: Int, tileY y: Int, tileZ z: Int, view: MTKView, size: CGSize) {
@@ -56,17 +77,11 @@ class Camera {
         let translation = gesture.translation(in: view)
         let sensitivity: Float = Settings.panSensitivity * mapZoomState.mapScaleFactor
         
-        let deltaX = -Float(translation.x) * sensitivity
-        let deltaY = Float(translation.y) * sensitivity
-        
-        // Move target position in camera's local
-        let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
-        let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
-        targetPosition += right * deltaX + forward * deltaY
-        
+        panDeltaX = -Float(translation.x) * sensitivity
+        panDeltaY = Float(translation.y) * sensitivity
         gesture.setTranslation(.zero, in: view)
         
-        movement(view: view, size: view.drawableSize)
+        applyMovementToCamera(view: view)
     }
     
     // Handle two-finger rotation gesture for yaw
@@ -75,16 +90,10 @@ class Camera {
         
         let rotation = Float(gesture.rotation)
         let sensitivity: Float = Settings.rotationSensitivity
-        let deltaYaw = -rotation * sensitivity // Negative for intuitive control
-        
-        // Rotate around world Z-axis (yaw)
-        let yawQuaternion = simd_quatf(angle: deltaYaw, axis: SIMD3<Float>(0, 0, 1))
-        cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
-        cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning
-        
+        rotationDeltaYaw = -rotation * sensitivity // Negative for intuitive control
         gesture.rotation = 0
         
-        movement(view: view, size: view.drawableSize)
+        applyMovementToCamera(view: view)
     }
     
     // Handle two-finger pan gesture for pitch and zoom
@@ -93,10 +102,34 @@ class Camera {
         
         let translation = gesture.translation(in: view)
         let sensitivity: Float = Settings.twoFingerPanSensitivity
-        let deltaPitch = -Float(translation.y) * sensitivity
-        let newCameraPitch = max(min(cameraPitch + deltaPitch, Settings.maxCameraPitch), Settings.minCameraPitch)
-        let quaternionDelta = newCameraPitch - cameraPitch
+        twoFingerDeltaPitch = -Float(translation.y) * sensitivity
+        gesture.setTranslation(.zero, in: view)
         
+        applyMovementToCamera(view: view)
+    }
+    
+    // Handle pinch gesture for camera distance (zoom)
+    @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+        guard let view = gesture.view as? MTKView else { return }
+        
+        let scale = Float(gesture.scale)
+        let sensitivity: Float = Settings.pinchSensitivity * mapZoomState.mapScaleFactor * abs(Float(gesture.velocity))
+        pinchDeltaDistance = (1.0 - scale) * sensitivity // Negative for intuitive zoom: pinch in to zoom out, pinch out to zoom in
+        gesture.scale = 1.0 // Reset scale for next event
+        
+        applyMovementToCamera(view: view)
+    }
+    
+    @objc func applyMovementToCamera(view: MTKView) {
+        let deltaTime = getDeltaTime()
+        
+        // pinch
+        // Adjust camera distance, with optional clamping to prevent extreme values
+        cameraDistance += pinchDeltaDistance * deltaTime
+        
+        // two finger
+        let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch * deltaTime, Settings.maxCameraPitch), Settings.minCameraPitch)
+        let quaternionDelta = newCameraPitch - cameraPitch
         // Rotate around local X-axis (pitch)
         if abs(quaternionDelta) > 0 {
             let right = cameraQuaternion.act(SIMD3<Float>(1, 0, 0))
@@ -105,23 +138,17 @@ class Camera {
             cameraPitch = newCameraPitch
         }
         
-        gesture.setTranslation(.zero, in: view)
+        // Rotation
+        // Rotate around world Z-axis (yaw)
+        let yawQuaternion = simd_quatf(angle: rotationDeltaYaw * deltaTime, axis: SIMD3<Float>(0, 0, 1))
+        cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
+        cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning
         
-        movement(view: view, size: view.drawableSize)
-    }
-    
-    // Handle pinch gesture for camera distance (zoom)
-    @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
-        guard let view = gesture.view as? MTKView else { return }
-        
-        let scale = Float(gesture.scale)
-        let sensitivity: Float = Settings.pinchSensitivity * mapZoomState.mapScaleFactor
-        let deltaDistance = (1.0 - scale) * sensitivity // Negative for intuitive zoom: pinch in to zoom out, pinch out to zoom in
-        
-        // Adjust camera distance, with optional clamping to prevent extreme values
-        cameraDistance += deltaDistance
-        
-        gesture.scale = 1.0 // Reset scale for next event
+        // Pan
+        // Move target position in camera's local
+        let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
+        let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
+        targetPosition += right * panDeltaX * deltaTime + forward * panDeltaY * deltaTime
         
         movement(view: view, size: view.drawableSize)
     }
@@ -133,15 +160,14 @@ class Camera {
         forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
         cameraPosition = targetPosition + forward * cameraDistance
         
-        updateBufferedUnifrom?.updateUniforms(viewportSize: size)
-        view.setNeedsDisplay() // movement redraw
-        
         let changed = updateCameraCenterTile()
         // reassemble map if needed
         // if there are new visible tiles
         if changed {
             assembledMapUpdater?.update(view: view, useOnlyCached: false)
         }
+        
+        renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
     }
     
     private func movement(view: MTKView, size: CGSize) {
@@ -163,5 +189,12 @@ class Camera {
         previousCenterTileY = Int(centerTileY)
         previousZoomLevel = zoomLevel
         return changed
+    }
+    
+    private func getDeltaTime() -> Float {
+        let currentTime = CACurrentMediaTime()
+        let deltaTime = lastTime == 0 ? 1.0 / 60.0 : min(currentTime - lastTime, 0.1) // Ограничение скачков
+        lastTime = currentTime
+        return Float(deltaTime)
     }
 }

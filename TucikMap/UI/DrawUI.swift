@@ -8,24 +8,19 @@
 import MetalKit
 
 class DrawUI {
-    private let cameraUI: CameraUI
+    private let screenUniforms: ScreenUniforms
     private let textTools: TextTools
     private let mapZoomState: MapZoomState
-    private var size: CGSize = CGSize()
     
-    init(device: MTLDevice, textTools: TextTools, mapZoomState: MapZoomState) {
-        cameraUI = CameraUI(device: device)
+    init(device: MTLDevice, textTools: TextTools, mapZoomState: MapZoomState, screenUniforms: ScreenUniforms) {
+        self.screenUniforms = screenUniforms
         self.textTools = textTools
         self.mapZoomState = mapZoomState
     }
     
-    func updateSize(size: CGSize) {
-        self.size = size
-        cameraUI.updateMatrix(size: size)
-    }
-    
     func drawZoomUiText(
-        renderCommandEncoder: MTLRenderCommandEncoder
+        renderCommandEncoder: MTLRenderCommandEncoder,
+        size: CGSize
     ) {
         let zoomLevelFloat = mapZoomState.zoomLevelFloat
         let drawTextData = textTools.textAssembler.assembleBytes(
@@ -40,7 +35,7 @@ class DrawUI {
         
         textTools.drawText.renderTextBytes(
             renderEncoder: renderCommandEncoder,
-            uniforms: cameraUI.uniformsBuffer,
+            uniforms: screenUniforms.screenUniformBuffer,
             drawTextData: drawTextData
         )
     }
