@@ -7,10 +7,10 @@
 import GISTools
 
 class Settings {
-    static let panSensitivity: Float = 150
-    static let rotationSensitivity: Float = 20
-    static let twoFingerPanSensitivity: Float = 0.2
-    static let pinchSensitivity: Float = 30000
+    static let panSensitivity: Float = 2
+    static let rotationSensitivity: Float = 0.2
+    static let twoFingerPanSensitivity: Float = 0.003
+    static let pinchSensitivity: Float = 300
     
     static let farPlaneIncreaseFactor: Float = 2.0
     static let planesNearDelta: Float = -20.0
@@ -43,7 +43,7 @@ class Settings {
     static let tileTitleOffset: Float = 20.0
     
     static var drawAxis: Bool = false
-    static var drawGrid: Bool = true
+    static var drawGrid: Bool = false
     static var drawTileCoordinates: Bool = false
     
     static var printNotUsedStyle: Bool = true
@@ -66,4 +66,6 @@ class Settings {
     static let preferredFramesPerSecond = 60
     
     static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 120
+    
+    static var forceRenderOnDisplayUpdate: Bool = false
 }

@@ -27,8 +27,8 @@ class MapCADisplayLoop {
         loopCount += 1
         
         if (canComputeIntersectionsNow()) {
-            guard let lastUniforms = updateBufferedUniform.lastUniforms,
-                  let labelsAssembled = needComputeMapLabelsIntersections.getLablesResult() else { return }
+            let labelsAssembled = needComputeMapLabelsIntersections.getLablesResult()
+            guard let lastUniforms = updateBufferedUniform.lastUniforms else { return }
             mapLablesIntersection.computeIntersections(MapLabelsIntersection.FindIntersections(
                 labelsAssembled: labelsAssembled,
                 uniforms: lastUniforms

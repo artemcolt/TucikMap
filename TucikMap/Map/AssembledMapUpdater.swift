@@ -92,7 +92,7 @@ class AssembledMapUpdater {
         }
         
         updateTitles(visibleTiles: visibleTiles)
-        updateMapLabels(textLabelsBatch: actual.map { metalTile in metalTile.textLabels })
+        updateMapLabels(textLabelsBatch: assembledMap.tiles.map { metalTile in metalTile.textLabels })
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
     }
     
@@ -105,10 +105,11 @@ class AssembledMapUpdater {
             guard textLabels.isEmpty == false else { return }
             let result = textTools.mapLabelsAssembler.assemble(
                 lines: textLabels.map { line in
-                    MapLabelsAssembler.TextLineData(text: line.nameEn, scale: 80, worldPosition: line.worldPoint)
+                    MapLabelsAssembler.TextLineData(text: line.nameEn, scale: 70, worldPosition: line.worldPoint)
                 },
-                font: textTools.font
+                font: textTools.robotoFont.boldFont,
             )
+            
             await MainActor.run {
                 needComputeLabelsIntersections.labelsUpdated(result: result)
             }
@@ -120,7 +121,7 @@ class AssembledMapUpdater {
         if Settings.drawTileCoordinates {
             let tileTitles = self.tileTitleAssembler.assemble(
                 tiles: visibleTiles,
-                font: textTools.font,
+                font: textTools.robotoFont.regularFont,
                 scale: Settings.tileTitleRootSize / mapZoomState.powZoomLevel,
                 offset: SIMD2<Float>(tileTitleOffset, tileTitleOffset)
             )

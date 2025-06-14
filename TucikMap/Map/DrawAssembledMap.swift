@@ -42,9 +42,9 @@ class DrawAssembledMap {
     func drawMapLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniforms: MTLBuffer,
-        drawLabelsData: DrawMapLabelsData?
+        result: MapLabelsAssembler.Result?
     ) {
-        if let drawLabelsData = drawLabelsData {
+        if let drawLabelsData = result?.drawMapLabelsData {
             drawMapLabels.draw(
                 renderEncoder: renderEncoder,
                 drawMapLabelsData: drawLabelsData,

@@ -47,6 +47,7 @@ class MapNeedsTile {
             }
             
             if let data = await tileDownloader.download(tile: tile) {
+                tileDiskCaching.saveOnDisk(tile: tile, data: data)
                 await MainActor.run {
                     _onComplete(data: data, tile: tile)
                 }

@@ -39,6 +39,7 @@ class TileDiskCaching {
         let y = tile.y
         let cachePath = cachePathFor(zoom: zoom, x: x, y: y)
         let data = loadCachedTile(at: cachePath)
+        if (data != nil) { print("Get from disk cache \(tile)") }
         return data
     }
     
@@ -58,6 +59,11 @@ class TileDiskCaching {
             print("Failed to recreate cache directory: \(error)")
             throw error
         }
+    }
+    
+    func saveOnDisk(tile: Tile, data: Data) {
+        let pathFor = cachePathFor(zoom: tile.z, x: tile.x, y: tile.y)
+        saveToCache(data: data, for: pathFor)
     }
     
     private func cachePathFor(zoom: Int, x: Int, y: Int) -> URL {

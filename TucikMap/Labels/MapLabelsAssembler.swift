@@ -67,7 +67,7 @@ class MapLabelsAssembler {
             mapLabelSymbolMeta: mapLabelSymbolMeta,
             mapLabelLineMeta: mapLabelLineMeta,
             verticesCount: verticesCount,
-            atlas: font.atlasTexture
+            atlas: font.atlasTexture,
         )
     }
     

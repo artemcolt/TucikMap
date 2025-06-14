@@ -75,7 +75,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 mapZoomState: mapZoomState,
                 device: device,
                 textTools: textTools,
-                renderFrameCount: renderFrameCount
+                renderFrameCount: renderFrameCount, frameCounter: frameCounter
             )
             mapLabelsIntersection = MapLabelsIntersection(
                 metalDevice: metalDevice,
@@ -141,7 +141,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.drawMapLabels(
             renderEncoder: renderEncoder,
             uniforms: uniformsBuffer,
-            drawLabelsData: camera.assembledMapUpdater.assembledMap.labelsAssembled?.drawMapLabelsData
+            result: camera.assembledMapUpdater.assembledMap.labelsAssembled,
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)

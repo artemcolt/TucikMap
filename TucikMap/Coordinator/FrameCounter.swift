@@ -9,6 +9,7 @@ import Foundation
 import Metal
 
 class FrameCounter {
+    private let startTime = CFAbsoluteTimeGetCurrent()
     private var lastFrameTime: CFAbsoluteTime
     private var frameCount: Int
     private var deltaTime: Double
@@ -24,6 +25,11 @@ class FrameCounter {
     // Установить callback для количества кадров
     func onFrameCount(_ callback: @escaping (Int) -> Void) {
         self.frameCountCallback = callback
+    }
+    
+    func getElapsedTimeSeconds() -> Float {
+        let elapsedTime = CFAbsoluteTimeGetCurrent() - startTime
+        return Float(elapsedTime)
     }
     
     // Вызывается каждый кадр, принимает commandBuffer для отслеживания времени выполнения

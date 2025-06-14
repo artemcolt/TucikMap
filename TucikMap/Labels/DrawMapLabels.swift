@@ -37,7 +37,7 @@ class DrawMapLabels {
     func draw(
         renderEncoder: MTLRenderCommandEncoder,
         drawMapLabelsData: DrawMapLabelsData,
-        uniforms: MTLBuffer
+        uniforms: MTLBuffer,
     ) {
         let atlasTexture = drawMapLabelsData.atlas
         let vertexBuffer = drawMapLabelsData.vertexBuffer
@@ -52,10 +52,9 @@ class DrawMapLabels {
         renderEncoder.setVertexBuffer(mapLabelLineMeta, offset: 0, index: 3)
         renderEncoder.setVertexBuffer(uniforms, offset: 0, index: 4)
         renderEncoder.setVertexBuffer(intersectionsBuffer, offset: 0, index: 5)
-        
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
-        renderEncoder.setFragmentTexture(atlasTexture, index: 0)
         
+        renderEncoder.setFragmentTexture(atlasTexture, index: 0)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount)
     }
 }

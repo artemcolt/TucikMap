@@ -17,6 +17,7 @@ struct VertexIn {
 struct VertexOut {
     float4 position [[position]];
     float2 texCoord;
+    float elapsedTime;
     bool show;
 };
 
@@ -24,6 +25,7 @@ struct Uniforms {
     metal::float4x4 projectionMatrix;
     metal::float4x4 viewMatrix;
     float2 viewportSize;
+    float elapsedTimeSeconds;
 };
 
 struct MapLabelSymbolMeta {
@@ -53,6 +55,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
                                     constant MapLabelLineMeta* linesMeta [[buffer(3)]],
                                     constant Uniforms &worldUniforms [[buffer(4)]],
                                     constant MapLabelIntersection* intersections [[buffer(5)]],
+                                    constant float3& color [[buffer(6)]],
                                     uint vertexID [[vertex_id]]
                                     ) {
     int symbolIndex = vertexID / 6;
@@ -81,11 +84,13 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
                                           0.0, 0.0, 1.0, 0.0,
                                           t.x, t.y, t.z, 1.0);
     
+    float2 vertexPos = in.position;
     float2 textOffset = float2(textWidth / 2, 0);
-    float4 position = translationMatrix * float4(in.position - textOffset, 0.0, 1.0);
+    float4 position = translationMatrix * float4(vertexPos - textOffset, 0.0, 1.0);
     out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
     out.texCoord = in.texCoord;
     out.show = intersections[lineIndex].intersect == false && !(ndc.z < -1.0 || ndc.z > 1.0);
+    out.elapsedTime = worldUniforms.elapsedTimeSeconds;
     return out;
 }
 
@@ -94,10 +99,24 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
                                      sampler textureSampler [[sampler(0)]]) {
     // Чтение значения из MSDF атласа
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
-    float sigDist = median(msdf.r, msdf.g, msdf.b) - 0.5;
-    float opacity = clamp(sigDist/fwidth(sigDist) + 0.5, 0.0, 1.0);
+    float sigDist = median(msdf.r, msdf.g, msdf.b);
+    
+    // Обводка (большая буква)
+    float outlineDist = sigDist - 0;
+    float outlineOpacity = clamp(outlineDist/fwidth(outlineDist) + 0.5, 0.0, 1.0);
+    
+    // Основа
+    float textDist = sigDist - 0.5;
+    float textOpacity = clamp(textDist/fwidth(textDist) + 0.5, 0.0, 1.0);
+    
+    // Комбинируем обводку и текст
+    float3 outlineColor = float3(1.0, 1.0, 1.0); // Цвет обводки (например, чёрный)
+    float3 textColor = float3(0.0, 0.0, 0.0); // Цвет текста (например, белый)
+    float3 finalColor = mix(outlineColor, textColor, textOpacity);
+    float finalOpacity = max(outlineOpacity, textOpacity);
+    
     bool show = in.show;
-    return float4(1.0, 0.0, 0.0, opacity * show);
+    return float4(finalColor, finalOpacity * show);
 }
 
 kernel void transformKernel(
@@ -110,6 +129,7 @@ kernel void transformKernel(
     float4 worldLabelPos = float4(worldLabelPosition, 0.0, 1.0);
     float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
+    bool valid = !(ndc.z < -1.0 || ndc.z > 1.0);
     float2 viewportSize = uniforms.viewportSize;
     float viewportWidth = viewportSize.x;
     float viewportHeight = viewportSize.y;

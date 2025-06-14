@@ -8,7 +8,7 @@
 class NeedComputeMapLabelsIntersections {
     private(set) var flag = false
     private(set) var instant = false
-    private(set) var result: MapLabelsAssembler.Result? = nil
+    private var result: MapLabelsAssembler.Result? = nil
  
     func labelsUpdated(result: MapLabelsAssembler.Result) {
         self.result = result
@@ -16,10 +16,7 @@ class NeedComputeMapLabelsIntersections {
     }
     
     func getLablesResult() -> MapLabelsAssembler.Result? {
-        if let result = result {
-            return result
-        }
-        return nil
+        return result
     }
     
     func setNeedsRecompute(instant: Bool = false) {

@@ -28,7 +28,8 @@ class ScreenUniforms {
         var uniforms = Uniforms(
             projectionMatrix: projectionMatrix,
             viewMatrix: matrix_identity_float4x4,
-            viewportSize: SIMD2<Float>(Float(size.width), Float(size.height))
+            viewportSize: SIMD2<Float>(Float(size.width), Float(size.height)),
+            elapsedTimeSeconds: 0
         )
             
         screenUniformBuffer = metalDevice.makeBuffer(

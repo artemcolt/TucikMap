@@ -36,7 +36,7 @@ class RenderFrameControl {
     @objc func displayLinkUpdate() {
         mapCADisplayLoop.displayLoop()
         
-        if renderFrameCount.isRedrawNeeded() {
+        if renderFrameCount.isRedrawNeeded() || Settings.forceRenderOnDisplayUpdate {
             mtkView?.setNeedsDisplay()
         }
     }

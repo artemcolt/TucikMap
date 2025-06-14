@@ -42,11 +42,12 @@ class Camera {
         mapZoomState: MapZoomState,
         device: MTLDevice,
         textTools: TextTools,
-        renderFrameCount: RenderFrameCount
+        renderFrameCount: RenderFrameCount,
+        frameCounter: FrameCounter
     ) {
         self.renderFrameCount = renderFrameCount
         self.mapZoomState = mapZoomState
-        self.updateBufferedUniform = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self)
+        self.updateBufferedUniform = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
         self.assembledMapUpdater = AssembledMapUpdater(
             mapZoomState: mapZoomState,
             device: device,
@@ -121,15 +122,14 @@ class Camera {
     }
     
     @objc func applyMovementToCamera(view: MTKView) {
-        let deltaTime = getDeltaTime()
         assembledMapUpdater.needComputeLabelsIntersections.setNeedsRecompute()
         
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
-        cameraDistance += pinchDeltaDistance * deltaTime
+        cameraDistance += pinchDeltaDistance
         
         // two finger
-        let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch * deltaTime, Settings.maxCameraPitch), Settings.minCameraPitch)
+        let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch, Settings.maxCameraPitch), Settings.minCameraPitch)
         let quaternionDelta = newCameraPitch - cameraPitch
         // Rotate around local X-axis (pitch)
         if abs(quaternionDelta) > 0 {
@@ -141,7 +141,7 @@ class Camera {
         
         // Rotation
         // Rotate around world Z-axis (yaw)
-        let yawQuaternion = simd_quatf(angle: rotationDeltaYaw * deltaTime, axis: SIMD3<Float>(0, 0, 1))
+        let yawQuaternion = simd_quatf(angle: rotationDeltaYaw, axis: SIMD3<Float>(0, 0, 1))
         cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
         cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning
         
@@ -149,7 +149,7 @@ class Camera {
         // Move target position in camera's local
         let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
         let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
-        targetPosition += right * panDeltaX * deltaTime + forward * panDeltaY * deltaTime
+        targetPosition += right * panDeltaX + forward * panDeltaY
         
         updateMap(view: view, size: view.drawableSize)
     }

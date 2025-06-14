@@ -25,6 +25,7 @@ struct Uniforms {
     metal::float4x4 projectionMatrix;
     metal::float4x4 viewMatrix;
     float2 viewportSize;
+    float elapsedTimeSeconds;
 };
 
 struct Glyph {

@@ -22,7 +22,7 @@ class MapLabelsIntersection {
     private var renderFrameCount: RenderFrameCount
     
     struct FindIntersections {
-        let labelsAssembled: MapLabelsAssembler.Result
+        let labelsAssembled: MapLabelsAssembler.Result?
         let uniforms: Uniforms
     }
     
@@ -48,7 +48,8 @@ class MapLabelsIntersection {
     }
     
     func computeIntersections(_ intersections: FindIntersections) {
-        let metaLabels = intersections.labelsAssembled.metaLines
+        guard let result = intersections.labelsAssembled else { return }
+        let metaLabels = result.metaLines
         var uniforms = intersections.uniforms
         guard metaLabels.isEmpty == false else { return }
         
@@ -78,7 +79,10 @@ class MapLabelsIntersection {
         commandBuffer.commit()
     }
     
-    private func gpuComputeComplete(_ computeScreenPositions: ComputeScreenPositions, labelsAssembled: MapLabelsAssembler.Result) {
+    private func gpuComputeComplete(_ computeScreenPositions: ComputeScreenPositions,
+                                    labelsAssembled: MapLabelsAssembler.Result?
+    ) {
+        guard let labelsAssembled = labelsAssembled else { return }
         let screenPositions = computeScreenPositions.readOutput()
         if (Settings.debugIntersectionsLabels) { print("Screen positions evaluated") }
         
@@ -123,7 +127,7 @@ class MapLabelsIntersection {
         }
         
         let horizontalDivisions = Int(ceil(maxGridX / 500))
-        let verticalDivisions = Int(ceil(maxGridY / 300))
+        let verticalDivisions = Int(ceil(maxGridY / 500))
         
         let grid = Grid(width: maxGridX, height: maxGridY, horizontalDivisions: horizontalDivisions, verticalDivisions: verticalDivisions)
         var intersectionsArray: [LabelIntersection] = []
