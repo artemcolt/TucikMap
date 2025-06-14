@@ -18,12 +18,11 @@ class MapLabelsIntersection {
     private let computeLabelScreen: ComputeLabelScreen
     private let transformWorldToScreenPositionPipeline: TransformWorldToScreenPositionPipeline
     private let metalCommandQueue: MTLCommandQueue
-    private let screenUniforms: ScreenUniforms
-    private(set) var intersectBuffer: MTLBuffer!
     private var assembledMap: AssembledMap
+    private var renderFrameCount: RenderFrameCount
     
     struct FindIntersections {
-        let metaLabels: [MapLabelLineMeta]
+        let labelsAssembled: MapLabelsAssembler.Result
         let uniforms: Uniforms
     }
     
@@ -37,19 +36,19 @@ class MapLabelsIntersection {
         metalDevice: MTLDevice,
         metalCommandQueue: MTLCommandQueue,
         transformWorldToScreenPositionPipeline: TransformWorldToScreenPositionPipeline,
-        screenUniforms: ScreenUniforms,
-        assembledMap: AssembledMap
+        assembledMap: AssembledMap,
+        renderFrameCount: RenderFrameCount
     ) {
         self.metalDevice = metalDevice
         self.computeLabelScreen = ComputeLabelScreen(metalDevice: metalDevice)
         self.transformWorldToScreenPositionPipeline = transformWorldToScreenPositionPipeline
         self.metalCommandQueue = metalCommandQueue
-        self.screenUniforms = screenUniforms
         self.assembledMap = assembledMap
+        self.renderFrameCount = renderFrameCount
     }
     
     func computeIntersections(_ intersections: FindIntersections) {
-        let metaLabels = intersections.metaLabels
+        let metaLabels = intersections.labelsAssembled.metaLines
         var uniforms = intersections.uniforms
         guard metaLabels.isEmpty == false else { return }
         
@@ -65,7 +64,9 @@ class MapLabelsIntersection {
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let computeEncoder = commandBuffer.makeComputeCommandEncoder() else { return }
-        commandBuffer.addCompletedHandler { [weak self] _ in self?.gpuComputeComplete(computeScreenPositions, metaLabels: metaLabels) }
+        commandBuffer.addCompletedHandler { [weak self] _ in self?.gpuComputeComplete(computeScreenPositions,
+                                                                                      labelsAssembled: intersections.labelsAssembled
+        ) }
             
         transformWorldToScreenPositionPipeline.selectComputePipeline(computeEncoder: computeEncoder)
         computeLabelScreen.transform(
@@ -77,14 +78,16 @@ class MapLabelsIntersection {
         commandBuffer.commit()
     }
     
-    private func gpuComputeComplete(_ computeScreenPositions: ComputeScreenPositions, metaLabels: [MapLabelLineMeta]) {
+    private func gpuComputeComplete(_ computeScreenPositions: ComputeScreenPositions, labelsAssembled: MapLabelsAssembler.Result) {
         let screenPositions = computeScreenPositions.readOutput()
-        print("Screen positions evaluated bro I am the best ")
-        guard let viewportSize = screenUniforms.viewportSize else { return }
+        if (Settings.debugIntersectionsLabels) { print("Screen positions evaluated") }
         
-        let grid = Grid(width: viewportSize.x, height: viewportSize.y, horizontalDivisions: 3, verticalDivisions: 6)
-        var intersectionsArray: [LabelIntersection] = []
-        
+        let metaLabels = labelsAssembled.metaLines
+        var minX: Float = 0
+        var maxX: Float = 0
+        var minY: Float = 0
+        var maxY: Float = 0
+        var rectangles: [Rectangle] = []
         for i in 0..<screenPositions.count {
             let screenPosition = screenPositions[i]
             let metaLine = metaLabels[i]
@@ -99,14 +102,46 @@ class MapLabelsIntersection {
                 screenPosition.y - abs(metaLine.measuredText.bottom) * metaLine.scale
             )
             
+            minX = min(min(topLeft.x, bottomRight.x), minX)
+            maxX = max(max(topLeft.x, bottomRight.x), maxX)
+            minY = min(min(topLeft.y, bottomRight.y), minY)
+            maxY = max(max(topLeft.y, bottomRight.y), maxY)
+            
             let rectangle = Rectangle(topLeft: topLeft, bottomRight: bottomRight)
+            rectangles.append(rectangle)
+        }
+        
+        let maxGridX = maxX - minX
+        let maxGridY = maxY - minY
+        for i in 0..<rectangles.count {
+            let rectangle = rectangles[i]
+            let shiftedRectangle = Rectangle(
+                topLeft: rectangle.topLeft - SIMD2<Float>(minX, minY),
+                bottomRight: rectangle.bottomRight - SIMD2<Float>(minX, minY)
+            )
+            rectangles[i] = shiftedRectangle
+        }
+        
+        let horizontalDivisions = Int(ceil(maxGridX / 500))
+        let verticalDivisions = Int(ceil(maxGridY / 300))
+        
+        let grid = Grid(width: maxGridX, height: maxGridY, horizontalDivisions: horizontalDivisions, verticalDivisions: verticalDivisions)
+        var intersectionsArray: [LabelIntersection] = []
+        for rectangle in rectangles {
             let intersect = grid.insertAndCheckIntersection(rectangle: rectangle)
             intersectionsArray.append(LabelIntersection(intersect: intersect == true))
         }
         
-        intersectBuffer = metalDevice.makeBuffer(
+        let intersectBuffer = metalDevice.makeBuffer(
             bytes: intersectionsArray,
             length: MemoryLayout<LabelIntersection>.stride * intersectionsArray.count
         )!
+        
+        DispatchQueue.main.async {
+            self.assembledMap.labelsAssembled = labelsAssembled
+            self.assembledMap.labelsAssembled?.drawMapLabelsData.intersectionsBuffer = intersectBuffer
+            self.renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
+        }
+        
     }
 }

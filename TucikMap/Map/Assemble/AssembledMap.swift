@@ -9,12 +9,10 @@ import MetalKit
 
 class AssembledMap {
     var tiles: [MetalTile]
-    var drawLabelsData: DrawMapLabelsData?
-    var metaLines: [MapLabelLineMeta]
+    var labelsAssembled: MapLabelsAssembler.Result?
     
-    init(tiles: [MetalTile], drawLabelsData: DrawMapLabelsData? = nil, metaLines: [MapLabelLineMeta]) {
+    init(tiles: [MetalTile], labelsAssembled: MapLabelsAssembler.Result?) {
         self.tiles = tiles
-        self.drawLabelsData = drawLabelsData
-        self.metaLines = metaLines
+        self.labelsAssembled = labelsAssembled
     }
 }

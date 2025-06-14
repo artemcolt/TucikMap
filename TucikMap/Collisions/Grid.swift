@@ -50,7 +50,9 @@ class Grid {
     // Insert a Rectangle and add its index to the sectors it occupies
     func insertAndCheckIntersection(rectangle: Rectangle) -> Bool? {
         // Check if rectangle is valid
-        guard rectangle.isValid else { return nil }
+        guard rectangle.isValid else {
+            return nil
+        }
         
         // Get sector indices for topLeft and bottomRight
         guard let topLeftSector = sectorIndex(for: rectangle.topLeft),

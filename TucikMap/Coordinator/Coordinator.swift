@@ -75,21 +75,25 @@ class Coordinator: NSObject, MTKViewDelegate {
                 mapZoomState: mapZoomState,
                 device: device,
                 textTools: textTools,
-                renderFrameCount: renderFrameCount,
+                renderFrameCount: renderFrameCount
             )
             mapLabelsIntersection = MapLabelsIntersection(
                 metalDevice: metalDevice,
                 metalCommandQueue: metalCommandQueue,
                 transformWorldToScreenPositionPipeline: pipelines.transformToScreenPipeline,
-                screenUniforms: screenUniforms,
-                assembledMap: camera.assembledMapUpdater.assembledMap
+                assembledMap: camera.assembledMapUpdater.assembledMap,
+                renderFrameCount: renderFrameCount
             )
             assembledMapWrapper = DrawAssembledMap(
                 metalDevice: metalDevice,
                 screenUniforms: screenUniforms,
             )
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
-            mapCADisplayLoop = MapCADisplayLoop(mapLablesIntersection: mapLabelsIntersection, assembledMap: camera.assembledMapUpdater.assembledMap)
+            mapCADisplayLoop = MapCADisplayLoop(
+                mapLablesIntersection: mapLabelsIntersection,
+                updateBufferedUniform: camera.updateBufferedUniform,
+                needComputeMapLabelsIntersections: camera.assembledMapUpdater.needComputeLabelsIntersections
+            )
             self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: mapCADisplayLoop, renderFrameCount: renderFrameCount)
         }
     }
@@ -111,8 +115,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         _ = camera.updateBufferedUniform!.semaphore.wait(timeout: .distantFuture)
         
         camera.updateBufferedUniform!.updateUniforms(viewportSize: view.drawableSize)
-        
         let uniformsBuffer = camera.updateBufferedUniform.getCurrentFrameBuffer()
+        
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
@@ -137,7 +141,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.drawMapLabels(
             renderEncoder: renderEncoder,
             uniforms: uniformsBuffer,
-            drawLabelsData: camera.assembledMapUpdater.assembledMap.drawLabelsData
+            drawLabelsData: camera.assembledMapUpdater.assembledMap.labelsAssembled?.drawMapLabelsData
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)

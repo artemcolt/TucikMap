@@ -6,8 +6,8 @@
 //
 
 struct Rectangle {
-    let topLeft: SIMD2<Float>
-    let bottomRight: SIMD2<Float>
+    var topLeft: SIMD2<Float>
+    var bottomRight: SIMD2<Float>
     
     // Initialize with topLeft and bottomRight points
     init(topLeft: SIMD2<Float>, bottomRight: SIMD2<Float>) {

@@ -42,7 +42,7 @@ class Camera {
         mapZoomState: MapZoomState,
         device: MTLDevice,
         textTools: TextTools,
-        renderFrameCount: RenderFrameCount,
+        renderFrameCount: RenderFrameCount
     ) {
         self.renderFrameCount = renderFrameCount
         self.mapZoomState = mapZoomState
@@ -67,7 +67,7 @@ class Camera {
         targetPosition = SIMD3<Float>(offsetX, offsetY, 0)
         cameraDistance = Settings.nullZoomCameraDistance / pow(2, Float(z))
         
-        movement(view: view, size: size)
+        updateMap(view: view, size: size)
     }
     
     // Handle single-finger pan gesture for target translation
@@ -122,6 +122,7 @@ class Camera {
     
     @objc func applyMovementToCamera(view: MTKView) {
         let deltaTime = getDeltaTime()
+        assembledMapUpdater.needComputeLabelsIntersections.setNeedsRecompute()
         
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
@@ -150,7 +151,7 @@ class Camera {
         let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
         targetPosition += right * panDeltaX * deltaTime + forward * panDeltaY * deltaTime
         
-        movement(view: view, size: view.drawableSize)
+        updateMap(view: view, size: view.drawableSize)
     }
     
     func updateMap(view: MTKView, size: CGSize) {
@@ -168,10 +169,6 @@ class Camera {
         }
         
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
-    }
-    
-    private func movement(view: MTKView, size: CGSize) {
-        updateMap(view: view, size: size)
     }
     
     private func updateCameraCenterTile() -> Bool {

@@ -72,8 +72,8 @@ class MapLabelsAssembler {
     }
     
     struct Result {
-        let drawMapLabelsData: DrawMapLabelsData
-        let metaLines: [MapLabelLineMeta]
+        var drawMapLabelsData: DrawMapLabelsData
+        var metaLines: [MapLabelLineMeta]
     }
     
     func assemble(lines: [TextLineData], font: Font) -> Result {
@@ -92,7 +92,7 @@ class MapLabelsAssembler {
             length: MemoryLayout<MapLabelLineMeta>.stride * assembledBytes.mapLabelLineMeta.count
         )!
         let intersectionsBuffer = metalDevice.makeBuffer(
-            bytes: Array(repeating: LabelIntersection(intersect: false), count: lines.count),
+            bytes: Array(repeating: LabelIntersection(intersect: true), count: lines.count),
             length: MemoryLayout<LabelIntersection>.stride * lines.count
         )!
         

@@ -20,8 +20,9 @@ class AssembledMapUpdater {
     private var savedView: MTKView!
     private var metalTiles: MetalTilesStorage!
     private var renderFrameCount: RenderFrameCount!
+    let needComputeLabelsIntersections: NeedComputeMapLabelsIntersections
     
-    var assembledMap: AssembledMap = AssembledMap(tiles: [], drawLabelsData: nil, metaLines: [])
+    var assembledMap: AssembledMap = AssembledMap(tiles: [], labelsAssembled: nil)
     var assembledTileTitles: DrawTextData?
     
     init(
@@ -31,6 +32,7 @@ class AssembledMapUpdater {
         textTools: TextTools,
         renderFrameCount: RenderFrameCount,
     ) {
+        self.needComputeLabelsIntersections = NeedComputeMapLabelsIntersections()
         self.mapZoomState = mapZoomState
         self.textTools = textTools
         self.camera = camera
@@ -108,8 +110,7 @@ class AssembledMapUpdater {
                 font: textTools.font
             )
             await MainActor.run {
-                assembledMap.drawLabelsData = result.drawMapLabelsData
-                assembledMap.metaLines = result.metaLines
+                needComputeLabelsIntersections.labelsUpdated(result: result)
             }
         }
     }

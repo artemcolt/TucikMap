@@ -66,6 +66,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     float4 worldLabelPos = float4(lineMeta.worldPosition, 0.0, 1.0);
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
+   
     float2 viewportSize = worldUniforms.viewportSize;
     float viewportWidth = viewportSize.x;
     float viewportHeight = viewportSize.y;
@@ -84,7 +85,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     float4 position = translationMatrix * float4(in.position - textOffset, 0.0, 1.0);
     out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
     out.texCoord = in.texCoord;
-    out.show = intersections[lineIndex].intersect == false;
+    out.show = intersections[lineIndex].intersect == false && !(ndc.z < -1.0 || ndc.z > 1.0);
     return out;
 }
 

@@ -50,6 +50,7 @@ class Settings {
     static var filterNotUsedLayernName: String = "admin"
     
     static var debugAssemblingMap: Bool = false
+    static var debugIntersectionsLabels: Bool = false
     
     static let maxConcurrentFetchs = 3
     static let fetchTilesQueueCapacity = Settings.visibleTilesCount // can't be lesser than visible tiles count
@@ -63,4 +64,6 @@ class Settings {
     static let getOnlySpecificMapLabels: [String] = [] // "Europe", "Asia", "North America", "Africa"
     
     static let preferredFramesPerSecond = 60
+    
+    static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 120
 }
