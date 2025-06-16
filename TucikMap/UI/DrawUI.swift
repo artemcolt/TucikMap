@@ -23,9 +23,10 @@ class DrawUI {
         size: CGSize
     ) {
         let zoomLevelFloat = mapZoomState.zoomLevelFloat
+        let formattedString = String(format: "z:%.3f", zoomLevelFloat)
         let drawTextData = textTools.textAssembler.assembleBytes(
             lines: [TextAssembler.TextLineData(
-                text: "z:\(zoomLevelFloat)",
+                text: formattedString,
                 offset: SIMD3<Float>(30, Float(size.height) - Float(250.0), 0),
                 rotation: SIMD3<Float>(0, 0, 0),
                 scale: 80)

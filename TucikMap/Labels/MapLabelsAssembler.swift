@@ -26,10 +26,12 @@ struct DrawMapLabelsBytes {
 class MapLabelsAssembler {
     private let createTextGeometry: CreateTextGeometry
     private let metalDevice: MTLDevice
+    private let frameCounter: FrameCounter
     
-    init(createTextGeometry: CreateTextGeometry, metalDevice: MTLDevice) {
+    init(createTextGeometry: CreateTextGeometry, metalDevice: MTLDevice, frameCounter: FrameCounter) {
         self.createTextGeometry = createTextGeometry
         self.metalDevice = metalDevice
+        self.frameCounter = frameCounter
     }
     
     struct TextLineData {
@@ -92,7 +94,7 @@ class MapLabelsAssembler {
             length: MemoryLayout<MapLabelLineMeta>.stride * assembledBytes.mapLabelLineMeta.count
         )!
         let intersectionsBuffer = metalDevice.makeBuffer(
-            bytes: Array(repeating: LabelIntersection(intersect: true), count: lines.count),
+            bytes: Array(repeating: LabelIntersection(hide: true, createdTime: frameCounter.getElapsedTimeSeconds()), count: lines.count),
             length: MemoryLayout<LabelIntersection>.stride * lines.count
         )!
         

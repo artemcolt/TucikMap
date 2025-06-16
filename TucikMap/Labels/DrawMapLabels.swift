@@ -45,6 +45,7 @@ class DrawMapLabels {
         let mapLabelSymbolMeta = drawMapLabelsData.mapLabelSymbolMeta
         let mapLabelLineMeta = drawMapLabelsData.mapLabelLineMeta
         let intersectionsBuffer = drawMapLabelsData.intersectionsBuffer
+        var animationTime = Settings.labelsFadeAnimationTimeSeconds
         
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
@@ -52,6 +53,7 @@ class DrawMapLabels {
         renderEncoder.setVertexBuffer(mapLabelLineMeta, offset: 0, index: 3)
         renderEncoder.setVertexBuffer(uniforms, offset: 0, index: 4)
         renderEncoder.setVertexBuffer(intersectionsBuffer, offset: 0, index: 5)
+        renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride, index: 6)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         
         renderEncoder.setFragmentTexture(atlasTexture, index: 0)

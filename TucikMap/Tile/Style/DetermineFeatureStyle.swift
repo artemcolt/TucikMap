@@ -7,6 +7,12 @@
 
 import MetalKit
 
+struct FilterTextLabelsResult {
+    let text: String
+    let scale: Float
+    let sortRank: ushort
+}
+
 class DetermineFeatureStyle {
     private let fallbackKey: UInt8 = 0
     private var fallbackStyle: FeatureStyle
@@ -19,7 +25,46 @@ class DetermineFeatureStyle {
         )
     }
     
-    static let stylesNumber = 10
+    func filterTextLabels(properties: [String: Sendable], tile: Tile) -> FilterTextLabelsResult? {
+        guard let nameEn = properties["name_en"] as? String else {return nil}
+        if Settings.getOnlySpecificMapLabels.isEmpty == false {
+            if Settings.getOnlySpecificMapLabels.contains(nameEn) == false {
+                return nil
+            }
+        }
+        
+        let filterRank = ushort(properties["filterrank"] as? UInt64 ?? 100)
+        let sizeRank = ushort(properties["sizerank"] as? UInt64 ?? 20)
+        let symbolRank = ushort(properties["symbolrank"] as? UInt64 ?? 20)
+        //print("filterRank = \(filterRank), sizeRank = \(sizeRank), symbolRank = \(symbolRank), \(nameEn)")
+        
+        if (filterRank == 1) {
+            return FilterTextLabelsResult(text: nameEn, scale: 65, sortRank: symbolRank)
+        }
+        
+        if (tile.z <= 1 && filterRank <= 1) {
+            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
+        }
+        
+        if (tile.z <= 8 && filterRank <= 2) {
+            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
+        }
+        
+        if (tile.z <= 12 && filterRank <= 3) {
+            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
+        }
+        
+        if (tile.z <= 13 && filterRank <= 4) {
+            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
+        }
+        
+        if (tile.z <= 20 && filterRank <= 6) {
+            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
+        }
+        
+        
+        return nil
+    }
     
     func makeStyle(data: DetFeatureStyleData) -> FeatureStyle {
         let properties = data.properties

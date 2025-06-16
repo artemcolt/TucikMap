@@ -19,7 +19,7 @@ class TextTools {
     private let boldFont: Font
     let robotoFont: FontBatch
     
-    init(metalDevice: MTLDevice) {
+    init(metalDevice: MTLDevice, frameCounter: FrameCounter) {
         self.metalDevice =  metalDevice
         fontLoader = FontLoader(metalDevice: metalDevice)
         regularFont = fontLoader.load(fontName: "Roboto-Regular")
@@ -28,6 +28,6 @@ class TextTools {
         
         drawText = DrawText(metalDevice: metalDevice)
         textAssembler = TextAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice)
-        mapLabelsAssembler = MapLabelsAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice)
+        mapLabelsAssembler = MapLabelsAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice, frameCounter: frameCounter)
     }
 }

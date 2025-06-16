@@ -8,15 +8,16 @@
 class NeedComputeMapLabelsIntersections {
     private(set) var flag = false
     private(set) var instant = false
-    private var result: MapLabelsAssembler.Result? = nil
- 
-    func labelsUpdated(result: MapLabelsAssembler.Result) {
-        self.result = result
+    
+    private var textLabelsBatch: [[ParsedTextLabel]] = []
+    
+    func labelsUpdated(textLabelsBatch: [[ParsedTextLabel]]) {
+        self.textLabelsBatch = textLabelsBatch
         setNeedsRecompute(instant: false)
     }
     
-    func getLablesResult() -> MapLabelsAssembler.Result? {
-        return result
+    func getCurrentLabels() -> [[ParsedTextLabel]] {
+        return textLabelsBatch
     }
     
     func setNeedsRecompute(instant: Bool = false) {

@@ -69,7 +69,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             drawAxis = DrawAxis(metalDevice: device, mapState: mapZoomState)
             drawGrid = DrawGrid(metalDevice: device, mapZoomState: mapZoomState)
             drawPoint = DrawPoint(metalDevice: device)
-            textTools = TextTools(metalDevice: metalDevice)
+            textTools = TextTools(metalDevice: metalDevice, frameCounter: frameCounter)
             screenUniforms = ScreenUniforms(metalDevice: device)
             camera = Camera(
                 mapZoomState: mapZoomState,
@@ -82,7 +82,9 @@ class Coordinator: NSObject, MTKViewDelegate {
                 metalCommandQueue: metalCommandQueue,
                 transformWorldToScreenPositionPipeline: pipelines.transformToScreenPipeline,
                 assembledMap: camera.assembledMapUpdater.assembledMap,
-                renderFrameCount: renderFrameCount
+                renderFrameCount: renderFrameCount,
+                frameCounter: frameCounter,
+                textTools: textTools
             )
             assembledMapWrapper = DrawAssembledMap(
                 metalDevice: metalDevice,

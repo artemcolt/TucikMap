@@ -5,12 +5,13 @@
 //  Created by Artem on 5/28/25.
 //
 import GISTools
+import Foundation
 
 class Settings {
-    static let panSensitivity: Float = 2
+    static let panSensitivity: Float = 1500
     static let rotationSensitivity: Float = 0.2
     static let twoFingerPanSensitivity: Float = 0.003
-    static let pinchSensitivity: Float = 300
+    static let pinchSensitivity: Float = 66000
     
     static let farPlaneIncreaseFactor: Float = 2.0
     static let planesNearDelta: Float = -20.0
@@ -20,8 +21,10 @@ class Settings {
     
     static let maxBuffersInFlight: Int = 3
     
-    static let mapSize: Float = 1000.0
-    static let nullZoomCameraDistance: Float = 2200
+    static let fov: Float = Float.pi / 3.0
+    static let mapSize: Float = 1_000_000.0
+    static let nullZoomCameraDistance: Float = mapSize / (2 * tan(fov / 2))
+    static let minCameraDistance: Float = 0.2
     
     static let visibleTilesCount: Int = 9
     static let visibleTilesX: Int = 3
@@ -50,7 +53,7 @@ class Settings {
     static var filterNotUsedLayernName: String = "admin"
     
     static var debugAssemblingMap: Bool = false
-    static var debugIntersectionsLabels: Bool = false
+    static var debugIntersectionsLabels: Bool = true
     
     static let maxConcurrentFetchs = 3
     static let fetchTilesQueueCapacity = Settings.visibleTilesCount // can't be lesser than visible tiles count
@@ -65,7 +68,14 @@ class Settings {
     
     static let preferredFramesPerSecond = 60
     
-    static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 120
+    static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 60
     
     static var forceRenderOnDisplayUpdate: Bool = false
+    
+    static var horizontalGridDivisionSize: Float = 500
+    static var verticalGridDivisionSize: Float = 500
+    
+    static var labelsFadeAnimationTimeSeconds: Float = 0.3
+    
+    static let zoomLevelMax = 16
 }

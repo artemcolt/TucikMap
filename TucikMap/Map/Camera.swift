@@ -28,7 +28,7 @@ class Camera {
     
     private var previousCenterTileX: Int = -1
     private var previousCenterTileY: Int = -1
-    private var previousZoomLevel: Int = -1
+    private var previousBorderedZoomLevel: Int = -1
     
     private var pinchDeltaDistance: Float = 0
     private var twoFingerDeltaPitch: Float = 0
@@ -127,6 +127,7 @@ class Camera {
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
         cameraDistance += pinchDeltaDistance
+        cameraDistance = max(min(Settings.nullZoomCameraDistance, cameraDistance), Settings.minCameraDistance)
         
         // two finger
         let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch, Settings.maxCameraPitch), Settings.minCameraPitch)
@@ -145,11 +146,21 @@ class Camera {
         cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
         cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning
         
+        let visibleHeight = 2 * cameraDistance * tan(Settings.fov / 2)
+        let targetPositionYMin = -Settings.mapSize / 2 + visibleHeight / 2
+        let targetPositionYMax = Settings.mapSize / 2 - visibleHeight / 2
+        
+        
         // Pan
         // Move target position in camera's local
         let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
         let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
-        targetPosition += right * panDeltaX + forward * panDeltaY
+        let newTargetPosition = targetPosition + right * panDeltaX + forward * panDeltaY
+        if (newTargetPosition.y >= targetPositionYMin && newTargetPosition.y <= targetPositionYMax) {
+            targetPosition.y = newTargetPosition.y
+        }
+        targetPosition.x = newTargetPosition.x
+        
         
         updateMap(view: view, size: view.drawableSize)
     }
@@ -173,7 +184,7 @@ class Camera {
     
     private func updateCameraCenterTile() -> Bool {
         let tileSize = mapZoomState.tileSize
-        let zoomLevel = mapZoomState.zoomLevel
+        let borderedZoomLevel = mapZoomState.zoomLevel
         let mapSize = Settings.mapSize
         let worldTilesHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
         
@@ -181,10 +192,11 @@ class Camera {
         centerTileX = (targetPosition.x + worldTilesHalf) / tileSize
         centerTileY = (mapSize - (targetPosition.y + worldTilesHalf)) / tileSize
         
-        let changed = Int(centerTileX) != previousCenterTileX || Int(centerTileY) != previousCenterTileY || zoomLevel != previousZoomLevel
+        let changed = Int(centerTileX) != previousCenterTileX || Int(centerTileY) != previousCenterTileY
+                                                              || borderedZoomLevel != previousBorderedZoomLevel
         previousCenterTileX = Int(centerTileX)
         previousCenterTileY = Int(centerTileY)
-        previousZoomLevel = zoomLevel
+        previousBorderedZoomLevel = borderedZoomLevel
         return changed
     }
     

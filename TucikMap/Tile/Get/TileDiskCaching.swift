@@ -39,7 +39,7 @@ class TileDiskCaching {
         let y = tile.y
         let cachePath = cachePathFor(zoom: zoom, x: x, y: y)
         let data = loadCachedTile(at: cachePath)
-        if (data != nil) { print("Get from disk cache \(tile)") }
+        //if (data != nil) { print("Get from disk cache \(tile)") }
         return data
     }
     

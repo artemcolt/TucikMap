@@ -97,23 +97,7 @@ class AssembledMapUpdater {
     }
     
     private func updateMapLabels(textLabelsBatch: [[ParsedTextLabel]]) {
-        Task {
-            var textLabels: [ParsedTextLabel] = []
-            for batch in textLabelsBatch {
-                textLabels.append(contentsOf: batch)
-            }
-            guard textLabels.isEmpty == false else { return }
-            let result = textTools.mapLabelsAssembler.assemble(
-                lines: textLabels.map { line in
-                    MapLabelsAssembler.TextLineData(text: line.nameEn, scale: 70, worldPosition: line.worldPoint)
-                },
-                font: textTools.robotoFont.boldFont,
-            )
-            
-            await MainActor.run {
-                needComputeLabelsIntersections.labelsUpdated(result: result)
-            }
-        }
+        needComputeLabelsIntersections.labelsUpdated(textLabelsBatch: textLabelsBatch)
     }
     
     private func updateTitles(visibleTiles: [Tile]) {

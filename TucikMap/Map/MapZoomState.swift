@@ -27,6 +27,7 @@ class MapZoomState {
         zoomLevel = Int(floor(zoomLevelFloat))
         mapScaleFactor = 1.0 / pow(2.0, Float(zoomLevelFloat))
         powZoomLevel = pow(2.0, Float(zoomLevel))
+        
         tileSize = baseTileSize / powZoomLevel
         tilesCount = Int(powZoomLevel)
         maxTileCoord = tilesCount - 1

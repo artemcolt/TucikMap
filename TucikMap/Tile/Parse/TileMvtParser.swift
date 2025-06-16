@@ -13,6 +13,7 @@ import MetalKit
 
 
 class TileMvtParser {
+    let giveMeId: GiveMeId = GiveMeId()
     let determineFeatureStyle: DetermineFeatureStyle
     let mapSize = Settings.mapSize
     
@@ -33,8 +34,10 @@ class TileMvtParser {
         let scaleY: Float
         let offsetX: Float
         let offsetY: Float
+        let tile: Tile
         
         init(tile: Tile) {
+            self.tile = tile
             let x = tile.x
             let y = tile.y
             let z = tile.z
@@ -144,16 +147,17 @@ class TileMvtParser {
         let x = Float(point.coordinate.x)
         let y = Float(point.coordinate.y)
         guard x > 0 && x < Float(Settings.tileExtent) && y > 0 && y < Float(Settings.tileExtent) else { return nil }
-        guard let nameEn = properties["name_en"] as? String else {return nil}
-        if Settings.getOnlySpecificMapLabels.isEmpty == false {
-            if Settings.getOnlySpecificMapLabels.contains(nameEn) == false {
-                return nil
-            }
-        }
+        guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: translation.tile) else { return nil }
         let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Float>(x, y))
         let offset = SIMD2<Float>(translation.offsetX, translation.offsetY)
         let scale = SIMD2<Float>(translation.scaleX, translation.scaleY)
-        return ParsedTextLabel(worldPoint: coordinate * scale + offset, nameEn: nameEn)
+        return ParsedTextLabel(
+            id: giveMeId.forTextLabel(),
+            worldPoint: coordinate * scale + offset,
+            nameEn: filterTextResult.text,
+            scale: filterTextResult.scale,
+            sortRank: filterTextResult.sortRank
+        )
     }
     
     private func addBackground(polygonByStyle: inout [UInt8: [ParsedPolygon]], styles: inout [UInt8: FeatureStyle]) {
@@ -227,6 +231,10 @@ class TileMvtParser {
         }
         
         addBackground(polygonByStyle: &polygonByStyle, styles: &styles)
+        
+        textLabels.sort(by: { label1, label2 in
+            return label1.sortRank < label2.sortRank
+        }) // сортировка по возрастанию
         
         return ReadingStageResult(
             polygonByStyle: polygonByStyle.filter { $0.value.isEmpty == false },

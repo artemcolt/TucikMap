@@ -17,7 +17,7 @@ struct VertexIn {
 struct VertexOut {
     float4 position [[position]];
     float2 texCoord;
-    float elapsedTime;
+    float progress;
     bool show;
 };
 
@@ -46,6 +46,7 @@ struct MapLabelLineMeta {
 
 struct MapLabelIntersection {
     bool intersect;
+    float createdTime;
 };
 
 
@@ -55,7 +56,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
                                     constant MapLabelLineMeta* linesMeta [[buffer(3)]],
                                     constant Uniforms &worldUniforms [[buffer(4)]],
                                     constant MapLabelIntersection* intersections [[buffer(5)]],
-                                    constant float3& color [[buffer(6)]],
+                                    constant float& animationDuration [[buffer(6)]],
                                     uint vertexID [[vertex_id]]
                                     ) {
     int symbolIndex = vertexID / 6;
@@ -84,13 +85,15 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
                                           0.0, 0.0, 1.0, 0.0,
                                           t.x, t.y, t.z, 1.0);
     
+    MapLabelIntersection intersection = intersections[lineIndex];
+    
     float2 vertexPos = in.position;
     float2 textOffset = float2(textWidth / 2, 0);
     float4 position = translationMatrix * float4(vertexPos - textOffset, 0.0, 1.0);
     out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
     out.texCoord = in.texCoord;
-    out.show = intersections[lineIndex].intersect == false && !(ndc.z < -1.0 || ndc.z > 1.0);
-    out.elapsedTime = worldUniforms.elapsedTimeSeconds;
+    out.show = intersection.intersect == false && !(ndc.z < -1.0 || ndc.z > 1.0);
+    out.progress = (worldUniforms.elapsedTimeSeconds - intersection.createdTime) / animationDuration;
     return out;
 }
 
@@ -115,7 +118,7 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
     float3 finalColor = mix(outlineColor, textColor, textOpacity);
     float finalOpacity = max(outlineOpacity, textOpacity);
     
-    bool show = in.show;
+    float show = mix(1 - in.progress, in.progress, in.show ? 1 : 0);
     return float4(finalColor, finalOpacity * show);
 }
 
@@ -129,7 +132,7 @@ kernel void transformKernel(
     float4 worldLabelPos = float4(worldLabelPosition, 0.0, 1.0);
     float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
-    bool valid = !(ndc.z < -1.0 || ndc.z > 1.0);
+    bool valid = !(ndc.z < -1.0 || ndc.z > 1.0); // maybe i should use it to filter results
     float2 viewportSize = uniforms.viewportSize;
     float viewportWidth = viewportSize.x;
     float viewportHeight = viewportSize.y;

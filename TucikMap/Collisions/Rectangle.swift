@@ -6,13 +6,15 @@
 //
 
 struct Rectangle {
+    let id: UInt64
     var topLeft: SIMD2<Float>
     var bottomRight: SIMD2<Float>
     
     // Initialize with topLeft and bottomRight points
-    init(topLeft: SIMD2<Float>, bottomRight: SIMD2<Float>) {
+    init(id: UInt64, topLeft: SIMD2<Float>, bottomRight: SIMD2<Float>) {
         self.topLeft = topLeft
         self.bottomRight = bottomRight
+        self.id = id
     }
     
     // Check if the rectangle is valid (topLeft is above and to the left of bottomRight)
