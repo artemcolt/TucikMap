@@ -26,33 +26,6 @@ class TileMvtParser {
         self.determineFeatureStyle = determineFeatureStyle
     }
     
-    class Translation {
-        let zoomFactor: Float
-        let lastTileCoord: Int
-        let tileSize: Float
-        let scaleX: Float
-        let scaleY: Float
-        let offsetX: Float
-        let offsetY: Float
-        let tile: Tile
-        
-        init(tile: Tile) {
-            self.tile = tile
-            let x = tile.x
-            let y = tile.y
-            let z = tile.z
-            let mapSize = Settings.mapSize
-            
-            zoomFactor = pow(2.0, Float(z))
-            lastTileCoord = Int(zoomFactor) - 1
-            tileSize = mapSize / zoomFactor
-            scaleX = tileSize / 2.0
-            scaleY = tileSize / 2.0
-            offsetX = Float(x) * tileSize - mapSize / 2.0 + tileSize / 2.0
-            offsetY = Float(lastTileCoord - y) * tileSize - mapSize / 2.0 + tileSize / 2.0
-        }
-    }
-    
     func parse(
         tile: Tile,
         mvtData: Data,
@@ -62,27 +35,15 @@ class TileMvtParser {
         let y = tile.y
         let z = tile.z
         let vectorTile = VectorTile(data: mvtData, x: x, y: y, z: z, projection: .noSRID, indexed: .hilbert)!
-        let translation = Translation(tile: tile)
         
-        let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox, translation: translation)
+        let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox, tileCoords: tile)
         let unificationResult = unificationStage(readingStageResult: readingStageResult)
-        let modelMatrix = createModelMatrix(translation: translation)
         
         return ParsedTile(
             drawingPolygon: unificationResult.drawingPolygon,
             styles: unificationResult.styles,
-            modelMatrix: modelMatrix,
             tile: tile,
             textLabels: readingStageResult.textLabels
-        )
-    }
-    
-    private func createModelMatrix(translation: Translation) -> matrix_float4x4 {
-        return MatrixUtils.createTileModelMatrix(
-            scaleX: translation.scaleX,
-            scaleY: translation.scaleY,
-            offsetX: translation.offsetX,
-            offsetY: translation.offsetY
         )
     }
     
@@ -111,21 +72,21 @@ class TileMvtParser {
         return parsedPolygons
     }
     
-    private func tryParseLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Float) -> [ParsedLineRawVertices]? {
+    private func tryParseLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Double) -> [ParsedLineRawVertices]? {
         if geometry.type != .lineString {return nil}
         guard let line = geometry as? LineString else {return nil}
         guard let clippedLine = line.clipped(to: boundingBox) else {return nil}
         return parseLines(multiLine: clippedLine, width: width)
     }
     
-    private func tryParseMultiLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Float) -> [ParsedLineRawVertices]? {
+    private func tryParseMultiLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Double) -> [ParsedLineRawVertices]? {
         if geometry.type != .multiLineString {return nil}
         guard let multiLine = geometry as? MultiLineString else {return nil}
         guard let clippedMultiLine = multiLine.clipped(to: boundingBox) else {return nil}
         return parseLines(multiLine: clippedMultiLine, width: width)
     }
     
-    private func parseLines(multiLine: MultiLineString, width: Float) -> [ParsedLineRawVertices] {
+    private func parseLines(multiLine: MultiLineString, width: Double) -> [ParsedLineRawVertices] {
         var parsed: [ParsedLineRawVertices] = []
         for line in multiLine.lineStrings {
             let coordinates = line.coordinates
@@ -139,21 +100,19 @@ class TileMvtParser {
     private func tryParseTextLabels(
         geometry: GeoJsonGeometry,
         boundingBox: BoundingBox,
-        translation: Translation,
+        tileCoords: Tile,
         properties: [String: Sendable]) -> ParsedTextLabel?
     {
         if geometry.type != .point {return nil}
         guard let point = geometry as? Point else {return nil}
-        let x = Float(point.coordinate.x)
-        let y = Float(point.coordinate.y)
-        guard x > 0 && x < Float(Settings.tileExtent) && y > 0 && y < Float(Settings.tileExtent) else { return nil }
-        guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: translation.tile) else { return nil }
-        let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Float>(x, y))
-        let offset = SIMD2<Float>(translation.offsetX, translation.offsetY)
-        let scale = SIMD2<Float>(translation.scaleX, translation.scaleY)
+        let x = point.coordinate.x
+        let y = point.coordinate.y
+        guard x > 0 && x < Double(Settings.tileExtent) && y > 0 && y < Double(Settings.tileExtent) else { return nil }
+        guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: tileCoords) else { return nil }
+        let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
         return ParsedTextLabel(
             id: giveMeId.forTextLabel(),
-            worldPoint: coordinate * scale + offset,
+            localPosition: coordinate,
             nameEn: filterTextResult.text,
             scale: filterTextResult.scale,
             sortRank: filterTextResult.sortRank
@@ -177,7 +136,7 @@ class TileMvtParser {
         styles[style.key] = style
     }
     
-    func readingStage(tile: VectorTile, boundingBox: BoundingBox, translation: Translation) -> ReadingStageResult {
+    func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) -> ReadingStageResult {
         var polygonByStyle: [UInt8: [ParsedPolygon]] = [:]
         var rawLineByStyle: [UInt8: [ParsedLineRawVertices]] = [:]
         var styles: [UInt8: FeatureStyle] = [:]
@@ -190,7 +149,7 @@ class TileMvtParser {
                 let properties = feature.properties
                 
                 let geometry = feature.geometry
-                if let parsed = tryParseTextLabels(geometry: geometry, boundingBox: boundingBox, translation: translation, properties: properties) {
+                if let parsed = tryParseTextLabels(geometry: geometry, boundingBox: boundingBox, tileCoords: tileCoords, properties: properties) {
                     textLabels.append(parsed)
                 }
                 

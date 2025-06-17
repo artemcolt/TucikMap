@@ -51,15 +51,16 @@ class UpdateBufferedUniform {
         let nearFactor = sqrt(pitchNormalized)
         let farFactor = pitchAngle * Settings.farPlaneIncreaseFactor
 
-        let near: Float = camera.cameraDistance + Settings.planesNearDelta * mapZoomState.mapScaleFactor - nearFactor * camera.cameraDistance
-        let far: Float = camera.cameraDistance + Settings.planesFarDelta  * mapZoomState.mapScaleFactor + farFactor  * camera.cameraDistance
+        let delta = 1.0 * mapZoomState.mapScaleFactor
+        let near: Float = camera.cameraDistance - delta - nearFactor * camera.cameraDistance
+        let far: Float = camera.cameraDistance + delta + farFactor  * camera.cameraDistance
         //print("near: \(near), far: \(far), camDist: \(camera.cameraDistance)")
         
         // Create perspective projection matrix
         let projectionMatrix = MatrixUtils.perspectiveMatrix(
             fovRadians: Float.pi / 3.0,
             aspect: aspect,
-            near: max(near, 0.0001),
+            near: max(0, near),
             far: far
         )
         

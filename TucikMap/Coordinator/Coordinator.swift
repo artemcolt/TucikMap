@@ -84,11 +84,13 @@ class Coordinator: NSObject, MTKViewDelegate {
                 assembledMap: camera.assembledMapUpdater.assembledMap,
                 renderFrameCount: renderFrameCount,
                 frameCounter: frameCounter,
-                textTools: textTools
+                textTools: textTools,
+                camera: camera
             )
             assembledMapWrapper = DrawAssembledMap(
                 metalDevice: metalDevice,
                 screenUniforms: screenUniforms,
+                camera: camera,
             )
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
             mapCADisplayLoop = MapCADisplayLoop(
@@ -143,16 +145,16 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.drawMapLabels(
             renderEncoder: renderEncoder,
             uniforms: uniformsBuffer,
-            result: camera.assembledMapUpdater.assembledMap.labelsAssembled,
+            result: camera.assembledMapUpdater.assembledMap.drawLabelsFinal,
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
-        drawGrid.draw(renderEncoder: renderEncoder,
-                      uniformsBuffer: uniformsBuffer,
-                      camTileX: Int(camera.centerTileX),
-                      camTileY: Int(camera.centerTileY),
-                      gridThickness: Settings.gridThickness * mapZoomState.mapScaleFactor,
-        )
+//        drawGrid.draw(renderEncoder: renderEncoder,
+//                      uniformsBuffer: uniformsBuffer,
+//                      camTileX: Int(camera.centerTileX),
+//                      camTileY: Int(camera.centerTileY),
+//                      gridThickness: Settings.gridThickness * mapZoomState.mapScaleFactor,
+//        )
         drawPoint.draw(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
@@ -160,7 +162,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             position: camera.targetPosition,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
-        drawAxis.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
+//        drawAxis.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
         
         
         pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)

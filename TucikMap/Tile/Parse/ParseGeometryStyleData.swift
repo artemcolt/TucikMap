@@ -6,5 +6,5 @@
 //
 
 struct ParseGeometryStyleData {
-    let lineWidth: Float
+    let lineWidth: Double
 }

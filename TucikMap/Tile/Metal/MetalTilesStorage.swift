@@ -60,14 +60,12 @@ class MetalTilesStorage {
                     bytes: parsedTile.styles,
                     length: parsedTile.styles.count * MemoryLayout<TilePolygonStyle>.stride
                 )!
-                let modelMatrixBuffer = metalDevice.makeBuffer(bytes: &parsedTile.modelMatrix, length: MemoryLayout<matrix_float4x4>.stride)!
                 
                 let metalTile = MetalTile(
                     verticesBuffer: verticesBuffer,
                     indicesBuffer: indicesBuffer,
                     indicesCount: parsedTile.drawingPolygon.indices.count,
                     stylesBuffer: stylesBuffer,
-                    modelMatrixBuffer: modelMatrixBuffer,
                     textLabels: parsedTile.textLabels,
                     tile: tile
                 )

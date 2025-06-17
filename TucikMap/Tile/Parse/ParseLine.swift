@@ -9,24 +9,24 @@ import GISTools
 import MetalKit
 
 class ParseLine {
-    func parseRaw(line: [Coordinate3D], width: Float) -> ParsedLineRawVertices {
+    func parseRaw(line: [Coordinate3D], width: Double) -> ParsedLineRawVertices {
         var vertices: [SIMD2<Float>] = []
         var indices: [UInt32] = []
-        var normal: SIMD2<Float> = SIMD2<Float>(0, 0)
+        var normal: SIMD2<Double> = SIMD2<Double>(0, 0)
 
         for i in 0..<line.count {
-            let current = SIMD2<Float>(Float(line[i].x), Float(line[i].y))
+            let current = SIMD2<Double>(line[i].x, line[i].y)
             
             if i < line.count - 1 {
-                let next = SIMD2<Float>(Float(line[i + 1].x), Float(line[i + 1].y))
+                let next = SIMD2<Double>(line[i + 1].x, line[i + 1].y)
                 let direction = next - current
-                normal = normalize(SIMD2<Float>(-direction.y, direction.x))
+                normal = normalize(SIMD2<Double>(-direction.y, direction.x))
                 
-                vertices.append(NormalizeLocalCoords.normalize(coord: current + normal * width))
-                vertices.append(NormalizeLocalCoords.normalize(coord: current - normal * width))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: current + normal * width)))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: current - normal * width)))
                 
-                vertices.append(NormalizeLocalCoords.normalize(coord: next + normal * width))
-                vertices.append(NormalizeLocalCoords.normalize(coord: next - normal * width))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: next + normal * width)))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: next - normal * width)))
                 
                 let baseIndex = UInt32(i * 4)
                 indices.append(baseIndex)     // Верхняя текущая

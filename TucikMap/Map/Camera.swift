@@ -14,7 +14,8 @@ class Camera {
     
     // Camera properties
     private(set) var cameraPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0)
-    private(set) var targetPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
+    let targetPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
+    private(set) var mapPanning: SIMD3<Float> = SIMD3<Float>(0, 0, 0) // смещение карты
     private(set) var cameraDistance: Float = Settings.nullZoomCameraDistance // Расстояние от камеры до цели
     private(set) var cameraQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1) // Кватернион ориентации камеры
     private(set) var cameraYawQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
@@ -57,20 +58,6 @@ class Camera {
         )
     }
     
-    func moveToTile(tileX x: Int, tileY y: Int, tileZ z: Int, view: MTKView, size: CGSize) {
-        let mapSize = Settings.mapSize
-        let zoomFactor = pow(2.0, Float(z))
-        let lastTileCoord = Int(zoomFactor) - 1
-        let tileSize = mapSize / zoomFactor
-        let offsetX = Float(x) * tileSize - mapSize / 2.0 + tileSize / 2.0
-        let offsetY = Float(lastTileCoord - y) * tileSize - mapSize / 2.0 + tileSize / 2.0
-        
-        targetPosition = SIMD3<Float>(offsetX, offsetY, 0)
-        cameraDistance = Settings.nullZoomCameraDistance / pow(2, Float(z))
-        
-        updateMap(view: view, size: size)
-    }
-    
     // Handle single-finger pan gesture for target translation
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
@@ -78,8 +65,8 @@ class Camera {
         let translation = gesture.translation(in: view)
         let sensitivity: Float = Settings.panSensitivity * mapZoomState.mapScaleFactor
         
-        panDeltaX = -Float(translation.x) * sensitivity
-        panDeltaY = Float(translation.y) * sensitivity
+        panDeltaX = Float(translation.x) * sensitivity
+        panDeltaY = -Float(translation.y) * sensitivity
         gesture.setTranslation(.zero, in: view)
         
         applyMovementToCamera(view: view)
@@ -155,12 +142,18 @@ class Camera {
         // Move target position in camera's local
         let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
         let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
-        let newTargetPosition = targetPosition + right * panDeltaX + forward * panDeltaY
-        if (newTargetPosition.y >= targetPositionYMin && newTargetPosition.y <= targetPositionYMax) {
-            targetPosition.y = newTargetPosition.y
+        let newMapPanning = mapPanning + right * panDeltaX + forward * panDeltaY
+        if (newMapPanning.y >= targetPositionYMin && newMapPanning.y <= targetPositionYMax) {
+            mapPanning.y = newMapPanning.y
         }
-        targetPosition.x = newTargetPosition.x
+        mapPanning.x = newMapPanning.x
         
+        // return to available range
+        if (mapPanning.y < targetPositionYMin) {
+            mapPanning.y = targetPositionYMin
+        } else if (mapPanning.y > targetPositionYMax) {
+            mapPanning.y = targetPositionYMax
+        }
         
         updateMap(view: view, size: view.drawableSize)
     }
@@ -185,12 +178,13 @@ class Camera {
     private func updateCameraCenterTile() -> Bool {
         let tileSize = mapZoomState.tileSize
         let borderedZoomLevel = mapZoomState.zoomLevel
-        let mapSize = Settings.mapSize
         let worldTilesHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
         
         // Определяем центр карты в координатах тайлов
-        centerTileX = (targetPosition.x + worldTilesHalf) / tileSize
-        centerTileY = (mapSize - (targetPosition.y + worldTilesHalf)) / tileSize
+        centerTileX = (-mapPanning.x + worldTilesHalf) / tileSize
+        centerTileY = (mapPanning.y + worldTilesHalf) / tileSize
+        
+        //print("centerTileX \(centerTileX) centerTileY \(centerTileY)")
         
         let changed = Int(centerTileX) != previousCenterTileX || Int(centerTileY) != previousCenterTileY
                                                               || borderedZoomLevel != previousBorderedZoomLevel

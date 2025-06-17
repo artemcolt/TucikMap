@@ -8,30 +8,27 @@ import GISTools
 import Foundation
 
 class Settings {
-    static let panSensitivity: Float = 1500
-    static let rotationSensitivity: Float = 0.2
-    static let twoFingerPanSensitivity: Float = 0.003
-    static let pinchSensitivity: Float = 66000
-    
-    static let farPlaneIncreaseFactor: Float = 2.0
-    static let planesNearDelta: Float = -20.0
-    static let planesFarDelta: Float = 2.0
-    static let maxCameraPitch: Float = Float.pi / 2.2
-    static let minCameraPitch: Float = 0
-    
     static let maxBuffersInFlight: Int = 3
     
+    
+    static let rotationSensitivity: Float = 0.2
+    static let twoFingerPanSensitivity: Float = 0.003
+    static let panSensitivity: Float = 0.001
+    static let pinchSensitivity: Float = 0.1
+    static let maxCameraPitch: Float = Float.pi / 3
+    static let minCameraPitch: Float = 0
     static let fov: Float = Float.pi / 3.0
-    static let mapSize: Float = 1_000_000.0
+    static let mapSize: Float = 1.0
     static let nullZoomCameraDistance: Float = mapSize / (2 * tan(fov / 2))
-    static let minCameraDistance: Float = 0.2
+    static let minCameraDistance: Float = nullZoomCameraDistance / pow(2, 18)
+    static let farPlaneIncreaseFactor: Float = 2.0
     
     static let visibleTilesCount: Int = 9
     static let visibleTilesX: Int = 3
     static let visibleTilesY: Int = 3
     
     static let gridThickness: Float = 20
-    static let cameraCenterPointSize: Float = 40
+    static let cameraCenterPointSize: Float = 0.01
     static let axisLength: Float = 10_000
     static let axisThickness: Float = 20
     static let tileExtent = 4096
@@ -53,7 +50,7 @@ class Settings {
     static var filterNotUsedLayernName: String = "admin"
     
     static var debugAssemblingMap: Bool = false
-    static var debugIntersectionsLabels: Bool = true
+    static var debugIntersectionsLabels: Bool = false
     
     static let maxConcurrentFetchs = 3
     static let fetchTilesQueueCapacity = Settings.visibleTilesCount // can't be lesser than visible tiles count

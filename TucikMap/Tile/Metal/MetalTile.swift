@@ -23,7 +23,6 @@ class MetalTile: Hashable {
     let indicesBuffer: MTLBuffer
     let indicesCount: Int
     let stylesBuffer: MTLBuffer
-    let modelMatrixBuffer: MTLBuffer
     let textLabels: [ParsedTextLabel]
     let tile: Tile
     
@@ -33,7 +32,6 @@ class MetalTile: Hashable {
         indicesBuffer: MTLBuffer,
         indicesCount: Int,
         stylesBuffer: MTLBuffer,
-        modelMatrixBuffer: MTLBuffer,
         textLabels: [ParsedTextLabel],
         tile: Tile
     ) {
@@ -41,7 +39,6 @@ class MetalTile: Hashable {
         self.indicesBuffer = indicesBuffer
         self.indicesCount = indicesCount
         self.stylesBuffer = stylesBuffer
-        self.modelMatrixBuffer = modelMatrixBuffer
         self.tile = tile
         self.textLabels = textLabels
     }

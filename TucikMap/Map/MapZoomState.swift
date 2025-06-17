@@ -24,7 +24,7 @@ class MapZoomState {
     func update(cameraDistance: Float) {
         // Вычисляем уровень зума на основе расстояния камеры
         zoomLevelFloat = calculateZoomLevel(cameraDistance: cameraDistance)
-        zoomLevel = Int(floor(zoomLevelFloat))
+        zoomLevel = min(Int(floor(zoomLevelFloat)), Settings.zoomLevelMax)
         mapScaleFactor = 1.0 / pow(2.0, Float(zoomLevelFloat))
         powZoomLevel = pow(2.0, Float(zoomLevel))
         

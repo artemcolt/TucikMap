@@ -9,7 +9,7 @@ import Foundation
 
 struct ParsedTextLabel {
     let id: UInt64
-    let worldPoint: SIMD2<Float>
+    let localPosition: SIMD2<Double>
     let nameEn: String
     let scale: Float
     let sortRank: ushort

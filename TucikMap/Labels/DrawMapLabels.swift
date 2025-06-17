@@ -22,10 +22,12 @@ class DrawMapLabels {
     let sampler: MTLSamplerState
     var orthographicProjectionMatrix: matrix_float4x4!
     var screenUniforms: ScreenUniforms
+    let camera: Camera
     
-    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms) {
+    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera) {
         self.metalDevice = metalDevice
         self.screenUniforms = screenUniforms
+        self.camera = camera
         
         let samplerDescriptor = MTLSamplerDescriptor()
         samplerDescriptor.magFilter = .linear
@@ -36,9 +38,10 @@ class DrawMapLabels {
     
     func draw(
         renderEncoder: MTLRenderCommandEncoder,
-        drawMapLabelsData: DrawMapLabelsData,
+        drawLabelsFinal: DrawAssembledMap.DrawLabelsFinal,
         uniforms: MTLBuffer,
     ) {
+        let drawMapLabelsData = drawLabelsFinal.result.drawMapLabelsData
         let atlasTexture = drawMapLabelsData.atlas
         let vertexBuffer = drawMapLabelsData.vertexBuffer
         let verticesCount = drawMapLabelsData.verticesCount
@@ -47,6 +50,10 @@ class DrawMapLabels {
         let intersectionsBuffer = drawMapLabelsData.intersectionsBuffer
         var animationTime = Settings.labelsFadeAnimationTimeSeconds
         
+        let panXDelta = camera.mapPanning.x - drawLabelsFinal.pan.x
+        let panYDelta = camera.mapPanning.y - drawLabelsFinal.pan.y
+        var panDeltaForLabels = SIMD2<Float>(panXDelta, panYDelta)
+        
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
         renderEncoder.setVertexBuffer(mapLabelSymbolMeta, offset: 0, index: 2)
@@ -54,6 +61,7 @@ class DrawMapLabels {
         renderEncoder.setVertexBuffer(uniforms, offset: 0, index: 4)
         renderEncoder.setVertexBuffer(intersectionsBuffer, offset: 0, index: 5)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride, index: 6)
+        renderEncoder.setVertexBytes(&panDeltaForLabels, length: MemoryLayout<SIMD2<Float>>.stride, index: 7)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         
         renderEncoder.setFragmentTexture(atlasTexture, index: 0)

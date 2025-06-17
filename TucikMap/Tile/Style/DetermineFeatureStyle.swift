@@ -159,7 +159,7 @@ class DetermineFeatureStyle {
                 return FeatureStyle(
                     key: 200,
                     color: colors["road_minor"]!,
-                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 2)
+                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 6)
                 )
             }
 

@@ -57,6 +57,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
                                     constant Uniforms &worldUniforms [[buffer(4)]],
                                     constant MapLabelIntersection* intersections [[buffer(5)]],
                                     constant float& animationDuration [[buffer(6)]],
+                                    constant float2& panDelta [[buffer(7)]],
                                     uint vertexID [[vertex_id]]
                                     ) {
     int symbolIndex = vertexID / 6;
@@ -67,7 +68,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     float textWidth = measuredText.width;
     float scale = lineMeta.scale;
     
-    float4 worldLabelPos = float4(lineMeta.worldPosition, 0.0, 1.0);
+    float4 worldLabelPos = float4(lineMeta.worldPosition + panDelta, 0.0, 1.0);
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
    
@@ -92,7 +93,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     float4 position = translationMatrix * float4(vertexPos - textOffset, 0.0, 1.0);
     out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
     out.texCoord = in.texCoord;
-    out.show = intersection.intersect == false && !(ndc.z < -1.0 || ndc.z > 1.0);
+    out.show = intersection.intersect == false;
     out.progress = (worldUniforms.elapsedTimeSeconds - intersection.createdTime) / animationDuration;
     return out;
 }
@@ -132,7 +133,6 @@ kernel void transformKernel(
     float4 worldLabelPos = float4(worldLabelPosition, 0.0, 1.0);
     float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
-    bool valid = !(ndc.z < -1.0 || ndc.z > 1.0); // maybe i should use it to filter results
     float2 viewportSize = uniforms.viewportSize;
     float viewportWidth = viewportSize.x;
     float viewportHeight = viewportSize.y;

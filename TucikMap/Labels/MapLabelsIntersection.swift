@@ -44,11 +44,17 @@ class MapLabelsIntersection {
     private var assembledMap: AssembledMap
     private var renderFrameCount: RenderFrameCount
     private let frameCounter: FrameCounter
+    private let camera: Camera
     
     private var mapLabelsIntersectionData: MapLabelsIntersectionData = MapLabelsIntersectionData()
     
+    struct TextLabelsFromTile {
+        let labels: [ParsedTextLabel]
+        let tile: Tile
+    }
+    
     struct FindIntersections {
-        let currentLabels: [[ParsedTextLabel]]
+        let currentLabels: [TextLabelsFromTile]
         let uniforms: Uniforms
     }
     
@@ -65,8 +71,10 @@ class MapLabelsIntersection {
         assembledMap: AssembledMap,
         renderFrameCount: RenderFrameCount,
         frameCounter: FrameCounter,
-        textTools: TextTools
+        textTools: TextTools,
+        camera: Camera
     ) {
+        self.camera = camera
         self.metalDevice = metalDevice
         self.computeLabelScreen = ComputeLabelScreen(metalDevice: metalDevice)
         self.transformWorldToScreenPositionPipeline = transformWorldToScreenPositionPipeline
@@ -80,10 +88,34 @@ class MapLabelsIntersection {
     func computeIntersections(_ intersections: FindIntersections) {
         let currentLabels = intersections.currentLabels
         let currentElapsedTime = frameCounter.getElapsedTimeSeconds()
+        let mapPanning = camera.mapPanning
+        let panX = mapPanning.x
+        let panY = mapPanning.y
+        
         Task {
             var textLabels: [ParsedTextLabel] = []
-            for batch in currentLabels {
-                textLabels.append(contentsOf: batch)
+            for labelsFromTile in currentLabels {
+                let tile = labelsFromTile.tile
+                let mapZParameters = MapZParameters(z: tile.z)
+                let tileSize = mapZParameters.tileSize
+                let tileCenterX = Double(tile.x) + 0.5
+                let tileCenterY = Double(tile.y) + 0.5
+                let tileWorldX = tileCenterX * Double(tileSize) - Double(Settings.mapSize) / 2
+                let tileWorldY = Double(Settings.mapSize) / 2 - tileCenterY * Double(tileSize)
+                let offsetX = tileWorldX + Double(panX)
+                let offsetY = tileWorldY + Double(panY)
+                let scale = SIMD2<Double>(mapZParameters.scaleX, mapZParameters.scaleY)
+                let offset = SIMD2<Double>(offsetX, offsetY)
+                
+                for label in labelsFromTile.labels {
+                    textLabels.append(ParsedTextLabel(
+                        id: label.id,
+                        localPosition: label.localPosition * scale + offset,
+                        nameEn: label.nameEn,
+                        scale: label.scale,
+                        sortRank: label.sortRank
+                    ))
+                }
             }
             textLabels.sort(by: { label1, label2 in
                 return label1.sortRank < label2.sortRank
@@ -109,7 +141,7 @@ class MapLabelsIntersection {
                     MapLabelsAssembler.TextLineData(
                         text: line.nameEn,
                         scale: line.scale,
-                        worldPosition: line.worldPoint
+                        localPosition: SIMD2<Float>(line.localPosition)
                     )
                 },
                 font: textTools.robotoFont.boldFont,
@@ -135,7 +167,8 @@ class MapLabelsIntersection {
             commandBuffer.addCompletedHandler { [weak self] _ in self?.gpuComputeComplete(computeScreenPositions,
                                                                                           labelsAssembled: result,
                                                                                           ids: ids,
-                                                                                          hideCount: hideCount
+                                                                                          hideCount: hideCount,
+                                                                                          pan: SIMD2<Float>(panX, panY)
             ) }
             transformWorldToScreenPositionPipeline.selectComputePipeline(computeEncoder: computeEncoder)
             computeLabelScreen.transform(
@@ -151,7 +184,8 @@ class MapLabelsIntersection {
     private func gpuComputeComplete(_ computeScreenPositions: ComputeScreenPositions,
                                     labelsAssembled: MapLabelsAssembler.Result?,
                                     ids: [UInt64],
-                                    hideCount: Int
+                                    hideCount: Int,
+                                    pan: SIMD2<Float>
     ) {
         Task {
             guard let labelsAssembled = labelsAssembled else { return }
@@ -250,9 +284,9 @@ class MapLabelsIntersection {
             )!
             
             await MainActor.run {
-                self.assembledMap.labelsAssembled = labelsAssembled
-                self.assembledMap.labelsAssembled?.drawMapLabelsData.intersectionsBuffer = intersectBuffer
-                self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
+                self.assembledMap.drawLabelsFinal = DrawAssembledMap.DrawLabelsFinal(result: labelsAssembled, pan: pan)
+                self.assembledMap.drawLabelsFinal?.result.drawMapLabelsData.intersectionsBuffer = intersectBuffer
+                self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds * 2))
             }
         }
     }

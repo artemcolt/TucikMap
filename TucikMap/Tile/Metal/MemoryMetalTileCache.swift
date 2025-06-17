@@ -24,7 +24,6 @@ class MemoryMetalTileCache {
         let verticesSize = tile.verticesBuffer.allocatedSize
         let indicesSize = tile.indicesBuffer.allocatedSize
         let stylesSize = tile.stylesBuffer.allocatedSize
-        let modelMatrixSize = tile.modelMatrixBuffer.allocatedSize
-        return verticesSize + indicesSize + stylesSize + modelMatrixSize
+        return verticesSize + indicesSize + stylesSize
     }
 }

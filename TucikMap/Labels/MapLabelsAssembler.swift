@@ -37,7 +37,7 @@ class MapLabelsAssembler {
     struct TextLineData {
         let text: String
         let scale: Float
-        let worldPosition: SIMD2<Float>
+        let localPosition: SIMD2<Float>
     }
     
     func assembleBytes(lines: [TextLineData], font: Font) -> DrawMapLabelsBytes {
@@ -59,7 +59,7 @@ class MapLabelsAssembler {
             mapLabelLineMeta.append(MapLabelLineMeta(
                 measuredText: measuredText,
                 scale: line.scale,
-                worldPosition: line.worldPosition
+                worldPosition: line.localPosition
             ))
         }
         
