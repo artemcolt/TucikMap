@@ -19,10 +19,12 @@ class DrawAssembledMap {
     let metalDevice: MTLDevice
     let drawMapLabels: DrawMapLabels
     let camera: Camera
+    let mapZoomState: MapZoomState
     
-    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera) {
+    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera, mapZoomState: MapZoomState) {
         self.metalDevice = metalDevice
         self.drawMapLabels = DrawMapLabels(metalDevice: metalDevice, screenUniforms: screenUniforms, camera: camera)
+        self.mapZoomState = mapZoomState
         self.camera = camera
     }
     
@@ -39,7 +41,7 @@ class DrawAssembledMap {
         let panY = mapPanning.y
         
         for tile in tiles {
-            let mapParameters = MapZParameters(z: tile.tile.z)
+            let mapParameters = mapZoomState.getMapZParameters(z: tile.tile.z)
             let tileSize = mapParameters.tileSize
             
             let tileCenterX = Float(tile.tile.x) + 0.5

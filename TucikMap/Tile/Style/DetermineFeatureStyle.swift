@@ -34,34 +34,40 @@ class DetermineFeatureStyle {
         }
         
         let filterRank = ushort(properties["filterrank"] as? UInt64 ?? 100)
-        let sizeRank = ushort(properties["sizerank"] as? UInt64 ?? 20)
+        let sizeRank = ushort(properties["sizerank"] as? UInt64 ?? 15)
         let symbolRank = ushort(properties["symbolrank"] as? UInt64 ?? 20)
-        //print("filterRank = \(filterRank), sizeRank = \(sizeRank), symbolRank = \(symbolRank), \(nameEn)")
+        guard let _class = properties["class"] as? String else { return nil }
+        let type = properties["type"] as? String ?? ""
+        let capital = properties["capital"] as? UInt64 ?? 0
         
-        if (filterRank == 1) {
-            return FilterTextLabelsResult(text: nameEn, scale: 65, sortRank: symbolRank)
+        //print("type = \(type), class = \(_class), filterRank = \(filterRank), sizeRank = \(sizeRank), symbolRank = \(symbolRank), \(nameEn), ")
+        //print("props = \(properties), \(nameEn)")
+        
+        var scale: Float = 50;
+        if capital == 2 {
+            scale = 70
+        } else  if capital == 1 {
+            scale = 60
+        }
+        if _class == "continent" {
+            scale = 70
         }
         
-        if (tile.z <= 1 && filterRank <= 1) {
-            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
+        if(tile.z <= 2) {
+            if (["country", "continent"].contains(_class)) {
+                return FilterTextLabelsResult(text: nameEn, scale: scale, sortRank: symbolRank)
+            }
+        } else if (tile.z <= 3) {
+            if (["city"].contains(type) && filterRank <= 5) {
+                return FilterTextLabelsResult(text: nameEn, scale: scale, sortRank: symbolRank)
+            }
+        } else if (tile.z <= 12) {
+            return FilterTextLabelsResult(text: nameEn, scale: scale, sortRank: symbolRank)
+        } else if (tile.z <= 15) {
+            if (["suburb", "town", "hamlet", "neighbourhood"].contains(type) && filterRank <= 5) {
+                return FilterTextLabelsResult(text: nameEn, scale: scale, sortRank: symbolRank)
+            }
         }
-        
-        if (tile.z <= 8 && filterRank <= 2) {
-            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
-        }
-        
-        if (tile.z <= 12 && filterRank <= 3) {
-            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
-        }
-        
-        if (tile.z <= 13 && filterRank <= 4) {
-            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
-        }
-        
-        if (tile.z <= 20 && filterRank <= 6) {
-            return FilterTextLabelsResult(text: nameEn, scale: 60, sortRank: symbolRank)
-        }
-        
         
         return nil
     }

@@ -92,14 +92,14 @@ class AssembledMapUpdater {
         }
         
         updateTitles(visibleTiles: visibleTiles)
-        updateMapLabels(textLabelsBatch: assembledMap.tiles.map { metalTile in MapLabelsIntersection.TextLabelsFromTile(
+        updateMapLabels(textLabelsBatch: assembledMap.tiles.map { metalTile in MapLabelsMaker.TextLabelsFromTile(
             labels: metalTile.textLabels,
             tile: metalTile.tile
         ) })
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
     }
     
-    private func updateMapLabels(textLabelsBatch: [MapLabelsIntersection.TextLabelsFromTile]) {
+    private func updateMapLabels(textLabelsBatch: [MapLabelsMaker.TextLabelsFromTile]) {
         needComputeLabelsIntersections.labelsUpdated(textLabelsBatch: textLabelsBatch)
     }
     

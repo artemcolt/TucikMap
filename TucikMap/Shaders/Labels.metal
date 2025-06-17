@@ -110,7 +110,7 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
     float outlineOpacity = clamp(outlineDist/fwidth(outlineDist) + 0.5, 0.0, 1.0);
     
     // Основа
-    float textDist = sigDist - 0.5;
+    float textDist = sigDist - 0.1;
     float textOpacity = clamp(textDist/fwidth(textDist) + 0.5, 0.0, 1.0);
     
     // Комбинируем обводку и текст

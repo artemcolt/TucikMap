@@ -35,7 +35,7 @@ actor MapLabelsIntersectionData {
     }
 }
 
-class MapLabelsIntersection {
+class MapLabelsMaker {
     private let metalDevice: MTLDevice
     private let computeLabelScreen: ComputeLabelScreen
     private let textTools: TextTools
@@ -53,7 +53,7 @@ class MapLabelsIntersection {
         let tile: Tile
     }
     
-    struct FindIntersections {
+    struct MakeLabels {
         let currentLabels: [TextLabelsFromTile]
         let uniforms: Uniforms
     }
@@ -85,8 +85,8 @@ class MapLabelsIntersection {
         self.textTools = textTools
     }
     
-    func computeIntersections(_ intersections: FindIntersections) {
-        let currentLabels = intersections.currentLabels
+    func makeLabelsForRendering(_ labels: MakeLabels) {
+        let currentLabels = labels.currentLabels
         let currentElapsedTime = frameCounter.getElapsedTimeSeconds()
         let mapPanning = camera.mapPanning
         let panX = mapPanning.x
@@ -96,16 +96,9 @@ class MapLabelsIntersection {
             var textLabels: [ParsedTextLabel] = []
             for labelsFromTile in currentLabels {
                 let tile = labelsFromTile.tile
-                let mapZParameters = MapZParameters(z: tile.z)
-                let tileSize = mapZParameters.tileSize
-                let tileCenterX = Double(tile.x) + 0.5
-                let tileCenterY = Double(tile.y) + 0.5
-                let tileWorldX = tileCenterX * Double(tileSize) - Double(Settings.mapSize) / 2
-                let tileWorldY = Double(Settings.mapSize) / 2 - tileCenterY * Double(tileSize)
-                let offsetX = tileWorldX + Double(panX)
-                let offsetY = tileWorldY + Double(panY)
-                let scale = SIMD2<Double>(mapZParameters.scaleX, mapZParameters.scaleY)
-                let offset = SIMD2<Double>(offsetX, offsetY)
+                let transition = MapMathUtils.getTileTransition(tile: tile, pan: SIMD2<Double>(Double(panX), Double(panY)))
+                let scale = transition.scale
+                let offset = transition.offset
                 
                 for label in labelsFromTile.labels {
                     textLabels.append(ParsedTextLabel(
@@ -148,7 +141,7 @@ class MapLabelsIntersection {
             )
             
             let metaLabels = result.metaLines
-            var uniforms = intersections.uniforms
+            var uniforms = labels.uniforms
             let ids = textLabels.map { label in label.id }
             guard metaLabels.isEmpty == false else { return }
             

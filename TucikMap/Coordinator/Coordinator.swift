@@ -34,7 +34,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     // Map
     var mapZoomState: MapZoomState!
     var camera: Camera!
-    var mapLabelsIntersection: MapLabelsIntersection!
+    var mapLabelsMaker: MapLabelsMaker!
     
     // UI
     var drawUI: DrawUI!
@@ -77,7 +77,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 textTools: textTools,
                 renderFrameCount: renderFrameCount, frameCounter: frameCounter
             )
-            mapLabelsIntersection = MapLabelsIntersection(
+            mapLabelsMaker = MapLabelsMaker(
                 metalDevice: metalDevice,
                 metalCommandQueue: metalCommandQueue,
                 transformWorldToScreenPositionPipeline: pipelines.transformToScreenPipeline,
@@ -91,10 +91,11 @@ class Coordinator: NSObject, MTKViewDelegate {
                 metalDevice: metalDevice,
                 screenUniforms: screenUniforms,
                 camera: camera,
+                mapZoomState: mapZoomState
             )
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
             mapCADisplayLoop = MapCADisplayLoop(
-                mapLablesIntersection: mapLabelsIntersection,
+                mapLablesIntersection: mapLabelsMaker,
                 updateBufferedUniform: camera.updateBufferedUniform,
                 needComputeMapLabelsIntersections: camera.assembledMapUpdater.needComputeLabelsIntersections
             )

@@ -6,15 +6,14 @@
 //
 
 class MapCADisplayLoop {
-    private let mapLablesIntersection: MapLabelsIntersection
+    private let mapLablesIntersection: MapLabelsMaker
     private let updateBufferedUniform: UpdateBufferedUniform
     private let needComputeMapLabelsIntersections: NeedComputeMapLabelsIntersections
     
     private var loopCount: UInt64 = 0
-    
     private var computeIntersectionsEvery: UInt64 = Settings.refreshLabelsIntersectionsEveryNDisplayLoop
     
-    init(mapLablesIntersection: MapLabelsIntersection,
+    init(mapLablesIntersection: MapLabelsMaker,
          updateBufferedUniform: UpdateBufferedUniform,
          needComputeMapLabelsIntersections: NeedComputeMapLabelsIntersections
     ) {
@@ -29,7 +28,7 @@ class MapCADisplayLoop {
         if (canComputeIntersectionsNow()) {
             let currentLabels = needComputeMapLabelsIntersections.getCurrentLabels()
             guard let lastUniforms = updateBufferedUniform.lastUniforms else { return }
-            mapLablesIntersection.computeIntersections(MapLabelsIntersection.FindIntersections(
+            mapLablesIntersection.makeLabelsForRendering(MapLabelsMaker.MakeLabels(
                 currentLabels: currentLabels,
                 uniforms: lastUniforms
             ))
