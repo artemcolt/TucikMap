@@ -35,27 +35,35 @@ class DrawAssembledMap {
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
         let mapPanning = camera.mapPanning
-        let panX = mapPanning.x
-        let panY = mapPanning.y
-        let mapSize = Settings.mapSize
-        
-        var allTilesUniform = AllTilesUniform(
-            mapSize: mapSize,
-            panX: panX,
-            panY: panY,
-        )
-        renderEncoder.setVertexBytes(&allTilesUniform, length: MemoryLayout<AllTilesUniform>.stride, index: 4)
+        let panX = Double(mapPanning.x)
+        let panY = Double(mapPanning.y)
+        let mapSize = Double(Settings.mapSize)
         
         for tile in tiles {
-            var tileUniform = TileUniform(
-                tileX: simd_int1(tile.tile.x),
-                tileY: simd_int1(tile.tile.y),
-                tileZ: simd_int1(tile.tile.z),
+            let zoomFactor = pow(2.0, Double(tile.tile.z));
+            
+            let tileCenterX = Double(tile.tile.x) + 0.5;
+            let tileCenterY = Double(tile.tile.y) + 0.5;
+            let tileSize = mapSize / zoomFactor;
+            
+            let tileWorldX = tileCenterX * tileSize - mapSize / 2;
+            let tileWorldY = mapSize / 2 - tileCenterY * tileSize;
+            
+            let scaleX = tileSize / 2;
+            let scaleY = tileSize / 2;
+            let offsetX = tileWorldX + panX;
+            let offsetY = tileWorldY + panY;
+            
+            var modelMatrix = MatrixUtils.createTileModelMatrix(
+                scaleX: Float(scaleX),
+                scaleY: Float(scaleY),
+                offsetX: Float(offsetX),
+                offsetY: Float(offsetY)
             )
             
             renderEncoder.setVertexBuffer(tile.verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(tile.stylesBuffer, offset: 0, index: 2)
-            renderEncoder.setVertexBytes(&tileUniform, length: MemoryLayout<TileUniform>.stride, index: 3)
+            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<float4x4>.stride, index: 3)
             
             renderEncoder.drawIndexedPrimitives(
                 type: .triangle,

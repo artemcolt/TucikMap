@@ -48,33 +48,8 @@ struct AllTilesUniform {
 vertex VertexOut draw_polygon_vertex(VertexIn vertexIn [[stage_in]],
                                   constant Uniforms &uniforms [[buffer(1)]],
                                   constant Style* styles [[buffer(2)]],
-                                  constant TileUniform &tileUniform [[buffer(3)]],
-                                  constant AllTilesUniform &allTilesUniform [[buffer(4)]]
+                                  constant float4x4 &modelMatrix [[buffer(3)]]
                                   ) {
-    float mapSize = allTilesUniform.mapSize;
-    float zoomFactor = pow(2.0, tileUniform.tileZ);
-    
-    float tileCenterX = tileUniform.tileX + 0.5;
-    float tileCenterY = tileUniform.tileY + 0.5;
-    float tileSize = mapSize / zoomFactor;
-    
-    float tileWorldX = tileCenterX * tileSize - mapSize / 2;
-    float tileWorldY = mapSize / 2 - tileCenterY * tileSize;
-    
-    float panX = allTilesUniform.panX;
-    float panY = allTilesUniform.panY;
-    
-    float scaleX = tileSize / 2;
-    float scaleY = tileSize / 2;
-    float offsetX = tileWorldX + panX;
-    float offsetY = tileWorldY + panY;
-    
-    float4x4 modelMatrix = {
-        float4(scaleX, 0.0,    0.0,    0.0),
-        float4(0.0,    scaleY, 0.0,    0.0),
-        float4(0.0,    0.0,    1.0,    0.0),
-        float4(offsetX,    offsetY,    0.0,    1.0)
-    };
     
     float2 position = vertexIn.position;
     float4 worldPosition = modelMatrix * float4(position, 0.0, 1.0);

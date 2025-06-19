@@ -108,6 +108,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         // Handle viewport size changes - update all uniform buffers
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
+        
+        camera.moveTo(lat: 55.751244, lon: 37.618423, zoom: 16, view: view, size: size)
     }
     
     // Three-step rendering process
@@ -139,12 +141,12 @@ class Coordinator: NSObject, MTKViewDelegate {
             tiles: camera.assembledMapUpdater.assembledMap.tiles
         )
         
-        pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
-        assembledMapWrapper.drawMapLabels(
-            renderEncoder: renderEncoder,
-            uniforms: uniformsBuffer,
-            result: camera.assembledMapUpdater.assembledMap.drawLabelsFinal,
-        )
+//        pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
+//        assembledMapWrapper.drawMapLabels(
+//            renderEncoder: renderEncoder,
+//            uniforms: uniformsBuffer,
+//            result: camera.assembledMapUpdater.assembledMap.drawLabelsFinal,
+//        )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
 //        drawGrid.draw(renderEncoder: renderEncoder,

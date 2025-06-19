@@ -58,6 +58,30 @@ class Camera {
         )
     }
     
+    func moveTo(lat: Float, lon: Float, zoom: Float, view: MTKView, size: CGSize) {
+        let lat = -lat
+        let mapSize = Settings.mapSize
+        let nullZoomCameraDistance = Settings.nullZoomCameraDistance
+        
+        // Шаг 1: Преобразование lat, lon в координаты Меркатора
+        let lonRad = lon * .pi / 180
+        let latRad = lat * .pi / 180
+        
+        let x = (lon + 180) / 360 * mapSize
+        let y = (1 - log(tan(.pi / 4 + latRad / 2)) / .pi) / 2 * mapSize
+        
+        // Шаг 2: Расчет расстояния камеры на основе зума
+        cameraDistance = nullZoomCameraDistance / pow(2, zoom)
+        
+        // Шаг 3: Расчет смещения карты
+        let newX = mapSize / 2 - x
+        let newY = mapSize / 2 - y
+        mapPanning = SIMD3<Float>(newX, newY, 0)
+        
+        // Шаг 4: Обновление карты
+        updateMap(view: view, size: size)
+    }
+    
     // Handle single-finger pan gesture for target translation
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
