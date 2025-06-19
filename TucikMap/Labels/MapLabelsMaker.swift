@@ -14,7 +14,7 @@ struct LabelIntersection {
     let createdTime: simd_float1
 }
 
-actor MapLabelsIntersectionData {
+class MapLabelsIntersectionData {
     private(set) var previousTextLabels: [ParsedTextLabel] = []
     
     private(set) var currentTextLabels: [ParsedTextLabel] = []
@@ -43,10 +43,18 @@ class MapLabelsMaker {
     private let metalCommandQueue: MTLCommandQueue
     private var assembledMap: AssembledMap
     private var renderFrameCount: RenderFrameCount
-    private let frameCounter: FrameCounter
-    private let camera: Camera
     
     private var mapLabelsIntersectionData: MapLabelsIntersectionData = MapLabelsIntersectionData()
+    private var unionLabels: UnionLabels = UnionLabels()
+    
+    private let asyncStream: AsyncStream<MakeLabels>
+    private let continuation: AsyncStream<MakeLabels>.Continuation
+    
+    struct UnionLabels {
+        var labelsAssemblingResult: MapLabelsAssembler.Result? = nil
+        var ids: [UInt64] = []
+        var hideCount: Int = 0
+    }
     
     struct TextLabelsFromTile {
         let labels: [ParsedTextLabel]
@@ -54,8 +62,11 @@ class MapLabelsMaker {
     }
     
     struct MakeLabels {
-        let currentLabels: [TextLabelsFromTile]
-        let uniforms: Uniforms
+        let newLabels: [TextLabelsFromTile]?
+        let currentElapsedTime: Float
+        let mapPanning: SIMD3<Float>
+        let lastUniforms: Uniforms
+        let viewportSize: SIMD2<Float>
     }
     
     struct LabelLine {
@@ -70,217 +81,222 @@ class MapLabelsMaker {
         transformWorldToScreenPositionPipeline: TransformWorldToScreenPositionPipeline,
         assembledMap: AssembledMap,
         renderFrameCount: RenderFrameCount,
-        frameCounter: FrameCounter,
         textTools: TextTools,
-        camera: Camera
     ) {
-        self.camera = camera
         self.metalDevice = metalDevice
         self.computeLabelScreen = ComputeLabelScreen(metalDevice: metalDevice)
         self.transformWorldToScreenPositionPipeline = transformWorldToScreenPositionPipeline
         self.metalCommandQueue = metalCommandQueue
         self.assembledMap = assembledMap
         self.renderFrameCount = renderFrameCount
-        self.frameCounter = frameCounter
         self.textTools = textTools
-    }
-    
-    func makeLabelsForRendering(_ labels: MakeLabels) {
-        let currentLabels = labels.currentLabels
-        let currentElapsedTime = frameCounter.getElapsedTimeSeconds()
-        let mapPanning = camera.mapPanning
-        let panX = mapPanning.x
-        let panY = mapPanning.y
+        (asyncStream, continuation) = AsyncStream<MakeLabels>.makeStream()
         
         Task {
-            var textLabels: [ParsedTextLabel] = []
-            for labelsFromTile in currentLabels {
-                let tile = labelsFromTile.tile
-                let transition = MapMathUtils.getTileTransition(tile: tile, pan: SIMD2<Double>(Double(panX), Double(panY)))
-                let scale = transition.scale
-                let offset = transition.offset
+            for await make in asyncStream {
+                guard let result = makeLabelsForRendering(make) else { continue }
                 
-                for label in labelsFromTile.labels {
-                    textLabels.append(ParsedTextLabel(
-                        id: label.id,
-                        localPosition: label.localPosition * scale + offset,
-                        nameEn: label.nameEn,
-                        scale: label.scale,
-                        sortRank: label.sortRank
-                    ))
+                await MainActor.run {
+                    self.assembledMap.drawLabelsFinal = result.drawLabelsFinal
+                    self.assembledMap.drawLabelsFinal?.result.drawMapLabelsData.intersectionsBuffer = result.intersectionBuffer
+                    self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds * 2))
                 }
             }
-            textLabels.sort(by: { label1, label2 in
-                return label1.sortRank < label2.sortRank
-            }) // сортировка по возрастанию
-            
-            var hideCount = 0
-            let previousTextLabels = await mapLabelsIntersectionData.previousTextLabels
-            for previousTextLabel in previousTextLabels {
-                let exist = textLabels.contains(where: { textLabel in textLabel.id == previousTextLabel.id })
-                let isExpired = await mapLabelsIntersectionData.isExpired(label: previousTextLabel, currentElapsed: currentElapsedTime)
-                if (exist == false && isExpired == false) {
-                    textLabels.append(previousTextLabel)
-                    hideCount += 1
-                }
-            }
-            await mapLabelsIntersectionData.setPreviousTextLabels(previousTextLabels: textLabels)
-            
-            if (Settings.debugIntersectionsLabels) { print("textLabels count: \(textLabels.count)") }
-            
-            guard textLabels.isEmpty == false else { return }
-            let result = textTools.mapLabelsAssembler.assemble(
-                lines: textLabels.map { line in
-                    MapLabelsAssembler.TextLineData(
-                        text: line.nameEn,
-                        scale: line.scale,
-                        localPosition: SIMD2<Float>(line.localPosition)
-                    )
-                },
-                font: textTools.robotoFont.boldFont,
-            )
-            
-            let metaLabels = result.metaLines
-            var uniforms = labels.uniforms
-            let ids = textLabels.map { label in label.id }
-            guard metaLabels.isEmpty == false else { return }
-            
-            let worldPositions = metaLabels.map {meta in meta.worldPosition}
-            let uniformsBuffer = metalDevice.makeBuffer(bytes: &uniforms, length: MemoryLayout<Uniforms>.stride)!
-            let inputBuffer = metalDevice.makeBuffer(bytes: worldPositions, length: MemoryLayout<SIMD2<Float>>.stride * worldPositions.count)!
-            let outputBuffer = metalDevice.makeBuffer(length: MemoryLayout<SIMD2<Float>>.stride * worldPositions.count)!
-            let computeScreenPositions = ComputeScreenPositions(
-                inputBuffer: inputBuffer,
-                outputBuffer: outputBuffer,
-                vertexCount: worldPositions.count
-            )
-            
-            guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
-                  let computeEncoder = commandBuffer.makeComputeCommandEncoder() else { return }
-            commandBuffer.addCompletedHandler { [weak self] _ in self?.gpuComputeComplete(computeScreenPositions,
-                                                                                          labelsAssembled: result,
-                                                                                          ids: ids,
-                                                                                          hideCount: hideCount,
-                                                                                          pan: SIMD2<Float>(panX, panY)
-            ) }
-            transformWorldToScreenPositionPipeline.selectComputePipeline(computeEncoder: computeEncoder)
-            computeLabelScreen.transform(
-                uniforms: uniformsBuffer,
-                computeEncoder: computeEncoder,
-                computeScreenPositions: computeScreenPositions
-            )
-            computeEncoder.endEncoding()
-            commandBuffer.commit()
         }
     }
     
-    private func gpuComputeComplete(_ computeScreenPositions: ComputeScreenPositions,
-                                    labelsAssembled: MapLabelsAssembler.Result?,
-                                    ids: [UInt64],
-                                    hideCount: Int,
-                                    pan: SIMD2<Float>
-    ) {
-        Task {
-            guard let labelsAssembled = labelsAssembled else { return }
-            let screenPositions = computeScreenPositions.readOutput()
-            if (Settings.debugIntersectionsLabels) { print("Screen positions evaluated") }
+    func queueLabelsUpdating(_ labels: MakeLabels) {
+        continuation.yield(labels)
+    }
+    
+    private func handleNewLabels(newLabels: [MapLabelsMaker.TextLabelsFromTile], currentElapsedTime: Float) {
+        var textLabels: [ParsedTextLabel] = []
+        for labelsFromTile in newLabels {
+            let tile = labelsFromTile.tile
+            let transition = MapMathUtils.getTileTransition(tile: tile)
+            let scale = transition.scale
+            let tileWorld = transition.tileWorld
             
-            let metaLabels = labelsAssembled.metaLines
-            var minX: Float = 0
-            var maxX: Float = 0
-            var minY: Float = 0
-            var maxY: Float = 0
-            var rectangles: [Rectangle] = []
-            for i in 0..<screenPositions.count {
-                let screenPosition = screenPositions[i]
-                let metaLine = metaLabels[i]
-                let labelId = ids[i]
-                let halfTextWidth: Float = metaLine.measuredText.width / 2
-                
-                let topLeft = SIMD2<Float>(
-                    screenPosition.x - halfTextWidth * metaLine.scale,
-                    screenPosition.y + metaLine.measuredText.top * metaLine.scale
-                )
-                let bottomRight = SIMD2<Float>(
-                    screenPosition.x + halfTextWidth * metaLine.scale,
-                    screenPosition.y - abs(metaLine.measuredText.bottom) * metaLine.scale
-                )
-                
-                minX = min(min(topLeft.x, bottomRight.x), minX)
-                maxX = max(max(topLeft.x, bottomRight.x), maxX)
-                minY = min(min(topLeft.y, bottomRight.y), minY)
-                maxY = max(max(topLeft.y, bottomRight.y), maxY)
-                
-                let rectangle = Rectangle(id: labelId, topLeft: topLeft, bottomRight: bottomRight)
-                rectangles.append(rectangle)
-            }
-            
-            let maxGridX = maxX - minX
-            let maxGridY = maxY - minY
-            for i in 0..<rectangles.count {
-                let rectangle = rectangles[i]
-                let shiftedRectangle = Rectangle(
-                    id: rectangle.id,
-                    topLeft: rectangle.topLeft - SIMD2<Float>(minX, minY),
-                    bottomRight: rectangle.bottomRight - SIMD2<Float>(minX, minY)
-                )
-                rectangles[i] = shiftedRectangle
-            }
-            
-            let horizontalDivisions = Int(ceil(maxGridX / Settings.horizontalGridDivisionSize))
-            let verticalDivisions = Int(ceil(maxGridY / Settings.verticalGridDivisionSize))
-            
-            let currentObjectsMap = await mapLabelsIntersectionData.currentObjectsMap
-            let grid = Grid(width: maxGridX, height: maxGridY, horizontalDivisions: horizontalDivisions, verticalDivisions: verticalDivisions)
-            var intersectionsArray: [LabelIntersection] = []
-            for i in 0..<rectangles.count {
-                let rectangle = rectangles[i]
-                let shouldBeHiden = i >= rectangles.count - hideCount
-                var hide = shouldBeHiden
-                if (shouldBeHiden == false) {
-                    hide = grid.insertAndCheckIntersection(rectangle: rectangle) == true
-                }
-                
-                if let savedState = currentObjectsMap[rectangle.id] {
-                    if (hide == savedState.hide) {
-                        intersectionsArray.append(savedState)
-                    } else {
-                        let newState = LabelIntersection(
-                            hide: hide,
-                            createdTime: frameCounter.getElapsedTimeSeconds()
-                        )
-                        await mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
-                        intersectionsArray.append(newState)
-                    }
-                } else {
-                    if (hide == false) {
-                        let newState = LabelIntersection(
-                            hide: hide == true,
-                            createdTime: frameCounter.getElapsedTimeSeconds()
-                        )
-                        await mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
-                        intersectionsArray.append(newState)
-                    } else {
-                        let newState = LabelIntersection(
-                            hide: hide == true,
-                            createdTime: frameCounter.getElapsedTimeSeconds() - Settings.labelsFadeAnimationTimeSeconds
-                        )
-                        await mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
-                        intersectionsArray.append(newState)
-                    }
-                }
-            }
-            
-            let intersectBuffer = metalDevice.makeBuffer(
-                bytes: intersectionsArray,
-                length: MemoryLayout<LabelIntersection>.stride * intersectionsArray.count
-            )!
-            
-            await MainActor.run {
-                self.assembledMap.drawLabelsFinal = DrawAssembledMap.DrawLabelsFinal(result: labelsAssembled, pan: pan)
-                self.assembledMap.drawLabelsFinal?.result.drawMapLabelsData.intersectionsBuffer = intersectBuffer
-                self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds * 2))
+            for label in labelsFromTile.labels {
+                textLabels.append(ParsedTextLabel(
+                    id: label.id,
+                    localPosition: label.localPosition * scale + tileWorld,
+                    nameEn: label.nameEn,
+                    scale: label.scale,
+                    sortRank: label.sortRank
+                ))
             }
         }
+        textLabels.sort(by: { label1, label2 in
+            return label1.sortRank < label2.sortRank
+        }) // сортировка по возрастанию
+        
+        var hideCount = 0
+        let previousTextLabels = mapLabelsIntersectionData.previousTextLabels
+        for previousTextLabel in previousTextLabels {
+            let exist = textLabels.contains(where: { textLabel in textLabel.id == previousTextLabel.id })
+            let isExpired = mapLabelsIntersectionData.isExpired(label: previousTextLabel, currentElapsed: currentElapsedTime)
+            if (exist == false && isExpired == false) {
+                textLabels.append(previousTextLabel)
+                hideCount += 1
+            }
+        }
+        mapLabelsIntersectionData.setPreviousTextLabels(previousTextLabels: textLabels)
+        
+        if (Settings.debugIntersectionsLabels) { print("textLabels count: \(textLabels.count)") }
+        
+        guard textLabels.isEmpty == false else { return }
+        let labelsAssemblingResult = textTools.mapLabelsAssembler.assemble(
+            lines: textLabels.map { line in
+                MapLabelsAssembler.TextLineData(
+                    text: line.nameEn,
+                    scale: line.scale,
+                    localPosition: SIMD2<Float>(line.localPosition)
+                )
+            },
+            font: textTools.robotoFont.boldFont,
+        )
+        
+        unionLabels = UnionLabels(
+            labelsAssemblingResult: labelsAssemblingResult,
+            ids: textLabels.map { label in label.id },
+            hideCount: hideCount,
+        )
+    }
+    
+    private func makeLabelsForRendering(_ labels: MakeLabels) -> MakingResult? {
+        let start = DispatchTime.now()
+        
+        let currentElapsedTime = labels.currentElapsedTime
+        let mapPanning = labels.mapPanning
+        let pan = SIMD2<Float>(mapPanning.x, mapPanning.y)
+        let lastUniforms = labels.lastUniforms
+        let lastViewportSize = labels.viewportSize
+        if let newLabels = labels.newLabels {
+            handleNewLabels(newLabels: newLabels, currentElapsedTime: currentElapsedTime)
+        }
+        if (Settings.debugIntersectionsLabels) { print("Make Labels for rendering") }
+        
+        
+        guard let labelsAssemblingResult = unionLabels.labelsAssemblingResult else { return nil }
+        let metaLabels = labelsAssemblingResult.metaLines
+        guard metaLabels.isEmpty == false else { return nil }
+        
+        var minX: Float = 0
+        var maxX: Float = 0
+        var minY: Float = 0
+        var maxY: Float = 0
+        
+        let pvMatrix = lastUniforms.projectionMatrix * lastUniforms.viewMatrix
+        var rectangles: [Rectangle] = []
+        for i in 0..<metaLabels.count {
+            let worldPosSimd2 = metaLabels[i].worldPosition + pan
+            let worldPosition = SIMD4<Float>(worldPosSimd2.x, worldPosSimd2.y, 0, 1)
+            let clipPos = pvMatrix * worldPosition;
+            let ndc = SIMD3<Float>(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
+            let viewportSize = lastViewportSize;
+            let viewportWidth = viewportSize.x;
+            let viewportHeight = viewportSize.y;
+            let screenX = ((ndc.x + 1) / 2) * viewportWidth;
+            let screenY = ((ndc.y + 1) / 2) * viewportHeight;
+            let screenPosition = SIMD2<Float>(screenX, screenY);
+            
+            let metaLine = metaLabels[i]
+            let labelId = unionLabels.ids[i]
+            let halfTextWidth: Float = metaLine.measuredText.width / 2
+            
+            let topLeft = SIMD2<Float>(
+                screenPosition.x - halfTextWidth * metaLine.scale,
+                screenPosition.y + metaLine.measuredText.top * metaLine.scale
+            )
+            let bottomRight = SIMD2<Float>(
+                screenPosition.x + halfTextWidth * metaLine.scale,
+                screenPosition.y - abs(metaLine.measuredText.bottom) * metaLine.scale
+            )
+            
+            minX = min(min(topLeft.x, bottomRight.x), minX)
+            maxX = max(max(topLeft.x, bottomRight.x), maxX)
+            minY = min(min(topLeft.y, bottomRight.y), minY)
+            maxY = max(max(topLeft.y, bottomRight.y), maxY)
+            
+            let rectangle = Rectangle(id: labelId, topLeft: topLeft, bottomRight: bottomRight)
+            rectangles.append(rectangle)
+        }
+        
+        let maxGridX = maxX - minX
+        let maxGridY = maxY - minY
+        for i in 0..<rectangles.count {
+            let rectangle = rectangles[i]
+            let shiftedRectangle = Rectangle(
+                id: rectangle.id,
+                topLeft: rectangle.topLeft - SIMD2<Float>(minX, minY),
+                bottomRight: rectangle.bottomRight - SIMD2<Float>(minX, minY)
+            )
+            rectangles[i] = shiftedRectangle
+        }
+        
+        let horizontalDivisions = Int(ceil(maxGridX / Settings.horizontalGridDivisionSize))
+        let verticalDivisions = Int(ceil(maxGridY / Settings.verticalGridDivisionSize))
+        
+        let currentObjectsMap = mapLabelsIntersectionData.currentObjectsMap
+        let grid = Grid(width: maxGridX, height: maxGridY, horizontalDivisions: horizontalDivisions, verticalDivisions: verticalDivisions)
+        var intersectionsArray: [LabelIntersection] = []
+        for i in 0..<rectangles.count {
+            let rectangle = rectangles[i]
+            let shouldBeHiden = i >= rectangles.count - unionLabels.hideCount
+            var hide = shouldBeHiden
+            if (shouldBeHiden == false) {
+                hide = grid.insertAndCheckIntersection(rectangle: rectangle) == true
+            }
+            
+            if let savedState = currentObjectsMap[rectangle.id] {
+                if (hide == savedState.hide) {
+                    intersectionsArray.append(savedState)
+                } else {
+                    let newState = LabelIntersection(
+                        hide: hide == true,
+                        createdTime: currentElapsedTime
+                    )
+                    mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
+                    intersectionsArray.append(newState)
+                }
+            } else {
+                if (hide == false) {
+                    let newState = LabelIntersection(
+                        hide: hide == true,
+                        createdTime: currentElapsedTime
+                    )
+                    mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
+                    intersectionsArray.append(newState)
+                } else {
+                    let newState = LabelIntersection(
+                        hide: hide == true,
+                        createdTime: currentElapsedTime - Settings.labelsFadeAnimationTimeSeconds
+                    )
+                    mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
+                    intersectionsArray.append(newState)
+                }
+            }
+        }
+        
+        let intersectBuffer = metalDevice.makeBuffer(
+            bytes: intersectionsArray,
+            length: MemoryLayout<LabelIntersection>.stride * intersectionsArray.count
+        )!
+        
+        let end = DispatchTime.now()
+        let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds
+        let timeInterval = Double(nanoTime) / 1_000_000_000
+        if (Settings.debugIntersectionsLabels) { print("Creating labels time seconds: \(timeInterval)") }
+        
+        return MakingResult(
+            drawLabelsFinal: DrawAssembledMap.DrawLabelsFinal(result: labelsAssemblingResult),
+            intersectionBuffer: intersectBuffer
+        )
+    }
+    
+    struct MakingResult {
+        let drawLabelsFinal: DrawAssembledMap.DrawLabelsFinal
+        let intersectionBuffer: MTLBuffer
     }
 }

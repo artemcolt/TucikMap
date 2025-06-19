@@ -112,7 +112,7 @@ class TileMvtParser {
         let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
         return ParsedTextLabel(
             id: giveMeId.forTextLabel(),
-            localPosition: coordinate,
+            localPosition: SIMD2<Float>(coordinate),
             nameEn: filterTextResult.text,
             scale: filterTextResult.scale,
             sortRank: filterTextResult.sortRank

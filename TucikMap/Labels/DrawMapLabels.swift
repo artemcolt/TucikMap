@@ -50,9 +50,7 @@ class DrawMapLabels {
         let intersectionsBuffer = drawMapLabelsData.intersectionsBuffer
         var animationTime = Settings.labelsFadeAnimationTimeSeconds
         
-        let panXDelta = camera.mapPanning.x - drawLabelsFinal.pan.x
-        let panYDelta = camera.mapPanning.y - drawLabelsFinal.pan.y
-        var panDeltaForLabels = SIMD2<Float>(panXDelta, panYDelta)
+        var panDeltaForLabels = camera.mapPanning
         
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)

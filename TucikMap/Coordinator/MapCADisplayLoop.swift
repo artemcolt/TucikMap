@@ -6,19 +6,22 @@
 //
 
 class MapCADisplayLoop {
-    private let mapLablesIntersection: MapLabelsMaker
-    private let updateBufferedUniform: UpdateBufferedUniform
+    private let mapLabelsMaker: MapLabelsMaker
     private let needComputeMapLabelsIntersections: NeedComputeMapLabelsIntersections
+    private let camera: Camera
+    private let frameCounter: FrameCounter
     
     private var loopCount: UInt64 = 0
     private var computeIntersectionsEvery: UInt64 = Settings.refreshLabelsIntersectionsEveryNDisplayLoop
     
-    init(mapLablesIntersection: MapLabelsMaker,
-         updateBufferedUniform: UpdateBufferedUniform,
-         needComputeMapLabelsIntersections: NeedComputeMapLabelsIntersections
+    init(mapLabelsMaker: MapLabelsMaker,
+         needComputeMapLabelsIntersections: NeedComputeMapLabelsIntersections,
+         camera: Camera,
+         frameCounter: FrameCounter
     ) {
-        self.mapLablesIntersection = mapLablesIntersection
-        self.updateBufferedUniform = updateBufferedUniform
+        self.camera = camera
+        self.frameCounter = frameCounter
+        self.mapLabelsMaker = mapLabelsMaker
         self.needComputeMapLabelsIntersections = needComputeMapLabelsIntersections
     }
     
@@ -26,12 +29,15 @@ class MapCADisplayLoop {
         loopCount += 1
         
         if (canComputeIntersectionsNow()) {
-            let currentLabels = needComputeMapLabelsIntersections.getCurrentLabels()
-            guard let lastUniforms = updateBufferedUniform.lastUniforms else { return }
-            mapLablesIntersection.makeLabelsForRendering(MapLabelsMaker.MakeLabels(
-                currentLabels: currentLabels,
-                uniforms: lastUniforms
-            ))
+            let newLabels = needComputeMapLabelsIntersections.getNewLabels()
+            let makeLabels = MapLabelsMaker.MakeLabels(
+                newLabels: newLabels,
+                currentElapsedTime: frameCounter.getElapsedTimeSeconds(),
+                mapPanning: camera.mapPanning,
+                lastUniforms: camera.updateBufferedUniform.lastUniforms,
+                viewportSize: camera.updateBufferedUniform.lastViewportSize
+            )
+            mapLabelsMaker.queueLabelsUpdating(makeLabels)
         }
     }
     

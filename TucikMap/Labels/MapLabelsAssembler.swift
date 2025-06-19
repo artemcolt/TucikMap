@@ -10,7 +10,7 @@ struct DrawMapLabelsData {
     let vertexBuffer: MTLBuffer
     let mapLabelSymbolMeta: MTLBuffer
     let mapLabelLineMeta: MTLBuffer
-    var intersectionsBuffer: MTLBuffer
+    var intersectionsBuffer: MTLBuffer?
     let verticesCount: Int
     let atlas: MTLTexture
 }
@@ -93,16 +93,12 @@ class MapLabelsAssembler {
             bytes: assembledBytes.mapLabelLineMeta,
             length: MemoryLayout<MapLabelLineMeta>.stride * assembledBytes.mapLabelLineMeta.count
         )!
-        let intersectionsBuffer = metalDevice.makeBuffer(
-            bytes: Array(repeating: LabelIntersection(hide: true, createdTime: frameCounter.getElapsedTimeSeconds()), count: lines.count),
-            length: MemoryLayout<LabelIntersection>.stride * lines.count
-        )!
         
         let drawData = DrawMapLabelsData(
             vertexBuffer: vertexBuffer,
             mapLabelSymbolMeta: mapLabelSymbolMetaBuffer,
             mapLabelLineMeta: mapLabelLineMetaBuffer,
-            intersectionsBuffer: intersectionsBuffer,
+            intersectionsBuffer: nil,
             verticesCount: assembledBytes.verticesCount,
             atlas: assembledBytes.atlas
         )

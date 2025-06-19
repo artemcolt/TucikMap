@@ -83,9 +83,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 transformWorldToScreenPositionPipeline: pipelines.transformToScreenPipeline,
                 assembledMap: camera.assembledMapUpdater.assembledMap,
                 renderFrameCount: renderFrameCount,
-                frameCounter: frameCounter,
                 textTools: textTools,
-                camera: camera
             )
             assembledMapWrapper = DrawAssembledMap(
                 metalDevice: metalDevice,
@@ -95,9 +93,10 @@ class Coordinator: NSObject, MTKViewDelegate {
             )
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
             mapCADisplayLoop = MapCADisplayLoop(
-                mapLablesIntersection: mapLabelsMaker,
-                updateBufferedUniform: camera.updateBufferedUniform,
-                needComputeMapLabelsIntersections: camera.assembledMapUpdater.needComputeLabelsIntersections
+                mapLabelsMaker: mapLabelsMaker,
+                needComputeMapLabelsIntersections: camera.assembledMapUpdater.needComputeLabelsIntersections,
+                camera: camera,
+                frameCounter: frameCounter
             )
             self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: mapCADisplayLoop, renderFrameCount: renderFrameCount)
         }
@@ -109,8 +108,6 @@ class Coordinator: NSObject, MTKViewDelegate {
         // Handle viewport size changes - update all uniform buffers
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
-        //camera.moveToTile(tileX: 18, tileY: 10, tileZ: 5, view: view, size: size)
-        
     }
     
     // Three-step rendering process

@@ -34,21 +34,19 @@ class MapMathUtils {
     }
     
     struct TileTransition {
-        let offset: SIMD2<Double>
-        let scale: SIMD2<Double>
+        let tileWorld: SIMD2<Float>
+        let scale: SIMD2<Float>
     }
     
-    static func getTileTransition(tile: Tile, pan: SIMD2<Double>) -> TileTransition {
+    static func getTileTransition(tile: Tile) -> TileTransition {
         let mapZParameters = MapZParameters(z: tile.z)
         let tileSize = mapZParameters.tileSize
-        let tileCenterX = Double(tile.x) + 0.5
-        let tileCenterY = Double(tile.y) + 0.5
-        let tileWorldX = tileCenterX * Double(tileSize) - Double(Settings.mapSize) / 2
-        let tileWorldY = Double(Settings.mapSize) / 2 - tileCenterY * Double(tileSize)
-        let offsetX = tileWorldX + pan.x
-        let offsetY = tileWorldY + pan.y
-        let scale = SIMD2<Double>(mapZParameters.scaleX, mapZParameters.scaleY)
-        let offset = SIMD2<Double>(offsetX, offsetY)
-        return TileTransition(offset: offset, scale: scale)
+        let tileCenterX = Float(tile.x) + 0.5
+        let tileCenterY = Float(tile.y) + 0.5
+        let tileWorldX = tileCenterX * Float(tileSize) - Float(Settings.mapSize) / 2
+        let tileWorldY = Float(Settings.mapSize) / 2 - tileCenterY * Float(tileSize)
+        let scale = SIMD2<Float>(mapZParameters.scaleX, mapZParameters.scaleY)
+        let tileWorld = SIMD2<Float>(tileWorldX, tileWorldY)
+        return TileTransition(tileWorld: tileWorld, scale: scale)
     }
 }

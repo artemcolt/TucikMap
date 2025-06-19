@@ -16,6 +16,7 @@ class UpdateBufferedUniform {
     private var currentBufferIndex = -1
     private(set) var semaphore: DispatchSemaphore!
     private(set) var lastUniforms: Uniforms!
+    private(set) var lastViewportSize: SIMD2<Float>!
     
     private let frameCounter: FrameCounter
     private let maxBuffersInFlight = Settings.maxBuffersInFlight
@@ -72,6 +73,8 @@ class UpdateBufferedUniform {
             center: camera.targetPosition,
             up: up
         )
+        
+        lastViewportSize = SIMD2<Float>(Float(viewportSize.width), Float(viewportSize.height))
         
         // Update uniforms
         lastUniforms = Uniforms(

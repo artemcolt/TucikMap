@@ -19,17 +19,6 @@ class MapZoomState {
     private(set) var tileSize: Float = 0
     private(set) var maxTileCoord: Int = 0
     private(set) var tilesCount: Int = 0
-    private var mapZParameters: [Int: MapZParameters] = [:]
-    
-    init() {
-        for i in 0...Settings.zoomLevelMax {
-            mapZParameters[i] = MapZParameters(z: i)
-        }
-    }
-    
-    func getMapZParameters(z: Int) -> MapZParameters {
-        return mapZParameters[z]!
-    }
     
     func update(cameraDistance: Float) {
         // Вычисляем уровень зума на основе расстояния камеры

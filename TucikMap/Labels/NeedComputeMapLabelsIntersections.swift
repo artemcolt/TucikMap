@@ -9,14 +9,21 @@ class NeedComputeMapLabelsIntersections {
     private(set) var flag = false
     private(set) var instant = false
     
+    private var alreadyGaveNewLabels: Bool = false
     private var textLabelsBatch: [MapLabelsMaker.TextLabelsFromTile] = []
     
     func labelsUpdated(textLabelsBatch: [MapLabelsMaker.TextLabelsFromTile]) {
         self.textLabelsBatch = textLabelsBatch
         setNeedsRecompute(instant: false)
+        alreadyGaveNewLabels = false
     }
     
-    func getCurrentLabels() -> [MapLabelsMaker.TextLabelsFromTile] {
+    func getNewLabels() -> [MapLabelsMaker.TextLabelsFromTile]? {
+        if alreadyGaveNewLabels == true {
+            return nil
+        }
+        
+        alreadyGaveNewLabels = true
         return textLabelsBatch
     }
     

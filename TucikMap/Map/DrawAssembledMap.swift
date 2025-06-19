@@ -9,10 +9,8 @@ import MetalKit
 import Foundation
 
 class DrawAssembledMap {
-    
     struct DrawLabelsFinal {
         var result: MapLabelsAssembler.Result
-        var pan: SIMD2<Float>
     }
     
     let mapSize = Settings.mapSize
@@ -39,30 +37,25 @@ class DrawAssembledMap {
         let mapPanning = camera.mapPanning
         let panX = mapPanning.x
         let panY = mapPanning.y
+        let mapSize = Settings.mapSize
+        
+        var allTilesUniform = AllTilesUniform(
+            mapSize: mapSize,
+            panX: panX,
+            panY: panY,
+        )
+        renderEncoder.setVertexBytes(&allTilesUniform, length: MemoryLayout<AllTilesUniform>.stride, index: 4)
         
         for tile in tiles {
-            let mapParameters = mapZoomState.getMapZParameters(z: tile.tile.z)
-            let tileSize = mapParameters.tileSize
-            
-            let tileCenterX = Float(tile.tile.x) + 0.5
-            let tileCenterY = Float(tile.tile.y) + 0.5
-            
-            let tileWorldX = tileCenterX * Float(tileSize) - Settings.mapSize / 2
-            let tileWorldY = Settings.mapSize / 2 - tileCenterY * Float(tileSize)
-            
-            let offsetX = tileWorldX + panX
-            let offsetY = tileWorldY + panY
-            
-            var matrix = MatrixUtils.createTileModelMatrix(
-                scaleX: Float(mapParameters.scaleX),
-                scaleY: Float(mapParameters.scaleY),
-                offsetX: offsetX,
-                offsetY: offsetY
+            var tileUniform = TileUniform(
+                tileX: simd_int1(tile.tile.x),
+                tileY: simd_int1(tile.tile.y),
+                tileZ: simd_int1(tile.tile.z),
             )
             
             renderEncoder.setVertexBuffer(tile.verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(tile.stylesBuffer, offset: 0, index: 2)
-            renderEncoder.setVertexBytes(&matrix, length: MemoryLayout<float4x4>.stride, index: 3)
+            renderEncoder.setVertexBytes(&tileUniform, length: MemoryLayout<TileUniform>.stride, index: 3)
             
             renderEncoder.drawIndexedPrimitives(
                 type: .triangle,

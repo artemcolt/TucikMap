@@ -8,16 +8,16 @@
 import Foundation
 
 class MapZParameters {
-    let zoomFactor: Double
+    let zoomFactor: Float
     let lastTileCoord: Int
-    let tileSize: Double
-    let scaleX: Double
-    let scaleY: Double
+    let tileSize: Float
+    let scaleX: Float
+    let scaleY: Float
     
     init(z: Int) {
-        let mapSize = Double(Settings.mapSize)
+        let mapSize = Float(Settings.mapSize)
         
-        zoomFactor = pow(2.0, Double(z))
+        zoomFactor = pow(2.0, Float(z))
         lastTileCoord = Int(zoomFactor) - 1
         tileSize = mapSize / zoomFactor
         scaleX = tileSize / 2.0
