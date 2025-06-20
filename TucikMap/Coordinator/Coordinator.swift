@@ -109,7 +109,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
         
-        camera.moveTo(lat: 55.751244, lon: 37.618423, zoom: 16, view: view, size: size)
+        //camera.moveTo(lat: 55.751244, lon: 37.618423, zoom: 16, view: view, size: size)
     }
     
     // Three-step rendering process
@@ -158,7 +158,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         drawPoint.draw(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
-            pointSize: Settings.cameraCenterPointSize * mapZoomState.mapScaleFactor,
+            pointSize: Settings.cameraCenterPointSize,
             position: camera.targetPosition,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )

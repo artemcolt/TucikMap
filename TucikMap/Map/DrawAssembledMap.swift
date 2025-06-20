@@ -39,20 +39,23 @@ class DrawAssembledMap {
         let panY = Double(mapPanning.y)
         let mapSize = Double(Settings.mapSize)
         
+        
         for tile in tiles {
-            let zoomFactor = pow(2.0, Double(tile.tile.z));
+            let zoomFactor = pow(2.0, Double(tile.tile.z - mapZoomState.zoomLevel));
             
             let tileCenterX = Double(tile.tile.x) + 0.5;
             let tileCenterY = Double(tile.tile.y) + 0.5;
             let tileSize = mapSize / zoomFactor;
             
-            let tileWorldX = tileCenterX * tileSize - mapSize / 2;
-            let tileWorldY = mapSize / 2 - tileCenterY * tileSize;
+            let mapFactor = pow(2.0, Double(tile.tile.z)) * pow(2.0, Double(mapZoomState.zoomLevel - tile.tile.z))
+            let tileWorldX = tileCenterX * tileSize - mapSize / 2 * mapFactor;
+            let tileWorldY = mapSize / 2 * mapFactor - tileCenterY * tileSize;
+            
             
             let scaleX = tileSize / 2;
             let scaleY = tileSize / 2;
-            let offsetX = tileWorldX + panX;
-            let offsetY = tileWorldY + panY;
+            let offsetX = tileWorldX + panX * mapFactor;
+            let offsetY = tileWorldY + panY * mapFactor;
             
             var modelMatrix = MatrixUtils.createTileModelMatrix(
                 scaleX: Float(scaleX),

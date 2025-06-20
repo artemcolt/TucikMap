@@ -52,7 +52,7 @@ class UpdateBufferedUniform {
         let nearFactor = sqrt(pitchNormalized)
         let farFactor = pitchAngle * Settings.farPlaneIncreaseFactor
 
-        let delta = 1.0 * mapZoomState.mapScaleFactor
+        let delta: Float = 1.0
         let near: Float = camera.cameraDistance - delta - nearFactor * camera.cameraDistance
         let far: Float = camera.cameraDistance + delta + farFactor  * camera.cameraDistance
         //print("near: \(near), far: \(far), camDist: \(camera.cameraDistance)")

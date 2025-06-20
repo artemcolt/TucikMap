@@ -25,7 +25,7 @@ class DrawAxis {
     func createGeometryBuffers() {
         let geometry = GeometryUtils.createAxisGeometry(
             axisLength: Settings.axisLength,
-            axisThickness: Settings.axisThickness / mapState.powZoomLevel
+            axisThickness: Settings.axisThickness
         )
         let positions = geometry.0
         let colors = geometry.1

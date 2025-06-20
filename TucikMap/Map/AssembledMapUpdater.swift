@@ -102,12 +102,12 @@ class AssembledMapUpdater {
     }
     
     private func updateTitles(visibleTiles: [Tile]) {
-        let tileTitleOffset = Settings.tileTitleOffset / mapZoomState.powZoomLevel
+        let tileTitleOffset = Settings.tileTitleOffset
         if Settings.drawTileCoordinates {
             let tileTitles = self.tileTitleAssembler.assemble(
                 tiles: visibleTiles,
                 font: textTools.robotoFont.regularFont,
-                scale: Settings.tileTitleRootSize / mapZoomState.powZoomLevel,
+                scale: Settings.tileTitleRootSize,
                 offset: SIMD2<Float>(tileTitleOffset, tileTitleOffset)
             )
             assembledTileTitles = tileTitles

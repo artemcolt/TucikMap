@@ -74,5 +74,5 @@ class Settings {
     
     static var labelsFadeAnimationTimeSeconds: Float = 0.3
     
-    static let zoomLevelMax = 16
+    static let zoomLevelMax: Float = 20.9
 }

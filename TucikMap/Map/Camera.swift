@@ -15,8 +15,9 @@ class Camera {
     // Camera properties
     private(set) var cameraPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0)
     let targetPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
-    private(set) var mapPanning: SIMD3<Float> = SIMD3<Float>(0, 0, 0) // смещение карты
+    private(set) var mapPanning: SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
     private(set) var cameraDistance: Float = Settings.nullZoomCameraDistance // Расстояние от камеры до цели
+    private(set) var mapZoom: Float = 0
     private(set) var cameraQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1) // Кватернион ориентации камеры
     private(set) var cameraYawQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
     private(set) var updateBufferedUniform: UpdateBufferedUniform!
@@ -58,36 +59,36 @@ class Camera {
         )
     }
     
-    func moveTo(lat: Float, lon: Float, zoom: Float, view: MTKView, size: CGSize) {
-        let lat = -lat
-        let mapSize = Settings.mapSize
-        let nullZoomCameraDistance = Settings.nullZoomCameraDistance
-        
-        // Шаг 1: Преобразование lat, lon в координаты Меркатора
-        let lonRad = lon * .pi / 180
-        let latRad = lat * .pi / 180
-        
-        let x = (lon + 180) / 360 * mapSize
-        let y = (1 - log(tan(.pi / 4 + latRad / 2)) / .pi) / 2 * mapSize
-        
-        // Шаг 2: Расчет расстояния камеры на основе зума
-        cameraDistance = nullZoomCameraDistance / pow(2, zoom)
-        
-        // Шаг 3: Расчет смещения карты
-        let newX = mapSize / 2 - x
-        let newY = mapSize / 2 - y
-        mapPanning = SIMD3<Float>(newX, newY, 0)
-        
-        // Шаг 4: Обновление карты
-        updateMap(view: view, size: size)
-    }
+//    func moveTo(lat: Float, lon: Float, zoom: Float, view: MTKView, size: CGSize) {
+//        let lat = -lat
+//        let mapSize = Settings.mapSize
+//        let nullZoomCameraDistance = Settings.nullZoomCameraDistance
+//        
+//        // Шаг 1: Преобразование lat, lon в координаты Меркатора
+//        let lonRad = lon * .pi / 180
+//        let latRad = lat * .pi / 180
+//        
+//        let x = (lon + 180) / 360 * mapSize
+//        let y = (1 - log(tan(.pi / 4 + latRad / 2)) / .pi) / 2 * mapSize
+//        
+//        // Шаг 2: Расчет расстояния камеры на основе зума
+//        cameraDistance = nullZoomCameraDistance / pow(2, zoom)
+//        
+//        // Шаг 3: Расчет смещения карты
+//        let newX = mapSize / 2 - x
+//        let newY = mapSize / 2 - y
+//        mapPanning = SIMD3<Float>(newX, newY, 0)
+//        
+//        // Шаг 4: Обновление карты
+//        updateMap(view: view, size: size)
+//    }
     
     // Handle single-finger pan gesture for target translation
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
         
         let translation = gesture.translation(in: view)
-        let sensitivity: Float = Settings.panSensitivity * mapZoomState.mapScaleFactor
+        let sensitivity: Float = Settings.panSensitivity / pow(2.0, mapZoom)
         
         panDeltaX = Float(translation.x) * sensitivity
         panDeltaY = -Float(translation.y) * sensitivity
@@ -125,7 +126,7 @@ class Camera {
         guard let view = gesture.view as? MTKView else { return }
         
         let scale = Float(gesture.scale)
-        let sensitivity: Float = Settings.pinchSensitivity * mapZoomState.mapScaleFactor * abs(Float(gesture.velocity))
+        let sensitivity: Float = Settings.pinchSensitivity * abs(Float(gesture.velocity))
         pinchDeltaDistance = (1.0 - scale) * sensitivity // Negative for intuitive zoom: pinch in to zoom out, pinch out to zoom in
         gesture.scale = 1.0 // Reset scale for next event
         
@@ -137,8 +138,9 @@ class Camera {
         
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
-        cameraDistance += pinchDeltaDistance
-        cameraDistance = max(min(Settings.nullZoomCameraDistance, cameraDistance), Settings.minCameraDistance)
+        mapZoom -= pinchDeltaDistance
+        mapZoom = max(0, min(mapZoom, Settings.zoomLevelMax))
+        cameraDistance = Settings.nullZoomCameraDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
         
         // two finger
         let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch, Settings.maxCameraPitch), Settings.minCameraPitch)
@@ -157,19 +159,18 @@ class Camera {
         cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
         cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning
         
-        let visibleHeight = 2 * cameraDistance * tan(Settings.fov / 2)
-        let targetPositionYMin = -Settings.mapSize / 2 + visibleHeight / 2
-        let targetPositionYMax = Settings.mapSize / 2 - visibleHeight / 2
+        let zoomFactor = Double(pow(2.0, floor(mapZoom)))
+        let visibleHeight = 2.0 * Double(cameraDistance) * Double(tan(Settings.fov / 2.0)) / zoomFactor
+        let targetPositionYMin = Double(-Settings.mapSize) / 2.0 + visibleHeight / 2.0
+        let targetPositionYMax = Double(Settings.mapSize) / 2.0  - visibleHeight / 2.0
         
         
         // Pan
         // Move target position in camera's local
         let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
         let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
-        let newMapPanning = mapPanning + right * panDeltaX + forward * panDeltaY
-        if (newMapPanning.y >= targetPositionYMin && newMapPanning.y <= targetPositionYMax) {
-            mapPanning.y = newMapPanning.y
-        }
+        let newMapPanning = mapPanning + SIMD3<Double>(right * panDeltaX + forward * panDeltaY)
+        mapPanning.y = newMapPanning.y
         mapPanning.x = newMapPanning.x
         
         // return to available range
@@ -183,7 +184,7 @@ class Camera {
     }
     
     func updateMap(view: MTKView, size: CGSize) {
-        mapZoomState.update(cameraDistance: cameraDistance)
+        mapZoomState.update(zoomLevelFloat: mapZoom)
         
         // Compute camera position based on distance and orientation
         forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
@@ -205,8 +206,8 @@ class Camera {
         let worldTilesHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
         
         // Определяем центр карты в координатах тайлов
-        centerTileX = (-mapPanning.x + worldTilesHalf) / tileSize
-        centerTileY = (mapPanning.y + worldTilesHalf) / tileSize
+        centerTileX = (-Float(mapPanning.x) + worldTilesHalf) / tileSize
+        centerTileY = (Float(mapPanning.y) + worldTilesHalf) / tileSize
         
         //print("centerTileX \(centerTileX) centerTileY \(centerTileY)")
         
