@@ -84,6 +84,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 assembledMap: camera.assembledMapUpdater.assembledMap,
                 renderFrameCount: renderFrameCount,
                 textTools: textTools,
+                mapZoomState: mapZoomState
             )
             assembledMapWrapper = DrawAssembledMap(
                 metalDevice: metalDevice,
@@ -140,13 +141,13 @@ class Coordinator: NSObject, MTKViewDelegate {
             uniformsBuffer: uniformsBuffer,
             tiles: camera.assembledMapUpdater.assembledMap.tiles
         )
-        
-//        pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
-//        assembledMapWrapper.drawMapLabels(
-//            renderEncoder: renderEncoder,
-//            uniforms: uniformsBuffer,
-//            result: camera.assembledMapUpdater.assembledMap.drawLabelsFinal,
-//        )
+
+        pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
+        assembledMapWrapper.drawMapLabels(
+            renderEncoder: renderEncoder,
+            uniforms: uniformsBuffer,
+            result: camera.assembledMapUpdater.assembledMap.drawLabelsFinal,
+        )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
 //        drawGrid.draw(renderEncoder: renderEncoder,

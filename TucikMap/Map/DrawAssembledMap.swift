@@ -9,9 +9,6 @@ import MetalKit
 import Foundation
 
 class DrawAssembledMap {
-    struct DrawLabelsFinal {
-        var result: MapLabelsAssembler.Result
-    }
     
     let mapSize = Settings.mapSize
     let metalDevice: MTLDevice
@@ -21,7 +18,7 @@ class DrawAssembledMap {
     
     init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera, mapZoomState: MapZoomState) {
         self.metalDevice = metalDevice
-        self.drawMapLabels = DrawMapLabels(metalDevice: metalDevice, screenUniforms: screenUniforms, camera: camera)
+        self.drawMapLabels = DrawMapLabels(metalDevice: metalDevice, screenUniforms: screenUniforms, camera: camera, mapZoomState: mapZoomState)
         self.mapZoomState = mapZoomState
         self.camera = camera
     }
@@ -80,7 +77,7 @@ class DrawAssembledMap {
     func drawMapLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniforms: MTLBuffer,
-        result: DrawLabelsFinal?
+        result: MapLabelsMaker.DrawLabelsFinal?
     ) {
         if let result = result {
             drawMapLabels.draw(

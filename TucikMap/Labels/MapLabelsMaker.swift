@@ -14,27 +14,6 @@ struct LabelIntersection {
     let createdTime: simd_float1
 }
 
-class MapLabelsIntersectionData {
-    private(set) var previousTextLabels: [ParsedTextLabel] = []
-    
-    private(set) var currentTextLabels: [ParsedTextLabel] = []
-    private(set) var currentObjectsMap: [UInt64: LabelIntersection] = [:]
-    
-    func setPreviousTextLabels(previousTextLabels: [ParsedTextLabel]) {
-        self.previousTextLabels = previousTextLabels
-    }
-    
-    func isExpired(label: ParsedTextLabel, currentElapsed: Float) -> Bool {
-        guard let saved = currentObjectsMap[label.id] else { return false }
-        guard saved.hide == true else { return false }
-        return currentElapsed - saved.createdTime > Settings.labelsFadeAnimationTimeSeconds
-    }
-    
-    func saveLabelState(state: LabelIntersection, id: UInt64) {
-        currentObjectsMap[id] = state
-    }
-}
-
 class MapLabelsMaker {
     private let metalDevice: MTLDevice
     private let computeLabelScreen: ComputeLabelScreen
@@ -43,15 +22,19 @@ class MapLabelsMaker {
     private let metalCommandQueue: MTLCommandQueue
     private var assembledMap: AssembledMap
     private var renderFrameCount: RenderFrameCount
+    private let mapZoomState: MapZoomState
     
-    private var mapLabelsIntersectionData: MapLabelsIntersectionData = MapLabelsIntersectionData()
     private var unionLabels: UnionLabels = UnionLabels()
+    private var currentObjectsMap: [UInt64: LabelIntersection] = [:]
+    private var previousTiles: [Tile] = []
+    private var previousTextLabels: [LabelWithTileLink] = []
     
     private let asyncStream: AsyncStream<MakeLabels>
     private let continuation: AsyncStream<MakeLabels>.Continuation
     
     struct UnionLabels {
         var labelsAssemblingResult: MapLabelsAssembler.Result? = nil
+        var tiles: [Tile] = []
         var ids: [UInt64] = []
         var hideCount: Int = 0
     }
@@ -64,7 +47,7 @@ class MapLabelsMaker {
     struct MakeLabels {
         let newLabels: [TextLabelsFromTile]?
         let currentElapsedTime: Float
-        let mapPanning: SIMD3<Float>
+        let mapPanning: SIMD3<Double>
         let lastUniforms: Uniforms
         let viewportSize: SIMD2<Float>
     }
@@ -75,6 +58,11 @@ class MapLabelsMaker {
         let scale: Float
     }
     
+    struct DrawLabelsFinal {
+        var result: MapLabelsAssembler.Result
+        var tiles: [Tile]
+    }
+    
     init(
         metalDevice: MTLDevice,
         metalCommandQueue: MTLCommandQueue,
@@ -82,6 +70,7 @@ class MapLabelsMaker {
         assembledMap: AssembledMap,
         renderFrameCount: RenderFrameCount,
         textTools: TextTools,
+        mapZoomState: MapZoomState,
     ) {
         self.metalDevice = metalDevice
         self.computeLabelScreen = ComputeLabelScreen(metalDevice: metalDevice)
@@ -90,6 +79,7 @@ class MapLabelsMaker {
         self.assembledMap = assembledMap
         self.renderFrameCount = renderFrameCount
         self.textTools = textTools
+        self.mapZoomState = mapZoomState
         (asyncStream, continuation) = AsyncStream<MakeLabels>.makeStream()
         
         Task {
@@ -98,7 +88,6 @@ class MapLabelsMaker {
                 
                 await MainActor.run {
                     self.assembledMap.drawLabelsFinal = result.drawLabelsFinal
-                    self.assembledMap.drawLabelsFinal?.result.drawMapLabelsData.intersectionsBuffer = result.intersectionBuffer
                     self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds * 2))
                 }
             }
@@ -109,49 +98,67 @@ class MapLabelsMaker {
         continuation.yield(labels)
     }
     
+    struct LabelWithTileLink {
+        let parseLabel: ParsedTextLabel
+        let tileIndex: simd_int1
+    }
+    
+    private func isExpired(label: ParsedTextLabel, currentElapsed: Float) -> Bool {
+        guard let saved = currentObjectsMap[label.id] else { return false }
+        guard saved.hide == true else { return false }
+        return currentElapsed - saved.createdTime > Settings.labelsFadeAnimationTimeSeconds
+    }
+    
     private func handleNewLabels(newLabels: [MapLabelsMaker.TextLabelsFromTile], currentElapsedTime: Float) {
-        var textLabels: [ParsedTextLabel] = []
+        var textLabels: [LabelWithTileLink] = []
+        var tiles: [Tile] = []
         for labelsFromTile in newLabels {
-            let tile = labelsFromTile.tile
-            let transition = MapMathUtils.getTileTransition(tile: tile)
-            let scale = transition.scale
-            let tileWorld = transition.tileWorld
-            
-            for label in labelsFromTile.labels {
-                textLabels.append(ParsedTextLabel(
-                    id: label.id,
-                    localPosition: label.localPosition * scale + tileWorld,
-                    nameEn: label.nameEn,
-                    scale: label.scale,
-                    sortRank: label.sortRank
-                ))
-            }
+            let tileIndex = simd_int1(tiles.count)
+            let labelsWithTileLink = labelsFromTile.labels.map { label in LabelWithTileLink(parseLabel: label, tileIndex: tileIndex) }
+            textLabels.append(contentsOf: labelsWithTileLink)
+            tiles.append(labelsFromTile.tile)
         }
+        
         textLabels.sort(by: { label1, label2 in
-            return label1.sortRank < label2.sortRank
+            return label1.parseLabel.sortRank < label2.parseLabel.sortRank
         }) // сортировка по возрастанию
         
         var hideCount = 0
-        let previousTextLabels = mapLabelsIntersectionData.previousTextLabels
+        let tilesStartCount = tiles.count
+        var addedPreviousTileIndices: [simd_int1] = []
         for previousTextLabel in previousTextLabels {
-            let exist = textLabels.contains(where: { textLabel in textLabel.id == previousTextLabel.id })
-            let isExpired = mapLabelsIntersectionData.isExpired(label: previousTextLabel, currentElapsed: currentElapsedTime)
+            let exist = textLabels.contains(where: { textLabel in textLabel.parseLabel.id == previousTextLabel.parseLabel.id })
+            let isExpired = isExpired(label: previousTextLabel.parseLabel, currentElapsed: currentElapsedTime)
             if (exist == false && isExpired == false) {
-                textLabels.append(previousTextLabel)
+                if (addedPreviousTileIndices.contains(previousTextLabel.tileIndex) == false) {
+                    tiles.append(previousTiles[Int(previousTextLabel.tileIndex)])
+                    addedPreviousTileIndices.append(previousTextLabel.tileIndex)
+                }
+                
+                let indexOf = addedPreviousTileIndices.firstIndex(of: previousTextLabel.tileIndex)!
+                textLabels.append(LabelWithTileLink(
+                    parseLabel: previousTextLabel.parseLabel,
+                    tileIndex: simd_int1(indexOf + tilesStartCount)
+                ))
                 hideCount += 1
             }
         }
-        mapLabelsIntersectionData.setPreviousTextLabels(previousTextLabels: textLabels)
+        previousTiles = tiles
+        previousTextLabels = textLabels
         
+        
+        let ids: [UInt64] = textLabels.map { label in label.parseLabel.id }
         if (Settings.debugIntersectionsLabels) { print("textLabels count: \(textLabels.count)") }
         
         guard textLabels.isEmpty == false else { return }
         let labelsAssemblingResult = textTools.mapLabelsAssembler.assemble(
             lines: textLabels.map { line in
-                MapLabelsAssembler.TextLineData(
-                    text: line.nameEn,
-                    scale: line.scale,
-                    localPosition: SIMD2<Float>(line.localPosition)
+                let parseLabel = line.parseLabel
+                return MapLabelsAssembler.TextLineData(
+                    text: parseLabel.nameEn,
+                    scale: parseLabel.scale,
+                    localPosition: SIMD2<Float>(parseLabel.localPosition),
+                    tileIndex: line.tileIndex
                 )
             },
             font: textTools.robotoFont.boldFont,
@@ -159,8 +166,9 @@ class MapLabelsMaker {
         
         unionLabels = UnionLabels(
             labelsAssemblingResult: labelsAssemblingResult,
-            ids: textLabels.map { label in label.id },
-            hideCount: hideCount,
+            tiles: tiles,
+            ids: ids,
+            hideCount: hideCount
         )
     }
     
@@ -168,17 +176,12 @@ class MapLabelsMaker {
         let start = DispatchTime.now()
         
         let currentElapsedTime = labels.currentElapsedTime
-        let mapPanning = labels.mapPanning
-        let pan = SIMD2<Float>(mapPanning.x, mapPanning.y)
-        let lastUniforms = labels.lastUniforms
-        let lastViewportSize = labels.viewportSize
         if let newLabels = labels.newLabels {
             handleNewLabels(newLabels: newLabels, currentElapsedTime: currentElapsedTime)
         }
         if (Settings.debugIntersectionsLabels) { print("Make Labels for rendering") }
         
-        
-        guard let labelsAssemblingResult = unionLabels.labelsAssemblingResult else { return nil }
+        guard var labelsAssemblingResult = unionLabels.labelsAssemblingResult else { return nil }
         let metaLabels = labelsAssemblingResult.metaLines
         guard metaLabels.isEmpty == false else { return nil }
         
@@ -187,11 +190,24 @@ class MapLabelsMaker {
         var minY: Float = 0
         var maxY: Float = 0
         
+        let lastUniforms = labels.lastUniforms
+        let lastViewportSize = labels.viewportSize
+        let pan = labels.mapPanning
         let pvMatrix = lastUniforms.projectionMatrix * lastUniforms.viewMatrix
+        let tiles = unionLabels.tiles
         var rectangles: [Rectangle] = []
+        var modelMatricesMap: [Int: matrix_float4x4] = [:]
         for i in 0..<metaLabels.count {
-            let worldPosSimd2 = metaLabels[i].worldPosition + pan
-            let worldPosition = SIMD4<Float>(worldPosSimd2.x, worldPosSimd2.y, 0, 1)
+            let metaLine = metaLabels[i]
+            let tileIndex = Int(metaLine.tileIndex)
+            var modelMatrix = modelMatricesMap[tileIndex]
+            if modelMatrix == nil {
+                modelMatrix = MapMathUtils.getTileModelMatrix(tile: tiles[tileIndex], mapZoomState: mapZoomState, pan: pan)
+                modelMatricesMap[tileIndex] = modelMatrix
+            }
+            let worldPos = metaLabels[i].worldPosition
+            let translatedWorldPos = modelMatrix! * SIMD4<Float>(worldPos.x, worldPos.y, 0, 1)
+            let worldPosition = SIMD4<Float>(translatedWorldPos.x + Float(pan.x), translatedWorldPos.y + Float(pan.y), 0, 1)
             let clipPos = pvMatrix * worldPosition;
             let ndc = SIMD3<Float>(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
             let viewportSize = lastViewportSize;
@@ -201,7 +217,6 @@ class MapLabelsMaker {
             let screenY = ((ndc.y + 1) / 2) * viewportHeight;
             let screenPosition = SIMD2<Float>(screenX, screenY);
             
-            let metaLine = metaLabels[i]
             let labelId = unionLabels.ids[i]
             let halfTextWidth: Float = metaLine.measuredText.width / 2
             
@@ -235,10 +250,14 @@ class MapLabelsMaker {
             rectangles[i] = shiftedRectangle
         }
         
+        let end = DispatchTime.now()
+        let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds
+        let timeInterval = Double(nanoTime) / 1_000_000_000
+        if (Settings.debugIntersectionsLabels) { print("Creating labels time seconds: \(timeInterval)") }
+        
         let horizontalDivisions = Int(ceil(maxGridX / Settings.horizontalGridDivisionSize))
         let verticalDivisions = Int(ceil(maxGridY / Settings.verticalGridDivisionSize))
         
-        let currentObjectsMap = mapLabelsIntersectionData.currentObjectsMap
         let grid = Grid(width: maxGridX, height: maxGridY, horizontalDivisions: horizontalDivisions, verticalDivisions: verticalDivisions)
         var intersectionsArray: [LabelIntersection] = []
         for i in 0..<rectangles.count {
@@ -255,25 +274,25 @@ class MapLabelsMaker {
                 } else {
                     let newState = LabelIntersection(
                         hide: hide == true,
-                        createdTime: currentElapsedTime
+                        createdTime: currentElapsedTime + Float(timeInterval)
                     )
-                    mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
+                    currentObjectsMap[rectangle.id] = newState
                     intersectionsArray.append(newState)
                 }
             } else {
                 if (hide == false) {
                     let newState = LabelIntersection(
                         hide: hide == true,
-                        createdTime: currentElapsedTime
+                        createdTime: currentElapsedTime + Float(timeInterval)
                     )
-                    mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
+                    currentObjectsMap[rectangle.id] = newState
                     intersectionsArray.append(newState)
                 } else {
                     let newState = LabelIntersection(
                         hide: hide == true,
                         createdTime: currentElapsedTime - Settings.labelsFadeAnimationTimeSeconds
                     )
-                    mapLabelsIntersectionData.saveLabelState(state: newState, id: rectangle.id)
+                    currentObjectsMap[rectangle.id] = newState
                     intersectionsArray.append(newState)
                 }
             }
@@ -284,19 +303,17 @@ class MapLabelsMaker {
             length: MemoryLayout<LabelIntersection>.stride * intersectionsArray.count
         )!
         
-        let end = DispatchTime.now()
-        let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds
-        let timeInterval = Double(nanoTime) / 1_000_000_000
-        if (Settings.debugIntersectionsLabels) { print("Creating labels time seconds: \(timeInterval)") }
         
+        labelsAssemblingResult.drawMapLabelsData.intersectionsBuffer = intersectBuffer
         return MakingResult(
-            drawLabelsFinal: DrawAssembledMap.DrawLabelsFinal(result: labelsAssemblingResult),
-            intersectionBuffer: intersectBuffer
+            drawLabelsFinal: MapLabelsMaker.DrawLabelsFinal(
+                result: labelsAssemblingResult,
+                tiles: unionLabels.tiles
+            )
         )
     }
     
     struct MakingResult {
-        let drawLabelsFinal: DrawAssembledMap.DrawLabelsFinal
-        let intersectionBuffer: MTLBuffer
+        let drawLabelsFinal: MapLabelsMaker.DrawLabelsFinal
     }
 }

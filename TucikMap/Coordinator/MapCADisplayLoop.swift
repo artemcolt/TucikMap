@@ -33,7 +33,7 @@ class MapCADisplayLoop {
             let makeLabels = MapLabelsMaker.MakeLabels(
                 newLabels: newLabels,
                 currentElapsedTime: frameCounter.getElapsedTimeSeconds(),
-                mapPanning: SIMD3<Float>(camera.mapPanning),
+                mapPanning: camera.mapPanning,
                 lastUniforms: camera.updateBufferedUniform.lastUniforms,
                 viewportSize: camera.updateBufferedUniform.lastViewportSize
             )

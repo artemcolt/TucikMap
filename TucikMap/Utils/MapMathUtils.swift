@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import MetalKit
 
 class MapMathUtils {
     static func coordinatesToMapPoint(latitude: Float, longitude: Float) -> SIMD2<Float> {
@@ -33,20 +34,34 @@ class MapMathUtils {
         return SIMD2<Float>(x: Float(x - halfMapSize), y: Float(y - halfMapSize))
     }
     
-    struct TileTransition {
-        let tileWorld: SIMD2<Float>
-        let scale: SIMD2<Float>
-    }
-    
-    static func getTileTransition(tile: Tile) -> TileTransition {
-        let mapZParameters = MapZParameters(z: tile.z)
-        let tileSize = mapZParameters.tileSize
-        let tileCenterX = Float(tile.x) + 0.5
-        let tileCenterY = Float(tile.y) + 0.5
-        let tileWorldX = tileCenterX * Float(tileSize) - Float(Settings.mapSize) / 2
-        let tileWorldY = Float(Settings.mapSize) / 2 - tileCenterY * Float(tileSize)
-        let scale = SIMD2<Float>(mapZParameters.scaleX, mapZParameters.scaleY)
-        let tileWorld = SIMD2<Float>(tileWorldX, tileWorldY)
-        return TileTransition(tileWorld: tileWorld, scale: scale)
+    static func getTileModelMatrix(
+        tile: Tile,
+        mapZoomState: MapZoomState,
+        pan: SIMD3<Double>
+    ) -> float4x4 {
+        let mapSize = Double(Settings.mapSize)
+        let zoomFactor = pow(2.0, Double(tile.z - mapZoomState.zoomLevel));
+        
+        let tileCenterX = Double(tile.x) + 0.5;
+        let tileCenterY = Double(tile.y) + 0.5;
+        let tileSize = mapSize / zoomFactor;
+        
+        let mapFactor = pow(2.0, Double(tile.z)) * pow(2.0, Double(mapZoomState.zoomLevel - tile.z))
+        let tileWorldX = tileCenterX * tileSize - mapSize / 2 * mapFactor;
+        let tileWorldY = mapSize / 2 * mapFactor - tileCenterY * tileSize;
+        
+        
+        let scaleX = tileSize / 2;
+        let scaleY = tileSize / 2;
+        let offsetX = tileWorldX + pan.x * mapFactor;
+        let offsetY = tileWorldY + pan.y * mapFactor;
+        
+        var modelMatrix = MatrixUtils.createTileModelMatrix(
+            scaleX: Float(scaleX),
+            scaleY: Float(scaleY),
+            offsetX: Float(offsetX),
+            offsetY: Float(offsetY)
+        )
+        return modelMatrix
     }
 }
