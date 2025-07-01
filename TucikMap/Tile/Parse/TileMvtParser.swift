@@ -111,7 +111,7 @@ class TileMvtParser {
         guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: tileCoords) else { return nil }
         let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
         return ParsedTextLabel(
-            id: giveMeId.forTextLabel(),
+            id: giveMeId.forScreenCollisionsDetection(),
             localPosition: SIMD2<Float>(coordinate),
             nameEn: filterTextResult.text,
             scale: filterTextResult.scale,

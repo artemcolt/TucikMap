@@ -31,9 +31,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "53"
-            endingLineNumber = "53"
-            landmarkName = "insertAndCheckIntersection(rectangle:)"
-            landmarkType = "7">
+            endingLineNumber = "53">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -65,6 +63,22 @@
             startingLineNumber = "39"
             endingLineNumber = "39"
             landmarkName = "filterTextLabels(properties:tile:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "25C202C6-77A6-41F6-87E6-18D1FB280DE9"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "TucikMapTests/TucikMapTests.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "48"
+            endingLineNumber = "48"
+            landmarkName = "clusterFixed()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

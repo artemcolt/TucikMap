@@ -6,9 +6,9 @@
 //
 
 class GiveMeId {
-    private var textLabelsCurrent: UInt64 = 0
+    private var textLabelsCurrent: UInt = 0
     
-    func forTextLabel() -> UInt64 {
+    func forScreenCollisionsDetection() -> UInt {
         textLabelsCurrent += 1
         return textLabelsCurrent
     }

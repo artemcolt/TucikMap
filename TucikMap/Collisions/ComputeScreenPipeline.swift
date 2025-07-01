@@ -1,17 +1,17 @@
 //
-//  TransformToScreenPipeline.swift
+//  CompueScreenPipeline.swift
 //  TucikMap
 //
-//  Created by Artem on 6/11/25.
+//  Created by Artem on 6/23/25.
 //
 
 import MetalKit
 
-class TransformWorldToScreenPositionPipeline {
+class ComputeScreenPipeline {
     private(set) var pipelineState: MTLComputePipelineState
     
     init(metalDevice: MTLDevice, library: MTLLibrary) {
-        let kernel = library.makeFunction(name: "transformKernel")!
+        let kernel = library.makeFunction(name: "computeScreens")!
         
         pipelineState = try! metalDevice.makeComputePipelineState(function: kernel)
     }

@@ -34,7 +34,6 @@ class Coordinator: NSObject, MTKViewDelegate {
     // Map
     var mapZoomState: MapZoomState!
     var camera: Camera!
-    var mapLabelsMaker: MapLabelsMaker!
     
     // UI
     var drawUI: DrawUI!
@@ -75,16 +74,10 @@ class Coordinator: NSObject, MTKViewDelegate {
                 mapZoomState: mapZoomState,
                 device: device,
                 textTools: textTools,
-                renderFrameCount: renderFrameCount, frameCounter: frameCounter
-            )
-            mapLabelsMaker = MapLabelsMaker(
-                metalDevice: metalDevice,
-                metalCommandQueue: metalCommandQueue,
-                transformWorldToScreenPositionPipeline: pipelines.transformToScreenPipeline,
-                assembledMap: camera.assembledMapUpdater.assembledMap,
                 renderFrameCount: renderFrameCount,
-                textTools: textTools,
-                mapZoomState: mapZoomState
+                frameCounter: frameCounter,
+                library: pipelines.library,
+                metalCommandQueue: metalCommandQueue
             )
             assembledMapWrapper = DrawAssembledMap(
                 metalDevice: metalDevice,
@@ -94,10 +87,11 @@ class Coordinator: NSObject, MTKViewDelegate {
             )
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
             mapCADisplayLoop = MapCADisplayLoop(
-                mapLabelsMaker: mapLabelsMaker,
-                needComputeMapLabelsIntersections: camera.assembledMapUpdater.needComputeLabelsIntersections,
                 camera: camera,
-                frameCounter: frameCounter
+                frameCounter: frameCounter,
+                assembledMapUpdater: camera.assembledMapUpdater,
+                screenCollisionsDetector: camera.screenCollisionsDetector,
+                renderFrameCount: renderFrameCount
             )
             self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: mapCADisplayLoop, renderFrameCount: renderFrameCount)
         }
@@ -145,8 +139,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
         assembledMapWrapper.drawMapLabels(
             renderEncoder: renderEncoder,
-            uniforms: uniformsBuffer,
-            result: camera.assembledMapUpdater.assembledMap.drawLabelsFinal,
+            uniformsBuffer: uniformsBuffer,
+            tiles: camera.assembledMapUpdater.assembledMap.tiles,
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)

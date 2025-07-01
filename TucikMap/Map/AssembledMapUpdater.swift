@@ -20,9 +20,8 @@ class AssembledMapUpdater {
     private var savedView: MTKView!
     private var metalTiles: MetalTilesStorage!
     private var renderFrameCount: RenderFrameCount!
-    let needComputeLabelsIntersections: NeedComputeMapLabelsIntersections
     
-    var assembledMap: AssembledMap = AssembledMap(tiles: [], labelsAssembled: nil)
+    var assembledMap: AssembledMap = AssembledMap(tiles: [])
     var assembledTileTitles: DrawTextData?
     
     init(
@@ -30,9 +29,8 @@ class AssembledMapUpdater {
         device: MTLDevice,
         camera: Camera,
         textTools: TextTools,
-        renderFrameCount: RenderFrameCount,
+        renderFrameCount: RenderFrameCount
     ) {
-        self.needComputeLabelsIntersections = NeedComputeMapLabelsIntersections()
         self.mapZoomState = mapZoomState
         self.textTools = textTools
         self.camera = camera
@@ -85,19 +83,14 @@ class AssembledMapUpdater {
         let replsArray = replacements.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
-        self.assembledMap.tiles = replsArray + actual
+        let metalTiles = replsArray + actual
+        self.assembledMap.tiles = metalTiles
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
         updateTitles(visibleTiles: visibleTiles)
-        needComputeLabelsIntersections.labelsUpdated(
-            textLabelsBatch: assembledMap.tiles.map { metalTile in MapLabelsMaker.TextLabelsFromTile(
-                labels: metalTile.textLabels,
-                tile: metalTile.tile
-            )}
-        )
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
     }
     

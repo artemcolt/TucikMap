@@ -6,46 +6,45 @@
 //
 
 class MapCADisplayLoop {
-    private let mapLabelsMaker: MapLabelsMaker
-    private let needComputeMapLabelsIntersections: NeedComputeMapLabelsIntersections
     private let camera: Camera
     private let frameCounter: FrameCounter
+    private let assembledMapUpdater: AssembledMapUpdater
+    private let screenCollisionsDetector: ScreenCollisionsDetector
+    private let renderFrameCount: RenderFrameCount
     
     private var loopCount: UInt64 = 0
     private var computeIntersectionsEvery: UInt64 = Settings.refreshLabelsIntersectionsEveryNDisplayLoop
     
-    init(mapLabelsMaker: MapLabelsMaker,
-         needComputeMapLabelsIntersections: NeedComputeMapLabelsIntersections,
-         camera: Camera,
-         frameCounter: FrameCounter
+    init(camera: Camera,
+         frameCounter: FrameCounter,
+         assembledMapUpdater: AssembledMapUpdater,
+         screenCollisionsDetector: ScreenCollisionsDetector,
+         renderFrameCount: RenderFrameCount
     ) {
         self.camera = camera
         self.frameCounter = frameCounter
-        self.mapLabelsMaker = mapLabelsMaker
-        self.needComputeMapLabelsIntersections = needComputeMapLabelsIntersections
+        self.assembledMapUpdater = assembledMapUpdater
+        self.screenCollisionsDetector = screenCollisionsDetector
+        self.renderFrameCount = renderFrameCount
     }
     
     func displayLoop() {
         loopCount += 1
         
         if (canComputeIntersectionsNow()) {
-            let newLabels = needComputeMapLabelsIntersections.getNewLabels()
-            let makeLabels = MapLabelsMaker.MakeLabels(
-                newLabels: newLabels,
-                currentElapsedTime: frameCounter.getElapsedTimeSeconds(),
-                mapPanning: camera.mapPanning,
-                lastUniforms: camera.updateBufferedUniform.lastUniforms,
-                viewportSize: camera.updateBufferedUniform.lastViewportSize
-            )
-            mapLabelsMaker.queueLabelsUpdating(makeLabels)
+            if let lastUniforms = camera.updateBufferedUniform.lastUniforms {
+                screenCollisionsDetector.evaluateTilesData(
+                    tiles: assembledMapUpdater.assembledMap.tiles,
+                    lastUniforms: lastUniforms,
+                    mapPanning: camera.mapPanning
+                )
+                renderFrameCount.renderNextNFrames(3)
+            }
         }
     }
     
     private func canComputeIntersectionsNow() -> Bool {
-        let isComputeNeeded = needComputeMapLabelsIntersections.flag
-        let instant = needComputeMapLabelsIntersections.instant
-        if loopCount % computeIntersectionsEvery == 0 && isComputeNeeded || instant {
-            needComputeMapLabelsIntersections.called()
+        if loopCount % computeIntersectionsEvery == 0 {
             return true
         }
         return false

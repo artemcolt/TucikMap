@@ -29,6 +29,30 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "ACD42D382E13BBD5002CE195"
+               BuildableName = "TucikMapTests.xctest"
+               BlueprintName = "TucikMapTests"
+               ReferencedContainer = "container:TucikMap.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AC733C312E13C6C9003AB49D"
+               BuildableName = "TucikMapTests1.xctest"
+               BlueprintName = "TucikMapTests1"
+               ReferencedContainer = "container:TucikMap.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

@@ -61,13 +61,23 @@ class MetalTilesStorage {
                     length: parsedTile.styles.count * MemoryLayout<TilePolygonStyle>.stride
                 )!
                 
+                let builtText = textTools.mapLabelsAssembler.assemble(
+                    lines: parsedTile.textLabels.map { label in MapLabelsAssembler.TextLineData(
+                        text: label.nameEn,
+                        scale: label.scale,
+                        localPosition: label.localPosition
+                    )},
+                    font: textTools.robotoFont.boldFont
+                )
+                
+                
                 let metalTile = MetalTile(
                     verticesBuffer: verticesBuffer,
                     indicesBuffer: indicesBuffer,
                     indicesCount: parsedTile.drawingPolygon.indices.count,
                     stylesBuffer: stylesBuffer,
-                    textLabels: parsedTile.textLabels,
-                    tile: tile
+                    tile: tile,
+                    textLabels: builtText
                 )
                 
                 await MainActor.run {

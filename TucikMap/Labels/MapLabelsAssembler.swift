@@ -10,7 +10,7 @@ struct DrawMapLabelsData {
     let vertexBuffer: MTLBuffer
     let mapLabelSymbolMeta: MTLBuffer
     let mapLabelLineMeta: MTLBuffer
-    var intersectionsBuffer: MTLBuffer?
+    var intersectionsBuffer: MTLBuffer
     let verticesCount: Int
     let atlas: MTLTexture
 }
@@ -38,7 +38,6 @@ class MapLabelsAssembler {
         let text: String
         let scale: Float
         let localPosition: SIMD2<Float>
-        let tileIndex: simd_int1
     }
     
     func assembleBytes(lines: [TextLineData], font: Font) -> DrawMapLabelsBytes {
@@ -60,8 +59,7 @@ class MapLabelsAssembler {
             mapLabelLineMeta.append(MapLabelLineMeta(
                 measuredText: measuredText,
                 scale: line.scale,
-                worldPosition: line.localPosition,
-                tileIndex: line.tileIndex
+                localPosition: line.localPosition
             ))
         }
         
@@ -80,7 +78,8 @@ class MapLabelsAssembler {
         var metaLines: [MapLabelLineMeta]
     }
     
-    func assemble(lines: [TextLineData], font: Font) -> Result {
+    func assemble(lines: [TextLineData], font: Font) -> Result? {
+        guard lines.isEmpty == false else { return nil }
         let assembledBytes = assembleBytes(lines: lines, font: font)
         
         let vertexBuffer = metalDevice.makeBuffer(
@@ -95,12 +94,16 @@ class MapLabelsAssembler {
             bytes: assembledBytes.mapLabelLineMeta,
             length: MemoryLayout<MapLabelLineMeta>.stride * assembledBytes.mapLabelLineMeta.count
         )!
+        let intersectionsBuffer = metalDevice.makeBuffer(
+            bytes: Array(repeating: LabelIntersection(hide: true, createdTime: 0), count: lines.count),
+            length: MemoryLayout<LabelIntersection>.stride * lines.count
+        )!
         
         let drawData = DrawMapLabelsData(
             vertexBuffer: vertexBuffer,
             mapLabelSymbolMeta: mapLabelSymbolMetaBuffer,
             mapLabelLineMeta: mapLabelLineMetaBuffer,
-            intersectionsBuffer: nil,
+            intersectionsBuffer: intersectionsBuffer,
             verticesCount: assembledBytes.verticesCount,
             atlas: assembledBytes.atlas
         )

@@ -15,7 +15,7 @@ class UpdateBufferedUniform {
     
     private var currentBufferIndex = -1
     private(set) var semaphore: DispatchSemaphore!
-    private(set) var lastUniforms: Uniforms!
+    private(set) var lastUniforms: Uniforms?
     private(set) var lastViewportSize: SIMD2<Float>!
     
     private let frameCounter: FrameCounter

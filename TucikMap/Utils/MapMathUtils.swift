@@ -8,6 +8,13 @@
 import Foundation
 import MetalKit
 
+struct TilePositionTranslate {
+    let scaleX: Float
+    let scaleY: Float
+    let offsetX: Float
+    let offsetY: Float
+}
+
 class MapMathUtils {
     static func coordinatesToMapPoint(latitude: Float, longitude: Float) -> SIMD2<Float> {
         // Validate inputs
@@ -34,11 +41,11 @@ class MapMathUtils {
         return SIMD2<Float>(x: Float(x - halfMapSize), y: Float(y - halfMapSize))
     }
     
-    static func getTileModelMatrix(
+    static func getTilePositionTranslate(
         tile: Tile,
         mapZoomState: MapZoomState,
         pan: SIMD3<Double>
-    ) -> float4x4 {
+    ) -> TilePositionTranslate {
         let mapSize = Double(Settings.mapSize)
         let zoomFactor = pow(2.0, Double(tile.z - mapZoomState.zoomLevel));
         
@@ -55,13 +62,25 @@ class MapMathUtils {
         let scaleY = tileSize / 2;
         let offsetX = tileWorldX + pan.x * mapFactor;
         let offsetY = tileWorldY + pan.y * mapFactor;
-        
-        var modelMatrix = MatrixUtils.createTileModelMatrix(
+        return TilePositionTranslate(
             scaleX: Float(scaleX),
             scaleY: Float(scaleY),
             offsetX: Float(offsetX),
             offsetY: Float(offsetY)
         )
-        return modelMatrix
+    }
+    
+    static func getTileModelMatrix(
+        tile: Tile,
+        mapZoomState: MapZoomState,
+        pan: SIMD3<Double>
+    ) -> float4x4 {
+        let tileTranslation = getTilePositionTranslate(tile: tile, mapZoomState: mapZoomState, pan: pan)
+        return MatrixUtils.createTileModelMatrix(
+            scaleX: tileTranslation.scaleX,
+            scaleY: tileTranslation.scaleY,
+            offsetX: tileTranslation.offsetX,
+            offsetY: tileTranslation.offsetY
+        )
     }
 }

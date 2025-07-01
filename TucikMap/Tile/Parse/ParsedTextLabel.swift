@@ -8,7 +8,7 @@
 import Foundation
 
 struct ParsedTextLabel {
-    let id: UInt64
+    let id: UInt
     let localPosition: SIMD2<Float>
     let nameEn: String
     let scale: Float

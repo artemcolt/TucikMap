@@ -14,8 +14,12 @@ struct MapLabelSymbolMeta {
 struct MapLabelLineMeta {
     let measuredText: MeasuredText
     let scale: simd_float1
-    let worldPosition: SIMD2<Float>
-    let tileIndex: simd_int1
+    let localPosition: SIMD2<Float>
+}
+
+struct LabelIntersection {
+    let hide: Bool
+    let createdTime: Float
 }
 
 class DrawMapLabels {
@@ -40,40 +44,39 @@ class DrawMapLabels {
     
     func draw(
         renderEncoder: MTLRenderCommandEncoder,
-        drawLabelsFinal: MapLabelsMaker.DrawLabelsFinal,
-        uniforms: MTLBuffer,
+        tiles: [MetalTile],
+        uniformsBuffer: MTLBuffer,
     ) {
-        let drawMapLabelsData = drawLabelsFinal.result.drawMapLabelsData
-        let atlasTexture = drawMapLabelsData.atlas
-        let vertexBuffer = drawMapLabelsData.vertexBuffer
-        let verticesCount = drawMapLabelsData.verticesCount
-        let mapLabelSymbolMeta = drawMapLabelsData.mapLabelSymbolMeta
-        let mapLabelLineMeta = drawMapLabelsData.mapLabelLineMeta
-        let intersectionsBuffer = drawMapLabelsData.intersectionsBuffer
+        guard tiles.isEmpty == false else { return }
+        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+        
+        let mapPanning = camera.mapPanning
         var animationTime = Settings.labelsFadeAnimationTimeSeconds
-        
-        let tiles = drawLabelsFinal.tiles
-        var modelMatrices: [float4x4] = []
-        for tile in tiles {
-            let tileModelMatrix = MapMathUtils.getTileModelMatrix(
-                tile: tile,
-                mapZoomState: mapZoomState,
-                pan: camera.mapPanning
-            )
-            modelMatrices.append(tileModelMatrix)
-        }
-        
-        renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
-        renderEncoder.setVertexBuffer(mapLabelSymbolMeta, offset: 0, index: 2)
-        renderEncoder.setVertexBuffer(mapLabelLineMeta, offset: 0, index: 3)
-        renderEncoder.setVertexBuffer(uniforms, offset: 0, index: 4)
-        renderEncoder.setVertexBuffer(intersectionsBuffer, offset: 0, index: 5)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride, index: 6)
-        renderEncoder.setVertexBytes(&modelMatrices, length: MemoryLayout<matrix_float4x4>.stride * modelMatrices.count, index: 7)
+        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
+        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
-        renderEncoder.setFragmentTexture(atlasTexture, index: 0)
-        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount)
+        for tile in tiles {
+            guard let textLabels = tile.textLabels else { continue }
+            var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
+            
+            let drawMapLabelsData = textLabels.drawMapLabelsData
+            let vertexBuffer = drawMapLabelsData.vertexBuffer
+            let verticesCount = drawMapLabelsData.verticesCount
+            let mapLabelSymbolMeta = drawMapLabelsData.mapLabelSymbolMeta
+            let mapLabelLineMeta = drawMapLabelsData.mapLabelLineMeta
+            let intersectionsBuffer = drawMapLabelsData.intersectionsBuffer
+            let atlasTexture = drawMapLabelsData.atlas
+            
+            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(mapLabelSymbolMeta, offset: 0, index: 2)
+            renderEncoder.setVertexBuffer(mapLabelLineMeta, offset: 0, index: 3)
+            renderEncoder.setVertexBuffer(intersectionsBuffer, offset: 0, index: 5)
+            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 7)
+            renderEncoder.setFragmentTexture(atlasTexture, index: 0)
+            
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount)
+        }
     }
 }

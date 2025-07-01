@@ -42,7 +42,6 @@ struct MapLabelLineMeta {
     MeasuredText measutedText;
     float scale;
     float2 worldPosition;
-    int tileIndex;
 };
 
 struct MapLabelIntersection {
@@ -58,7 +57,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
                                     constant Uniforms &worldUniforms [[buffer(4)]],
                                     constant MapLabelIntersection* intersections [[buffer(5)]],
                                     constant float& animationDuration [[buffer(6)]],
-                                    constant float4x4* matrixModels [[buffer(7)]],
+                                    constant float4x4& modelMatrix [[buffer(7)]],
                                     uint vertexID [[vertex_id]]
                                     ) {
     int symbolIndex = vertexID / 6;
@@ -69,7 +68,7 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     float textWidth = measuredText.width;
     float scale = lineMeta.scale;
     
-    float4 worldLabelPos = matrixModels[lineMeta.tileIndex] * float4(lineMeta.worldPosition, 0.0, 1.0);
+    float4 worldLabelPos = modelMatrix * float4(lineMeta.worldPosition, 0.0, 1.0);
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
    
@@ -122,23 +121,4 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
     
     float show = mix(1 - in.progress, in.progress, in.show ? 1 : 0);
     return float4(finalColor, finalOpacity * show);
-}
-
-kernel void transformKernel(
-                            device const float2* vertices [[buffer(0)]],
-                            device float2* output [[buffer(1)]],
-                            constant Uniforms& uniforms [[buffer(2)]],
-                            uint gid [[thread_position_in_grid]]
-                            ) {
-    float2 worldLabelPosition = vertices[gid];
-    float4 worldLabelPos = float4(worldLabelPosition, 0.0, 1.0);
-    float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldLabelPos;
-    float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
-    float2 viewportSize = uniforms.viewportSize;
-    float viewportWidth = viewportSize.x;
-    float viewportHeight = viewportSize.y;
-    float screenX = ((ndc.x + 1) / 2) * viewportWidth;
-    float screenY = ((ndc.y + 1) / 2) * viewportHeight;
-    float2 screenPos = float2(screenX, screenY);
-    output[gid] = screenPos;
 }

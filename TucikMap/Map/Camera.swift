@@ -22,6 +22,7 @@ class Camera {
     private(set) var cameraYawQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
     private(set) var updateBufferedUniform: UpdateBufferedUniform!
     private(set) var assembledMapUpdater: AssembledMapUpdater!
+    private(set) var screenCollisionsDetector: ScreenCollisionsDetector!
     private(set) var forward: SIMD3<Float> = SIMD3<Float>(0, 0, 1)
     
     private(set) var cameraPitch: Float = 0
@@ -40,16 +41,26 @@ class Camera {
     
     private var lastTime: TimeInterval = 0
     
+    
+    
     init(
         mapZoomState: MapZoomState,
         device: MTLDevice,
         textTools: TextTools,
         renderFrameCount: RenderFrameCount,
-        frameCounter: FrameCounter
+        frameCounter: FrameCounter,
+        library: MTLLibrary,
+        metalCommandQueue: MTLCommandQueue
     ) {
         self.renderFrameCount = renderFrameCount
         self.mapZoomState = mapZoomState
         self.updateBufferedUniform = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
+        self.screenCollisionsDetector = ScreenCollisionsDetector(
+            metalDevice: device,
+            library: library,
+            metalCommandQueue: metalCommandQueue,
+            mapZoomState: mapZoomState
+        )
         self.assembledMapUpdater = AssembledMapUpdater(
             mapZoomState: mapZoomState,
             device: device,
@@ -134,7 +145,7 @@ class Camera {
     }
     
     @objc func applyMovementToCamera(view: MTKView) {
-        assembledMapUpdater.needComputeLabelsIntersections.setNeedsRecompute()
+        //assembledMapUpdater.needComputeLabelsIntersections.setNeedsRecompute()
         
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values

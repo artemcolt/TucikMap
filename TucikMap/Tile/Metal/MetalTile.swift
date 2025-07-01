@@ -23,8 +23,8 @@ class MetalTile: Hashable {
     let indicesBuffer: MTLBuffer
     let indicesCount: Int
     let stylesBuffer: MTLBuffer
-    let textLabels: [ParsedTextLabel]
     let tile: Tile
+    let textLabels: MapLabelsAssembler.Result?
     
     
     init(
@@ -32,8 +32,8 @@ class MetalTile: Hashable {
         indicesBuffer: MTLBuffer,
         indicesCount: Int,
         stylesBuffer: MTLBuffer,
-        textLabels: [ParsedTextLabel],
-        tile: Tile
+        tile: Tile,
+        textLabels: MapLabelsAssembler.Result?
     ) {
         self.verticesBuffer = verticesBuffer
         self.indicesBuffer = indicesBuffer

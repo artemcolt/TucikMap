@@ -61,11 +61,11 @@ class Settings {
     static let enabledThrottling = false
     static let throttlingNanoSeconds: UInt64 = 4_000_000_000
     
-    static let getOnlySpecificMapLabels: [String] = [] // "Europe", "Asia", "North America", "Africa"
+    static let getOnlySpecificMapLabels: [String] = [] // "Cameroon", "Nigeria", "South Sudan", "Africa", "South Sudan"
     
     static let preferredFramesPerSecond = 60
     
-    static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 60
+    static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 10
     
     static var forceRenderOnDisplayUpdate: Bool = false
     
@@ -75,4 +75,8 @@ class Settings {
     static var labelsFadeAnimationTimeSeconds: Float = 0.3
     
     static let zoomLevelMax: Float = 20.9
+    
+    static let gridCollisionSize: Float = 1000
+    static let worldCollisionSize: Float = 12_000
+    static let shiftCollisionLocation: Float = 5_000
 }
