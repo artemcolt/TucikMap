@@ -126,6 +126,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 guard let intersections = intersectionsResultByTiles[i] else { continue }
                 let tile = assembledTiles[i]
                 guard let textLabels = tile.textLabels else { continue }
+                guard textLabels.metaLines.count == intersections.count else { continue }
                 let copyToBuffer = textLabels.drawMapLabelsData.intersectionsTrippleBuffer[currentFBIdx]
                 copyToBuffer.contents()
                             .copyMemory(from: intersections, byteCount: MemoryLayout<LabelIntersection>.stride * intersections.count)

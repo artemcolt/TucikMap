@@ -135,12 +135,15 @@ class ScreenCollisionsDetector {
                 ))
                 
                 let hide = added == false
-                let previousState = self.savedLabelIntersections[collisionId] ?? LabelIntersection(hide: true, createdTime: 0)
-                let statusChanged = hide != previousState.hide
+                let previousState = self.savedLabelIntersections[collisionId]
+                let previousStateIsNil = previousState == nil
+                let statusChanged = hide != previousState?.hide
+                let updateCreatedTime = statusChanged
+                let usePreviousCreatedTime = previousStateIsNil ? 0 : previousState!.createdTime
                 
                 let labelIntersection = LabelIntersection(
                     hide: hide,
-                    createdTime: statusChanged ? self.frameCounter.getElapsedTimeSeconds() : previousState.createdTime
+                    createdTime: updateCreatedTime ? self.frameCounter.getElapsedTimeSeconds() : usePreviousCreatedTime
                 )
                 labelIntersections[i] = labelIntersection
                 self.savedLabelIntersections[collisionId] = labelIntersection
@@ -160,7 +163,7 @@ class ScreenCollisionsDetector {
             
             let endTime = CFAbsoluteTimeGetCurrent()
             let absoluteTimeSpent = endTime - startTime
-            print("timeSpent = \(absoluteTimeSpent)")
+            //print("timeSpent = \(absoluteTimeSpent)")
             //print("positions = ", spaceDiscretisation.positions)
             self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
         }

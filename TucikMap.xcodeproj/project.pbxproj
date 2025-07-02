@@ -12,13 +12,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		AC733C362E13C6C9003AB49D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AC1A53802DE5BAA4007E96AD /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AC1A53872DE5BAA4007E96AD;
-			remoteInfo = TucikMap;
-		};
 		ACD42D3D2E13BBD5002CE195 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = AC1A53802DE5BAA4007E96AD /* Project object */;
@@ -30,7 +23,6 @@
 
 /* Begin PBXFileReference section */
 		AC1A53882DE5BAA4007E96AD /* TucikMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TucikMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AC733C322E13C6C9003AB49D /* TucikMapTests1.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TucikMapTests1.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACD42D392E13BBD5002CE195 /* TucikMapTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TucikMapTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -54,13 +46,6 @@
 			files = (
 				AC9634782DE788140040488F /* SwiftEarcut in Frameworks */,
 				AC96346E2DE7465D0040488F /* MVTTools in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AC733C2F2E13C6C9003AB49D /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,7 +73,6 @@
 			children = (
 				AC1A53882DE5BAA4007E96AD /* TucikMap.app */,
 				ACD42D392E13BBD5002CE195 /* TucikMapTests.xctest */,
-				AC733C322E13C6C9003AB49D /* TucikMapTests1.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -119,26 +103,6 @@
 			productName = TucikMap;
 			productReference = AC1A53882DE5BAA4007E96AD /* TucikMap.app */;
 			productType = "com.apple.product-type.application";
-		};
-		AC733C312E13C6C9003AB49D /* TucikMapTests1 */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = AC733C3A2E13C6CA003AB49D /* Build configuration list for PBXNativeTarget "TucikMapTests1" */;
-			buildPhases = (
-				AC733C2E2E13C6C9003AB49D /* Sources */,
-				AC733C2F2E13C6C9003AB49D /* Frameworks */,
-				AC733C302E13C6C9003AB49D /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				AC733C372E13C6C9003AB49D /* PBXTargetDependency */,
-			);
-			name = TucikMapTests1;
-			packageProductDependencies = (
-			);
-			productName = TucikMapTests1;
-			productReference = AC733C322E13C6C9003AB49D /* TucikMapTests1.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		ACD42D382E13BBD5002CE195 /* TucikMapTests */ = {
 			isa = PBXNativeTarget;
@@ -176,10 +140,6 @@
 					AC1A53872DE5BAA4007E96AD = {
 						CreatedOnToolsVersion = 16.3;
 					};
-					AC733C312E13C6C9003AB49D = {
-						CreatedOnToolsVersion = 16.3;
-						TestTargetID = AC1A53872DE5BAA4007E96AD;
-					};
 					ACD42D382E13BBD5002CE195 = {
 						CreatedOnToolsVersion = 16.3;
 						TestTargetID = AC1A53872DE5BAA4007E96AD;
@@ -206,20 +166,12 @@
 			targets = (
 				AC1A53872DE5BAA4007E96AD /* TucikMap */,
 				ACD42D382E13BBD5002CE195 /* TucikMapTests */,
-				AC733C312E13C6C9003AB49D /* TucikMapTests1 */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		AC1A53862DE5BAA4007E96AD /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AC733C302E13C6C9003AB49D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -243,13 +195,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AC733C2E2E13C6C9003AB49D /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		ACD42D352E13BBD5002CE195 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -260,11 +205,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		AC733C372E13C6C9003AB49D /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AC1A53872DE5BAA4007E96AD /* TucikMap */;
-			targetProxy = AC733C362E13C6C9003AB49D /* PBXContainerItemProxy */;
-		};
 		ACD42D3E2E13BBD5002CE195 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = AC1A53872DE5BAA4007E96AD /* TucikMap */;
@@ -450,42 +390,6 @@
 			};
 			name = Release;
 		};
-		AC733C382E13C6C9003AB49D /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = B2MWFA6UQ8;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = invectys.TucikMapTests1;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TucikMap.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TucikMap";
-			};
-			name = Debug;
-		};
-		AC733C392E13C6C9003AB49D /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = B2MWFA6UQ8;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = invectys.TucikMapTests1;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TucikMap.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TucikMap";
-			};
-			name = Release;
-		};
 		ACD42D402E13BBD5002CE195 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -539,15 +443,6 @@
 			buildConfigurations = (
 				AC1A53942DE5BAA5007E96AD /* Debug */,
 				AC1A53952DE5BAA5007E96AD /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		AC733C3A2E13C6CA003AB49D /* Build configuration list for PBXNativeTarget "TucikMapTests1" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				AC733C382E13C6C9003AB49D /* Debug */,
-				AC733C392E13C6C9003AB49D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
