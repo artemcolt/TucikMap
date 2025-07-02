@@ -34,7 +34,7 @@ class DetermineFeatureStyle {
         }
         
         let filterRank = ushort(properties["filterrank"] as? UInt64 ?? 100)
-        let sizeRank = ushort(properties["sizerank"] as? UInt64 ?? 15)
+        _ = ushort(properties["sizerank"] as? UInt64 ?? 15)
         let symbolRank = ushort(properties["symbolrank"] as? UInt64 ?? 20)
         guard let _class = properties["class"] as? String else { return nil }
         let type = properties["type"] as? String ?? ""

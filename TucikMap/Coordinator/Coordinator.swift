@@ -95,7 +95,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 mapZoomState: mapZoomState
             )
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
-            self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: camera.mapCADisplayLoop, renderFrameCount: renderFrameCount)
+            self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: camera.mapCadDisplayLoop, renderFrameCount: renderFrameCount)
         }
     }
     

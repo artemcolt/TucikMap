@@ -120,7 +120,7 @@ class ScreenCollisionsDetector {
         commandBuffer.addCompletedHandler { buffer in
             let output = computeScreenPositions.readOutput()
             let timeSpentInNanoseconds = buffer.gpuEndTime - buffer.gpuStartTime
-            let timeSpentInSeconds = Double(timeSpentInNanoseconds) / 1_000_000_000.0
+            _ = Double(timeSpentInNanoseconds) / 1_000_000_000.0
             
             let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
             var labelIntersections = [LabelIntersection] (repeating: LabelIntersection(hide: false, createdTime: 0), count: output.count)
