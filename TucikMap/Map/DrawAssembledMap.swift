@@ -51,12 +51,14 @@ class DrawAssembledMap {
     func drawMapLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        tiles: [MetalTile]
+        tiles: [MetalTile],
+        currentFBIndex: Int
     ) {
         drawMapLabels.draw(
             renderEncoder: renderEncoder,
             tiles: tiles,
-            uniformsBuffer: uniformsBuffer
+            uniformsBuffer: uniformsBuffer,
+            currentFBIndex: currentFBIndex
         )
     }
 }

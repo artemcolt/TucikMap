@@ -7,8 +7,8 @@
 
 import Foundation
 
-public struct CollisionAgent2 {
-    public let bounds: LTRBBounds2
+public struct CollisionAgent {
+    public let bounds: LTRBBounds
     
     public init(location: SIMD2<Float>, height: Float, width: Float) {
         let halfW1 = width / 2
@@ -17,15 +17,15 @@ public struct CollisionAgent2 {
         let r1 = location.x + halfW1
         let b1 = location.y - halfH1
         let t1 = location.y + halfH1
-        bounds = LTRBBounds2(l: l1, t: t1, r: r1, b: b1)
+        bounds = LTRBBounds(l: l1, t: t1, r: r1, b: b1)
     }
 }
 
-public struct LTRBBounds2 {
+public struct LTRBBounds {
     var l, t, r, b: Float // AABB extents relative to grid origin
     
     // Checks if this bounds intersects with another LTRBBounds
-    func intersects(with other: LTRBBounds2) -> Bool {
+    func intersects(with other: LTRBBounds) -> Bool {
         // No intersection if one box is to the left or right of the other
         if self.r < other.l || other.r < self.l {
             return false
@@ -46,7 +46,7 @@ public class SpaceDiscretisation {
     
     let clusterSize: Float
     let count: Int
-    public var clusters: [[CollisionAgent2?]] = [[]]
+    public var clusters: [[CollisionAgent?]] = [[]]
     
     public init(clusterSize: Float, count: Int) {
         self.clusterSize = clusterSize
@@ -55,7 +55,7 @@ public class SpaceDiscretisation {
         clusters = Array(repeating: Array(repeating: nil, count: count), count: count)
     }
     
-    public func addAgent(agent: CollisionAgent2) -> Bool {
+    public func addAgent(agent: CollisionAgent) -> Bool {
         let bounds = agent.bounds
         
         let positionXLeft = max(min(Int(floor(bounds.l / clusterSize)), count - 1), 0)

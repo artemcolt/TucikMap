@@ -77,7 +77,8 @@ class MetalTilesStorage {
                     indicesCount: parsedTile.drawingPolygon.indices.count,
                     stylesBuffer: stylesBuffer,
                     tile: tile,
-                    textLabels: builtText
+                    textLabels: builtText,
+                    textLabelsIds: parsedTile.textLabels.map { label in label.id }
                 )
                 
                 await MainActor.run {

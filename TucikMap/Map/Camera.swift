@@ -9,8 +9,9 @@ import SwiftUI
 import MetalKit
 
 class Camera {
-    let mapZoomState: MapZoomState
-    let renderFrameCount: RenderFrameCount
+    private var mapZoomState: MapZoomState!
+    private var renderFrameCount: RenderFrameCount!
+    var mapCadDisplayLoop: MapCADisplayLoop!
     
     // Camera properties
     private(set) var cameraPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0)
@@ -22,7 +23,6 @@ class Camera {
     private(set) var cameraYawQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
     private(set) var updateBufferedUniform: UpdateBufferedUniform!
     private(set) var assembledMapUpdater: AssembledMapUpdater!
-    private(set) var screenCollisionsDetector: ScreenCollisionsDetector!
     private(set) var forward: SIMD3<Float> = SIMD3<Float>(0, 0, 1)
     
     private(set) var cameraPitch: Float = 0
@@ -42,7 +42,6 @@ class Camera {
     private var lastTime: TimeInterval = 0
     
     
-    
     init(
         mapZoomState: MapZoomState,
         device: MTLDevice,
@@ -50,23 +49,24 @@ class Camera {
         renderFrameCount: RenderFrameCount,
         frameCounter: FrameCounter,
         library: MTLLibrary,
-        metalCommandQueue: MTLCommandQueue
+        metalCommandQueue: MTLCommandQueue,
+        screenCollisionsDetector: ScreenCollisionsDetector
     ) {
         self.renderFrameCount = renderFrameCount
         self.mapZoomState = mapZoomState
         self.updateBufferedUniform = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
-        self.screenCollisionsDetector = ScreenCollisionsDetector(
-            metalDevice: device,
-            library: library,
-            metalCommandQueue: metalCommandQueue,
-            mapZoomState: mapZoomState
-        )
         self.assembledMapUpdater = AssembledMapUpdater(
             mapZoomState: mapZoomState,
             device: device,
             camera: self,
             textTools: textTools,
             renderFrameCount: renderFrameCount
+        )
+        self.mapCadDisplayLoop = MapCADisplayLoop(
+            camera: self,
+            frameCounter: frameCounter,
+            renderFrameCount: renderFrameCount,
+            screenCollisionDetector: screenCollisionsDetector
         )
     }
     
@@ -145,7 +145,7 @@ class Camera {
     }
     
     @objc func applyMovementToCamera(view: MTKView) {
-        //assembledMapUpdater.needComputeLabelsIntersections.setNeedsRecompute()
+        mapCadDisplayLoop.recomputeIntersections()
         
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values

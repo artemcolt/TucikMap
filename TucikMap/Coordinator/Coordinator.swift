@@ -13,7 +13,6 @@ class Coordinator: NSObject, MTKViewDelegate {
     var metalCommandQueue: MTLCommandQueue!
     let controlsDelegate: ControlsDelegate!
     var renderFrameControl: RenderFrameControl!
-    var mapCADisplayLoop: MapCADisplayLoop!
     var renderFrameCount: RenderFrameCount!
     
     var depthStencilState: MTLDepthStencilState!
@@ -38,6 +37,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     // UI
     var drawUI: DrawUI!
     var screenUniforms: ScreenUniforms!
+    var screenCollisionsDetector: ScreenCollisionsDetector!
     
     // Pipelines
     var pipelines: Pipelines!
@@ -70,6 +70,14 @@ class Coordinator: NSObject, MTKViewDelegate {
             drawPoint = DrawPoint(metalDevice: device)
             textTools = TextTools(metalDevice: metalDevice, frameCounter: frameCounter)
             screenUniforms = ScreenUniforms(metalDevice: device)
+            screenCollisionsDetector = ScreenCollisionsDetector(
+                metalDevice: device,
+                library: pipelines.library,
+                metalCommandQueue: metalCommandQueue,
+                mapZoomState: mapZoomState,
+                renderFrameCount: renderFrameCount,
+                frameCounter: frameCounter
+            )
             camera = Camera(
                 mapZoomState: mapZoomState,
                 device: device,
@@ -77,7 +85,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                 renderFrameCount: renderFrameCount,
                 frameCounter: frameCounter,
                 library: pipelines.library,
-                metalCommandQueue: metalCommandQueue
+                metalCommandQueue: metalCommandQueue,
+                screenCollisionsDetector: screenCollisionsDetector
             )
             assembledMapWrapper = DrawAssembledMap(
                 metalDevice: metalDevice,
@@ -86,14 +95,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 mapZoomState: mapZoomState
             )
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
-            mapCADisplayLoop = MapCADisplayLoop(
-                camera: camera,
-                frameCounter: frameCounter,
-                assembledMapUpdater: camera.assembledMapUpdater,
-                screenCollisionsDetector: camera.screenCollisionsDetector,
-                renderFrameCount: renderFrameCount
-            )
-            self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: mapCADisplayLoop, renderFrameCount: renderFrameCount)
+            self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: camera.mapCADisplayLoop, renderFrameCount: renderFrameCount)
         }
     }
     
@@ -114,7 +116,21 @@ class Coordinator: NSObject, MTKViewDelegate {
         _ = camera.updateBufferedUniform!.semaphore.wait(timeout: .distantFuture)
         
         camera.updateBufferedUniform!.updateUniforms(viewportSize: view.drawableSize)
+        let currentFBIdx = camera.updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer = camera.updateBufferedUniform.getCurrentFrameBuffer()
+        let assembledTiles = camera.assembledMapUpdater.assembledMap.tiles
+        
+        // apply new intersection data to current tripple buffering buffer
+        if let intersectionsResultByTiles = screenCollisionsDetector.getIntersectionsByTiles() {
+            for i in 0..<assembledTiles.count {
+                guard let intersections = intersectionsResultByTiles[i] else { continue }
+                let tile = assembledTiles[i]
+                guard let textLabels = tile.textLabels else { continue }
+                let copyToBuffer = textLabels.drawMapLabelsData.intersectionsTrippleBuffer[currentFBIdx]
+                copyToBuffer.contents()
+                            .copyMemory(from: intersections, byteCount: MemoryLayout<LabelIntersection>.stride * intersections.count)
+            }
+        }
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
@@ -133,14 +149,15 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.drawTiles(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
-            tiles: camera.assembledMapUpdater.assembledMap.tiles
+            tiles: assembledTiles
         )
 
         pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
         assembledMapWrapper.drawMapLabels(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
-            tiles: camera.assembledMapUpdater.assembledMap.tiles,
+            tiles: assembledTiles,
+            currentFBIndex: currentFBIdx
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)

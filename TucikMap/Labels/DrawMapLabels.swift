@@ -46,6 +46,7 @@ class DrawMapLabels {
         renderEncoder: MTLRenderCommandEncoder,
         tiles: [MetalTile],
         uniformsBuffer: MTLBuffer,
+        currentFBIndex: Int
     ) {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
@@ -66,7 +67,7 @@ class DrawMapLabels {
             let verticesCount = drawMapLabelsData.verticesCount
             let mapLabelSymbolMeta = drawMapLabelsData.mapLabelSymbolMeta
             let mapLabelLineMeta = drawMapLabelsData.mapLabelLineMeta
-            let intersectionsBuffer = drawMapLabelsData.intersectionsBuffer
+            let intersectionsBuffer = drawMapLabelsData.intersectionsTrippleBuffer[currentFBIndex]
             let atlasTexture = drawMapLabelsData.atlas
             
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)

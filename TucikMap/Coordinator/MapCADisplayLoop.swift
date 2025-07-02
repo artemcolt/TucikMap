@@ -9,42 +9,46 @@ class MapCADisplayLoop {
     private let camera: Camera
     private let frameCounter: FrameCounter
     private let assembledMapUpdater: AssembledMapUpdater
-    private let screenCollisionsDetector: ScreenCollisionsDetector
     private let renderFrameCount: RenderFrameCount
+    private let screenCollisionDetector: ScreenCollisionsDetector
     
+    private var recomputeIntersectionsFlag = true
     private var loopCount: UInt64 = 0
     private var computeIntersectionsEvery: UInt64 = Settings.refreshLabelsIntersectionsEveryNDisplayLoop
     
     init(camera: Camera,
          frameCounter: FrameCounter,
-         assembledMapUpdater: AssembledMapUpdater,
-         screenCollisionsDetector: ScreenCollisionsDetector,
-         renderFrameCount: RenderFrameCount
+         renderFrameCount: RenderFrameCount,
+         screenCollisionDetector: ScreenCollisionsDetector
     ) {
         self.camera = camera
         self.frameCounter = frameCounter
-        self.assembledMapUpdater = assembledMapUpdater
-        self.screenCollisionsDetector = screenCollisionsDetector
+        self.assembledMapUpdater = camera.assembledMapUpdater
         self.renderFrameCount = renderFrameCount
+        self.screenCollisionDetector = screenCollisionDetector
+    }
+    
+    func recomputeIntersections() {
+        recomputeIntersectionsFlag = true
     }
     
     func displayLoop() {
         loopCount += 1
         
         if (canComputeIntersectionsNow()) {
-            if let lastUniforms = camera.updateBufferedUniform.lastUniforms {
-                screenCollisionsDetector.evaluateTilesData(
+            if let lastUnifroms = camera.updateBufferedUniform.lastUniforms {
+                screenCollisionDetector.evaluateTilesData(
                     tiles: assembledMapUpdater.assembledMap.tiles,
-                    lastUniforms: lastUniforms,
+                    lastUniforms: lastUnifroms,
                     mapPanning: camera.mapPanning
                 )
-                renderFrameCount.renderNextNFrames(3)
             }
         }
     }
     
     private func canComputeIntersectionsNow() -> Bool {
-        if loopCount % computeIntersectionsEvery == 0 {
+        if loopCount % computeIntersectionsEvery == 0 && recomputeIntersectionsFlag {
+            recomputeIntersectionsFlag = false
             return true
         }
         return false

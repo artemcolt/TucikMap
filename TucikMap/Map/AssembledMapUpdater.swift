@@ -85,6 +85,8 @@ class AssembledMapUpdater {
         }
         let metalTiles = replsArray + actual
         self.assembledMap.tiles = metalTiles
+        // new tiles -> new textLabels
+        camera.mapCadDisplayLoop.recomputeIntersections()
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
