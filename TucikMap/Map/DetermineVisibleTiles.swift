@@ -22,10 +22,20 @@ class DetermineVisibleTiles {
     }
     
     func determine() -> DetVisTilesResult {
-        let centerTileX = Int(camera.centerTileX)
-        let centerTileY = Int(camera.centerTileY)
-        let maxTileCoord = mapZoomState.maxTileCoord
-        let zoomLevel = mapZoomState.zoomLevel
+        var centerTileX = Int(camera.centerTileX)
+        var centerTileY = Int(camera.centerTileY)
+        var zoomLevel = mapZoomState.zoomLevel
+        
+        if zoomLevel > Settings.maxTileZoom {
+            let parent = Tile(x: centerTileX, y: centerTileY, z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
+            centerTileX = parent.x
+            centerTileY = parent.y
+            zoomLevel = parent.z
+        }
+        
+        let powZoomLevel = pow(2.0, Float(zoomLevel))
+        let tilesCount = Int(powZoomLevel)
+        let maxTileCoord = tilesCount - 1
         
         // Определяем диапазон видимых тайлов
         let halfTilesX = visibleTilesX / 2

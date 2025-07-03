@@ -22,6 +22,7 @@ class Settings {
     static let minCameraDistance: Float = nullZoomCameraDistance / pow(2, 18)
     static let farPlaneIncreaseFactor: Float = 2.0
     
+    static let maxTileZoom: Int = 16
     static let visibleTilesCount: Int = 9
     static let visibleTilesX: Int = 3
     static let visibleTilesY: Int = 3

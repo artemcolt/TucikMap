@@ -124,7 +124,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
         
-        camera.moveTo(lat: 55.75223153538435, lon: 37.62591025630741, zoom: 18, view: view, size: size)
+        camera.moveTo(lat: 55.75223153538435, lon: 37.62591025630741, zoom: 16, view: view, size: size)
     }
     
     // Three-step rendering process
@@ -176,6 +176,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         renderEncoder.endEncoding()
         
         renderPassDescriptor.colorAttachments[0].loadAction = .load
+        
         renderPassDescriptor.depthAttachment.texture = view.depthStencilTexture
         renderPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
         let render3dEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!

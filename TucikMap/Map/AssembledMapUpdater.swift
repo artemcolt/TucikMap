@@ -57,14 +57,14 @@ class AssembledMapUpdater {
         metalTiles.setupTilesFilter(filterTiles: visibleTiles)
         
         var replacements = Set<MetalTile>()
-        var actual: [MetalTile] = []
+        var actual = Set<MetalTile>()
         let actualZ = visibleTiles[0].z
         for i in 0..<visibleTiles.count {
             let tile = visibleTiles[i]
             
             // current visible tile is ready
             if let metalTile = metalTiles.getMetalTile(tile: tile) {
-                actual.append(metalTile)
+                actual.insert(metalTile)
                 continue
             }
             

@@ -44,4 +44,21 @@ struct Tile {
         return other.x >= minX && other.x <= maxX &&
                other.y >= minY && other.y <= maxY
     }
+    
+    func findParentTile(atZoom targetZoom: Int) -> Tile? {
+        // Проверяем, что текущий зум больше целевого (иначе родителя нет на targetZoom)
+        guard z >= targetZoom, targetZoom >= 0 else {
+            return nil
+        }
+        
+        // Разница в уровнях зума
+        let zoomDifference = z - targetZoom
+        
+        // Вычисляем координаты родительского тайла
+        // Делим x и y на 2^(разница зумов), берём целую часть
+        let parentX = x >> zoomDifference
+        let parentY = y >> zoomDifference
+        
+        return Tile(x: parentX, y: parentY, z: targetZoom)
+    }
 }

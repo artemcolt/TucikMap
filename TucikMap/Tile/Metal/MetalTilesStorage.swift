@@ -61,6 +61,7 @@ class MetalTilesStorage {
                     length: parsedTile.styles.count * MemoryLayout<TilePolygonStyle>.stride
                 )!
                 
+                
                 let vertices3DBuffer = parsedTile.drawing3dPolygon.vertices.isEmpty ? nil : metalDevice.makeBuffer(
                     bytes: parsedTile.drawing3dPolygon.vertices,
                     length: parsedTile.drawing3dPolygon.vertices.count * MemoryLayout<Polygon3dPipeline.VertexIn>.stride

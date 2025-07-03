@@ -54,9 +54,10 @@ class UpdateBufferedUniform {
 
         let delta: Float = 1.0
         let near: Float = camera.cameraDistance - delta - nearFactor * camera.cameraDistance
-        let far: Float = camera.cameraDistance + delta + farFactor  * camera.cameraDistance
+        var far: Float = camera.cameraDistance + delta + farFactor  * camera.cameraDistance
+        far += 5
         //print("near: \(near), far: \(far), camDist: \(camera.cameraDistance)")
-
+        
         // Create perspective projection matrix
         let projectionMatrix = MatrixUtils.perspectiveMatrix(
             fovRadians: Float.pi / 3.0,

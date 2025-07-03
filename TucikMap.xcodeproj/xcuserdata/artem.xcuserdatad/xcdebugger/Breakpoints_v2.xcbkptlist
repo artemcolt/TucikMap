@@ -101,16 +101,32 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "685F4E7B-8304-4A76-9152-C90A4383B26F"
+            uuid = "DE53E4E0-9790-4D82-82BF-DBA9A3C1498E"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "TucikMap/Tile/Metal/MetalTilesStorage.swift"
+            filePath = "TucikMap/Map/DrawAssembledMap.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "51"
-            endingLineNumber = "51"
-            landmarkName = "onTileComplete(data:tile:)"
+            startingLineNumber = "35"
+            endingLineNumber = "35"
+            landmarkName = "drawTiles(renderEncoder:uniformsBuffer:tiles:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "09069ADA-EBF0-4580-995D-1534AB45E640"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "TucikMap/Map/AssembledMapUpdater.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "50"
+            endingLineNumber = "50"
+            landmarkName = "onMetalingTileEnd(tile:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
