@@ -15,7 +15,7 @@ struct MetalView: UIViewRepresentable {
         mtkView.device = MTLCreateSystemDefaultDevice()
         mtkView.delegate = context.coordinator
         mtkView.clearColor = MTLClearColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
-        mtkView.depthStencilPixelFormat = .depth32Float
+        mtkView.depthStencilPixelFormat = .depth32Float_stencil8
         mtkView.colorPixelFormat = .bgra8Unorm
         mtkView.enableSetNeedsDisplay = true
         mtkView.preferredFramesPerSecond = Settings.preferredFramesPerSecond

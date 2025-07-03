@@ -18,7 +18,8 @@ class BasePipeline {
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+        pipelineDescriptor.depthAttachmentPixelFormat = .invalid
+        pipelineDescriptor.stencilAttachmentPixelFormat = .invalid
         
         pipelineState = try! metalDevice.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }

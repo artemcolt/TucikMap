@@ -46,7 +46,7 @@ class UpdateBufferedUniform {
     func updateUniforms(viewportSize: CGSize) {
         currentBufferIndex = (currentBufferIndex + 1) % maxBuffersInFlight
         let aspect = Float(viewportSize.width / viewportSize.height)
-        
+
         let pitchAngle: Float = camera.cameraPitch
         let pitchNormalized = pitchAngle / halfPi
         let nearFactor = sqrt(pitchNormalized)
@@ -56,15 +56,14 @@ class UpdateBufferedUniform {
         let near: Float = camera.cameraDistance - delta - nearFactor * camera.cameraDistance
         let far: Float = camera.cameraDistance + delta + farFactor  * camera.cameraDistance
         //print("near: \(near), far: \(far), camDist: \(camera.cameraDistance)")
-        
+
         // Create perspective projection matrix
         let projectionMatrix = MatrixUtils.perspectiveMatrix(
             fovRadians: Float.pi / 3.0,
             aspect: aspect,
-            near: max(0, near),
+            near: max(0.05, near),
             far: far
         )
-        
         
         // Create view matrix using look-at
         let up = camera.cameraQuaternion.act(SIMD3<Float>(0, 1, 0)) // Rotate up vector

@@ -108,11 +108,11 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
     float smoothing = 0.1;
     
     // Обводка (большая буква)
-    float outlineDist = sigDist - 0.05;
+    float outlineDist = sigDist - 0.1;
     float outlineOpacity = clamp(outlineDist/smoothing + 0.5, 0.0, 1.0);
     
     // Основа
-    float textDist = sigDist - 0.4;
+    float textDist = sigDist - 0.3;
     float textOpacity = clamp(textDist/smoothing + 0.5, 0.0, 1.0);
     
     // Комбинируем обводку и текст

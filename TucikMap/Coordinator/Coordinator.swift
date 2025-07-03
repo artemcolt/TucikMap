@@ -16,6 +16,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     var renderFrameCount: RenderFrameCount!
     
     var depthStencilState: MTLDepthStencilState!
+    var defaultDepthStencilState: MTLDepthStencilState!
     var frameCounter: FrameCounter!
     
     // Helpers
@@ -59,7 +60,24 @@ class Coordinator: NSObject, MTKViewDelegate {
             let depthStencilDescriptor = MTLDepthStencilDescriptor()
             depthStencilDescriptor.depthCompareFunction = .less
             depthStencilDescriptor.isDepthWriteEnabled = true
+            
+            // Настройка stencil-теста
+            let stencilDescriptor = MTLStencilDescriptor()
+            stencilDescriptor.stencilCompareFunction = .equal
+            stencilDescriptor.stencilFailureOperation = .keep
+            stencilDescriptor.depthFailureOperation = .keep
+            stencilDescriptor.depthStencilPassOperation = .incrementClamp // Увеличиваем stencil при рендеринге
+            stencilDescriptor.readMask = 0xFF
+            stencilDescriptor.writeMask = 0xFF
+            
+            depthStencilDescriptor.frontFaceStencil = stencilDescriptor
+            depthStencilDescriptor.backFaceStencil = stencilDescriptor
             depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
+            
+            
+            let defaultDepthStencilDescriptor = MTLDepthStencilDescriptor()
+            defaultDepthStencilDescriptor.depthCompareFunction = .always
+            defaultDepthStencilState = device.makeDepthStencilState(descriptor: defaultDepthStencilDescriptor)
             
             frameCounter = FrameCounter()
             mapZoomState = MapZoomState()
@@ -106,7 +124,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
         
-        //camera.moveTo(lat: 55.751244, lon: 37.618423, zoom: 16, view: view, size: size)
+        camera.moveTo(lat: 55.75223153538435, lon: 37.62591025630741, zoom: 18, view: view, size: size)
     }
     
     // Three-step rendering process
@@ -135,8 +153,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
-              let renderPassDescriptor = view.currentRenderPassDescriptor,
-              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+              let renderPassDescriptor = view.currentRenderPassDescriptor else {
             renderComplete()
             return
         }
@@ -146,22 +163,45 @@ class Coordinator: NSObject, MTKViewDelegate {
             self?.renderComplete()
         }
         
+        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        renderPassDescriptor.depthAttachment.texture = nil
+        renderPassDescriptor.stencilAttachment.texture = nil
+        let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
         pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
         assembledMapWrapper.drawTiles(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles
         )
-
-        pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
+        renderEncoder.endEncoding()
+        
+        renderPassDescriptor.colorAttachments[0].loadAction = .load
+        renderPassDescriptor.depthAttachment.texture = view.depthStencilTexture
+        renderPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
+        let render3dEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        pipelines.polygon3dPipeline.selectPipeline(renderEncoder: render3dEncoder)
+        render3dEncoder.setDepthStencilState(depthStencilState)
+        render3dEncoder.setStencilReferenceValue(0)
+        assembledMapWrapper.draw3dTiles(
+            renderEncoder: render3dEncoder,
+            uniformsBuffer: uniformsBuffer,
+            tiles: assembledTiles
+        )
+        render3dEncoder.endEncoding()
+        
+        
+        renderPassDescriptor.depthAttachment.texture = nil
+        renderPassDescriptor.stencilAttachment.texture = nil
+        let basicRenderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        pipelines.labelsPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
         assembledMapWrapper.drawMapLabels(
-            renderEncoder: renderEncoder,
+            renderEncoder: basicRenderEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
             currentFBIndex: currentFBIdx
         )
         
-        pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
+        pipelines.basePipeline.selectPipeline(renderEncoder: basicRenderEncoder)
 //        drawGrid.draw(renderEncoder: renderEncoder,
 //                      uniformsBuffer: uniformsBuffer,
 //                      camTileX: Int(camera.centerTileX),
@@ -169,7 +209,7 @@ class Coordinator: NSObject, MTKViewDelegate {
 //                      gridThickness: Settings.gridThickness * mapZoomState.mapScaleFactor,
 //        )
         drawPoint.draw(
-            renderEncoder: renderEncoder,
+            renderEncoder: basicRenderEncoder,
             uniformsBuffer: uniformsBuffer,
             pointSize: Settings.cameraCenterPointSize,
             position: camera.targetPosition,
@@ -178,14 +218,14 @@ class Coordinator: NSObject, MTKViewDelegate {
 //        drawAxis.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
         
         
-        pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)
+        pipelines.textPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
         if let text = camera.assembledMapUpdater?.assembledTileTitles {
-            textTools.drawText.renderText(renderEncoder: renderEncoder, uniforms: uniformsBuffer, drawTextData: text)
+            textTools.drawText.renderText(renderEncoder: basicRenderEncoder, uniforms: uniformsBuffer, drawTextData: text)
         }
-        drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder, size: view.drawableSize)
+        drawUI.drawZoomUiText(renderCommandEncoder: basicRenderEncoder, size: view.drawableSize)
+        basicRenderEncoder.endEncoding()
         
         
-        renderEncoder.endEncoding()
         // Present the drawable to the screen
         commandBuffer.present(drawable)
         frameCounter.update(with: commandBuffer)

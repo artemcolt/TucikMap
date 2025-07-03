@@ -10,7 +10,6 @@ import Foundation
 class Settings {
     static let maxBuffersInFlight: Int = 3
     
-    
     static let rotationSensitivity: Float = 0.2
     static let twoFingerPanSensitivity: Float = 0.003
     static let panSensitivity: Float = 0.001
@@ -46,8 +45,8 @@ class Settings {
     static var drawGrid: Bool = false
     static var drawTileCoordinates: Bool = false
     
-    static var printNotUsedStyle: Bool = true
-    static var filterNotUsedLayernName: String = "admin"
+    static var printNotUsedStyle: Bool = false
+    static var filterNotUsedLayernName: String = "road"
     
     static var debugAssemblingMap: Bool = false
     static var debugIntersectionsLabels: Bool = false
@@ -79,4 +78,6 @@ class Settings {
     static let gridCollisionSize: Float = 1000
     static let worldCollisionSize: Float = 12_000
     static let shiftCollisionLocation: Float = 5_000
+    
+    static let printCenterLatLon: Bool = false
 }

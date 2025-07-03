@@ -31,7 +31,8 @@ class TextPipeline {
         pipelineDescriptor.fragmentFunction = library.makeFunction(name: "textFragmentShader")
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
-        pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+        pipelineDescriptor.depthAttachmentPixelFormat = .invalid
+        pipelineDescriptor.stencilAttachmentPixelFormat = .invalid
         
         // Настройка смешивания для поддержки прозрачности
         pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true

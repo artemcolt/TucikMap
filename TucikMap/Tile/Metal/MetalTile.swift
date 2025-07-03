@@ -27,6 +27,10 @@ class MetalTile: Hashable {
     let textLabels: MapLabelsAssembler.Result?
     let textLabelsIds: [UInt]
     
+    let vertices3DBuffer: MTLBuffer?
+    let indices3DBuffer: MTLBuffer?
+    let styles3DBuffer: MTLBuffer
+    let indices3DCount: Int
     
     init(
         verticesBuffer: MTLBuffer,
@@ -35,7 +39,12 @@ class MetalTile: Hashable {
         stylesBuffer: MTLBuffer,
         tile: Tile,
         textLabels: MapLabelsAssembler.Result?,
-        textLabelsIds: [UInt]
+        textLabelsIds: [UInt],
+        
+        vertices3DBuffer: MTLBuffer?,
+        indices3DBuffer: MTLBuffer?,
+        styles3DBuffer: MTLBuffer,
+        indices3DCount: Int
     ) {
         self.verticesBuffer = verticesBuffer
         self.indicesBuffer = indicesBuffer
@@ -44,5 +53,10 @@ class MetalTile: Hashable {
         self.tile = tile
         self.textLabels = textLabels
         self.textLabelsIds = textLabelsIds
+        
+        self.vertices3DBuffer = vertices3DBuffer
+        self.indices3DBuffer = indices3DBuffer
+        self.styles3DBuffer = styles3DBuffer
+        self.indices3DCount = indices3DCount
     }
 }

@@ -9,6 +9,7 @@ import MetalKit
 
 class Pipelines {
     let library: MTLLibrary
+    private(set) var polygon3dPipeline: Polygon3dPipeline!
     private(set) var polygonPipeline: PolygonPipeline!
     private(set) var textPipeline: TextPipeline!
     private(set) var basePipeline: BasePipeline!
@@ -18,6 +19,7 @@ class Pipelines {
         // Create the render pipeline
         library = metalDevice.makeDefaultLibrary()!
 
+        polygon3dPipeline = Polygon3dPipeline(metalDevice: metalDevice, library: library)
         polygonPipeline = PolygonPipeline(metalDevice: metalDevice, library: library)
         textPipeline = TextPipeline(metalDevice: metalDevice, library: library)
         basePipeline = BasePipeline(metalDevice: metalDevice, library: library)

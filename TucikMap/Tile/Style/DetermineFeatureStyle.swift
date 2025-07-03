@@ -73,6 +73,7 @@ class DetermineFeatureStyle {
     }
     
     func makeStyle(data: DetFeatureStyleData) -> FeatureStyle {
+        let tile = data.tile
         let properties = data.properties
         let classValue = properties["class"] as? String
 
@@ -86,9 +87,10 @@ class DetermineFeatureStyle {
             "landcover_grass": SIMD4<Float>(0.4, 0.7, 0.4, 0.7),  // Grass green
             "road_major": SIMD4<Float>(0.9, 0.9, 0.9, 1.0),       // Near-white
             "road_minor": SIMD4<Float>(0.7, 0.7, 0.7, 1.0),       // Light gray
-            "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.9),         // Warm beige
             "fallback": SIMD4<Float>(0.5, 0.5, 0.5, 0.5),          // Neutral gray
-            "background": SIMD4<Float>(1.0, 1.0, 1.0, 1.0)
+            "background": SIMD4<Float>(1.0, 1.0, 1.0, 1.0),
+            
+            "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.9),         // Warm beige
         ]
 
         switch data.layerName {
@@ -157,17 +159,42 @@ class DetermineFeatureStyle {
         case "road":
             if classValue == "highway" || classValue == "major_road" {
                 return FeatureStyle(
-                    key: 201, // Above admin
+                    key: 202, // Above admin
                     color: colors["road_major"]!,
                     parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 6)
                 )
-            } else {
+            }
+            
+            //tertiary street pedestrian
+            if classValue == "secondary" || classValue == "primary" {
+                let startZoom = 16
+                let tileZoom = tile.z
+                let difference = Double(tileZoom - startZoom)
+                let factor = pow(2.0, difference)
                 return FeatureStyle(
-                    key: 200,
-                    color: colors["road_minor"]!,
-                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 6)
+                    key: 201,
+                    color: colors["road_major"]!,
+                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 35.0 * factor)
                 )
             }
+            
+            if classValue == "street" || classValue == "tertiary" || classValue == "service" {
+                let startZoom = 16
+                let tileZoom = tile.z
+                let difference = Double(tileZoom - startZoom)
+                let factor = pow(2.0, difference)
+                return FeatureStyle(
+                    key: 200,
+                    color: colors["road_major"]!,
+                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 25.0 * factor)
+                )
+            }
+            
+            return FeatureStyle(
+                key: fallbackKey, // Bottom-most
+                color: colors["fallback"]!,
+                parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 1)
+            )
 
         case "building":
             return FeatureStyle(

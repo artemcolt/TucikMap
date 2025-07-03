@@ -20,6 +20,7 @@ class TileMvtParser {
     // Parse
     let parsePolygon: ParsePolygon = ParsePolygon()
     let parseLine: ParseLine = ParseLine()
+    let parseBuilding: ParseBuilding = ParseBuilding()
     
     
     init(determineFeatureStyle: DetermineFeatureStyle) {
@@ -38,13 +39,42 @@ class TileMvtParser {
         
         let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox, tileCoords: tile)
         let unificationResult = unificationStage(readingStageResult: readingStageResult)
+        let unification3DResult = unification3DStage(readingStageResult: readingStageResult)
         
         return ParsedTile(
             drawingPolygon: unificationResult.drawingPolygon,
             styles: unificationResult.styles,
             tile: tile,
-            textLabels: readingStageResult.textLabels
+            textLabels: readingStageResult.textLabels,
+            
+            drawing3dPolygon: unification3DResult.drawingPolygon,
+            styles3d: unification3DResult.styles
         )
+    }
+    
+    private func tryParsePolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double) -> Parsed3dPolygon? {
+        if geometry.type != .polygon {return nil}
+        guard let polygon = geometry as? Polygon else {return nil}
+        guard let clippedPolygon = polygon.clipped(to: boundingBox) else {
+            return nil
+        }
+        return parseBuilding.parseBuilding(polygon: clippedPolygon.coordinates, parsePolygon: parsePolygon, height: height)
+    }
+    
+    private func tryParseMultiPolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double) -> [Parsed3dPolygon]? {
+        if geometry.type != .multiPolygon {return nil}
+        guard let multiPolygon = geometry as? MultiPolygon else { return nil }
+        guard let clippedMultiPolygon = multiPolygon.clipped(to: boundingBox) else {
+            return nil
+        }
+        var parsedBuidlings: [Parsed3dPolygon] = []
+        for polygon in clippedMultiPolygon.coordinates {
+            guard let parsedBuilding = parseBuilding.parseBuilding(polygon: polygon, parsePolygon: parsePolygon, height: height) else { continue }
+            parsedBuidlings.append(parsedBuilding)
+        }
+        if parsedBuidlings.isEmpty { return nil}
+        
+        return parsedBuidlings
     }
     
     private func tryParsePolygon(geometry: GeoJsonGeometry, boundingBox: BoundingBox) -> ParsedPolygon? {
@@ -120,7 +150,11 @@ class TileMvtParser {
     }
     
     private func addBackground(polygonByStyle: inout [UInt8: [ParsedPolygon]], styles: inout [UInt8: FeatureStyle]) {
-        let style = determineFeatureStyle.makeStyle(data: DetFeatureStyleData(layerName: "background", properties: [:]))
+        let style = determineFeatureStyle.makeStyle(data: DetFeatureStyleData(
+            layerName: "background",
+            properties: [:],
+            tile: Tile(x: 0, y: 0, z: 0))
+        )
         polygonByStyle[style.key] = [ParsedPolygon(
             vertices: [
                 SIMD2<Float>(-1, -1),
@@ -137,6 +171,8 @@ class TileMvtParser {
     }
     
     func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) -> ReadingStageResult {
+        var polygon3dByStyle: [UInt8: [Parsed3dPolygon]] = [:]
+        
         var polygonByStyle: [UInt8: [ParsedPolygon]] = [:]
         var rawLineByStyle: [UInt8: [ParsedLineRawVertices]] = [:]
         var styles: [UInt8: FeatureStyle] = [:]
@@ -153,7 +189,11 @@ class TileMvtParser {
                     textLabels.append(parsed)
                 }
                 
-                let detStyleData = DetFeatureStyleData(layerName: layerName, properties: properties)
+                let detStyleData = DetFeatureStyleData(
+                    layerName: layerName,
+                    properties: properties,
+                    tile: tileCoords
+                )
                 let style = determineFeatureStyle.makeStyle(data: detStyleData)
                 let styleKey = style.key
                 if styleKey == 0 {
@@ -167,6 +207,24 @@ class TileMvtParser {
                 
                 // Process each feature
                 let parseGeomStyleData = style.parseGeometryStyleData
+                
+                let extrude = properties["extrude"] as? String == "true"
+                if layerName == "building" && extrude {
+                    let currentZ = tileCoords.z
+                    let baseZoom = 18
+                    let difference = currentZ - baseZoom
+                    let factor = pow(2.0, Double(difference))
+                    guard var height = properties["height"] as? Double else { return }
+                    height = height * 0.015 * factor
+                    let _ = properties["min_height"] as? Double
+                    if let parsed = tryParsePolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height) {
+                        polygon3dByStyle[styleKey, default: []].append(parsed)
+                    }
+                    if let parsed = tryParseMultiPolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height) {
+                        polygon3dByStyle[styleKey, default: []].append(contentsOf: parsed)
+                    }
+                    return
+                }
                 
                 if let parsed = tryParsePolygon(geometry: geometry,
                                                 boundingBox: boundingBox
@@ -196,6 +254,7 @@ class TileMvtParser {
         }) // сортировка по возрастанию
         
         return ReadingStageResult(
+            polygon3dByStyle: polygon3dByStyle.filter { $0.value.isEmpty == false },
             polygonByStyle: polygonByStyle.filter { $0.value.isEmpty == false },
             rawLineByStyle: rawLineByStyle.filter { $0.value.isEmpty == false },
             styles: styles,
@@ -258,6 +317,49 @@ class TileMvtParser {
         
         return UnificationStageResult(
             drawingPolygon: DrawingPolygonBytes(
+                vertices: unifiedVertices,
+                indices: unifiedIndices
+            ),
+            styles: styles
+        )
+    }
+    
+    func unification3DStage(readingStageResult: ReadingStageResult) -> Unification3DStageResult {
+        let polygon3dByStyle = readingStageResult.polygon3dByStyle
+        
+        var unifiedVertices: [Polygon3dPipeline.VertexIn] = []
+        var unifiedIndices: [UInt32] = []
+        var currentVertexOffset: UInt32 = 0
+        var styles: [TilePolygonStyle] = []
+        
+        var styleBufferIndex: simd_uchar1 = 0
+        for styleKey in readingStageResult.styles.keys.sorted() {
+            if let polygons = polygon3dByStyle[styleKey] {
+                // Process each polygon for the current style
+                for polygon in polygons {
+                    // Append vertices to unified array
+                    unifiedVertices.append(contentsOf: polygon.vertices.map {
+                        position in Polygon3dPipeline.VertexIn(position: position, styleIndex: styleBufferIndex)
+                    })
+                    
+                    // Adjust indices for the current polygon and append
+                    let adjustedIndices = polygon.indices.map { index in
+                        return index + currentVertexOffset
+                    }
+                    unifiedIndices.append(contentsOf: adjustedIndices)
+                    
+                    // Update vertex offset for the next polygon
+                    currentVertexOffset += UInt32(polygon.vertices.count)
+                }
+            }
+            
+            let style = readingStageResult.styles[styleKey]!
+            styles.append(TilePolygonStyle(color: style.color))
+            styleBufferIndex += 1
+        }
+        
+        return Unification3DStageResult(
+            drawingPolygon: Drawing3dPolygonBytes(
                 vertices: unifiedVertices,
                 indices: unifiedIndices
             ),

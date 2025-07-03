@@ -11,6 +11,11 @@ struct DrawingPolygonBytes {
     var indices: [UInt32]
 }
 
+struct Drawing3dPolygonBytes {
+    var vertices: [Polygon3dPipeline.VertexIn]
+    var indices: [UInt32]
+}
+
 struct DrawingPolygonBuffers {
     var verticesBuffer: MTLBuffer
     var indicesBuffer: MTLBuffer

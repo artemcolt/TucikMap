@@ -70,29 +70,44 @@ class Camera {
         )
     }
     
-//    func moveTo(lat: Float, lon: Float, zoom: Float, view: MTKView, size: CGSize) {
-//        let lat = -lat
-//        let mapSize = Settings.mapSize
-//        let nullZoomCameraDistance = Settings.nullZoomCameraDistance
-//        
-//        // Шаг 1: Преобразование lat, lon в координаты Меркатора
-//        let lonRad = lon * .pi / 180
-//        let latRad = lat * .pi / 180
-//        
-//        let x = (lon + 180) / 360 * mapSize
-//        let y = (1 - log(tan(.pi / 4 + latRad / 2)) / .pi) / 2 * mapSize
-//        
-//        // Шаг 2: Расчет расстояния камеры на основе зума
-//        cameraDistance = nullZoomCameraDistance / pow(2, zoom)
-//        
-//        // Шаг 3: Расчет смещения карты
-//        let newX = mapSize / 2 - x
-//        let newY = mapSize / 2 - y
-//        mapPanning = SIMD3<Float>(newX, newY, 0)
-//        
-//        // Шаг 4: Обновление карты
-//        updateMap(view: view, size: size)
-//    }
+    func getCenterLatLon() -> (lat: Double, lon: Double) {
+        let mapSize = Double(Settings.mapSize)
+        
+        // Step 1: Reverse the map offset to get Mercator coordinates x and y
+        let x = mapSize / 2 - mapPanning.x
+        let y = mapSize / 2 - mapPanning.y
+        
+        // Step 2: Convert Mercator x to longitude
+        let lon = (x / mapSize * 360.0) - 180.0
+        
+        // Step 3: Convert Mercator y to latitude
+        let latRad = 2.0 * (atan(exp(.pi * (1.0 - 2.0 * y / mapSize))) - .pi / 4)
+        let lat = -latRad * 180.0 / .pi
+        
+        return (lat: lat, lon: lon)
+    }
+    
+    func moveTo(lat: Double, lon: Double, zoom: Float, view: MTKView, size: CGSize) {
+        self.mapZoom = zoom
+        
+        let lat = -lat
+        let mapSize = Double(Settings.mapSize)
+        
+        // Шаг 1: Преобразование lat, lon в координаты Меркатора
+        let _ = lon * .pi / 180
+        let latRad = lat * .pi / 180
+        
+        let x = (lon + 180) / 360 * mapSize
+        let y = (1 - log(tan(.pi / 4 + latRad / 2)) / .pi) / 2 * mapSize
+        
+        // Шаг 3: Расчет смещения карты
+        let newX = mapSize / 2 - x
+        let newY = mapSize / 2 - y
+        mapPanning = SIMD3<Double>(newX, newY, 0)
+        
+        // Шаг 4: Обновление карты
+        updateMap(view: view, size: size)
+    }
     
     // Handle single-finger pan gesture for target translation
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
@@ -209,6 +224,10 @@ class Camera {
         }
         
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
+        
+        if Settings.printCenterLatLon {
+            print(getCenterLatLon())
+        }
     }
     
     private func updateCameraCenterTile() -> Bool {

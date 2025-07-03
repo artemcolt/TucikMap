@@ -7,22 +7,6 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "98AD01EB-77FA-4E78-ADAD-5B2D7BC5CAB8"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "TucikMap/Tile/Parse/ParsePolygon.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "34"
-            endingLineNumber = "34"
-            landmarkName = "parse(polygon:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "27DB0D1B-DF3C-43E8-BC3E-712D2B653988"
             shouldBeEnabled = "No"
             ignoreCount = "0"
@@ -85,32 +69,48 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "C9CC6DA0-D1D2-49CB-B3FF-41119E9B48E4"
+            uuid = "C07E4D7A-02FB-45A6-92BA-DF6A62C3B440"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "TucikMap/Collisions/ScreenCollisionsDetector.swift"
+            filePath = "TucikMap/Tile/Parse/TileMvtParser.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "35"
-            endingLineNumber = "35"
-            landmarkName = "getIntersectionsByTiles()"
+            startingLineNumber = "250"
+            endingLineNumber = "250"
+            landmarkName = "readingStage(tile:boundingBox:tileCoords:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "6BB4F232-FFC4-4FBC-B294-5C037977FDDD"
+            uuid = "E3A085C2-5D34-4416-84CC-1573A1F374B1"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "TucikMap/Coordinator/Coordinator.swift"
+            filePath = "TucikMap/Tile/Parse/TileMvtParser.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "125"
-            endingLineNumber = "125"
-            landmarkName = "draw(in:)"
+            startingLineNumber = "44"
+            endingLineNumber = "44"
+            landmarkName = "parse(tile:mvtData:boundingBox:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "685F4E7B-8304-4A76-9152-C90A4383B26F"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "TucikMap/Tile/Metal/MetalTilesStorage.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "51"
+            endingLineNumber = "51"
+            landmarkName = "onTileComplete(data:tile:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

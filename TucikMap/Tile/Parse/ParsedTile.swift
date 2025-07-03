@@ -13,15 +13,23 @@ class ParsedTile {
     let tile: Tile
     let textLabels: [ParsedTextLabel]
     
+    let drawing3dPolygon: Drawing3dPolygonBytes
+    let styles3d: [TilePolygonStyle]
+    
     init(
         drawingPolygon: DrawingPolygonBytes,
         styles: [TilePolygonStyle],
         tile: Tile,
-        textLabels: [ParsedTextLabel]
+        textLabels: [ParsedTextLabel],
+        drawing3dPolygon: Drawing3dPolygonBytes,
+        styles3d: [TilePolygonStyle]
     ) {
         self.drawingPolygon = drawingPolygon
         self.styles = styles
         self.tile = tile
         self.textLabels = textLabels
+        
+        self.drawing3dPolygon = drawing3dPolygon
+        self.styles3d = styles3d
     }
 }

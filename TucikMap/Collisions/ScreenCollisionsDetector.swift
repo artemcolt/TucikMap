@@ -162,7 +162,7 @@ class ScreenCollisionsDetector {
             self.newDataFlag = 3
             
             let endTime = CFAbsoluteTimeGetCurrent()
-            let absoluteTimeSpent = endTime - startTime
+            //let absoluteTimeSpent = endTime - startTime
             //print("timeSpent = \(absoluteTimeSpent)")
             //print("positions = ", spaceDiscretisation.positions)
             self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))

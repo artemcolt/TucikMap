@@ -48,6 +48,34 @@ class DrawAssembledMap {
         }
     }
     
+    func draw3dTiles(
+        renderEncoder: MTLRenderCommandEncoder,
+        uniformsBuffer: MTLBuffer,
+        tiles: [MetalTile]
+    ) {
+        guard tiles.isEmpty == false else { return }
+        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+        
+        let mapPanning = camera.mapPanning
+        for tile in tiles {
+            guard let vertices3DBuffer = tile.vertices3DBuffer,
+                  let indices3DBuffer = tile.indices3DBuffer  else { continue }
+            var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
+            
+            renderEncoder.setVertexBuffer(vertices3DBuffer, offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(tile.styles3DBuffer, offset: 0, index: 2)
+            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<float4x4>.stride, index: 3)
+            
+            renderEncoder.drawIndexedPrimitives(
+                type: .triangle,
+                indexCount: tile.indices3DCount,
+                indexType: .uint32,
+                indexBuffer: indices3DBuffer,
+                indexBufferOffset: 0)
+        }
+    }
+    
+    
     func drawMapLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,

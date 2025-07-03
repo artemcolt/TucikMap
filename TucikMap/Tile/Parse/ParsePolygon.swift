@@ -25,10 +25,10 @@ class ParsePolygon {
         }
         
         let triangleIndices = SwiftEarcut.Earcut.tessellate(data: flatCoords, holeIndices: holeIndices, dim: 2)
-        let vertices = NormalizeLocalCoords.normalize(flatCoords: flatCoords)
+        let vertices: [SIMD2<Float>] = NormalizeLocalCoords.normalize(flatCoords: flatCoords)
         
         // Преобразуем индексы в UInt16
-        let indices = triangleIndices.map { UInt32($0) }
+        let indices: [UInt32] = triangleIndices.map { UInt32($0) }
         if indices.isEmpty { return nil}
         
         return ParsedPolygon(
