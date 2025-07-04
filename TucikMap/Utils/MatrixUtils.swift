@@ -33,12 +33,13 @@ struct MatrixUtils {
         )
     }
     
-    static func createTileModelMatrix(scaleX: Float, scaleY: Float, offsetX: Float, offsetY: Float) -> matrix_float4x4 {
+    static func createTileModelMatrix(scaleX: Float, scaleY: Float, scaleZ: Float,
+                                      offsetX: Float, offsetY: Float) -> matrix_float4x4 {
         // Матрица масштабирования
         let scaleMatrix = matrix_float4x4(
             SIMD4<Float>(scaleX, 0,      0, 0),
             SIMD4<Float>(0,      scaleY, 0, 0),
-            SIMD4<Float>(0,      0,      1, 0),
+            SIMD4<Float>(0,      0,      scaleZ, 0),
             SIMD4<Float>(0,      0,      0, 1)
         )
         

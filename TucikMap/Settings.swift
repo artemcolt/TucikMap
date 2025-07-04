@@ -73,6 +73,7 @@ class Settings {
     static var verticalGridDivisionSize: Float = 500
     
     static var labelsFadeAnimationTimeSeconds: Float = 0.3
+    static let buildingsFactor = 0.006
     
     static let zoomLevelMax: Float = 20.9
     

@@ -140,6 +140,7 @@ class TileMvtParser {
         guard x > 0 && x < Double(Settings.tileExtent) && y > 0 && y < Double(Settings.tileExtent) else { return nil }
         guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: tileCoords) else { return nil }
         let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
+        //guard let nameEn = properties["name_en"] as? String else { return nil }
         return ParsedTextLabel(
             id: giveMeId.forScreenCollisionsDetection(),
             localPosition: SIMD2<Float>(coordinate),
@@ -211,11 +212,11 @@ class TileMvtParser {
                 let extrude = properties["extrude"] as? String == "true"
                 if layerName == "building" && extrude {
                     let currentZ = tileCoords.z
-                    let baseZoom = 18
+                    let baseZoom = 16
                     let difference = currentZ - baseZoom
                     let factor = pow(2.0, Double(difference))
                     guard var height = properties["height"] as? Double else { return }
-                    height = height * 0.015 * factor
+                    height = height * Settings.buildingsFactor * factor
                     let _ = properties["min_height"] as? Double
                     if let parsed = tryParsePolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height) {
                         polygon3dByStyle[styleKey, default: []].append(parsed)

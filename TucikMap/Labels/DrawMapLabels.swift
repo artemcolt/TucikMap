@@ -11,6 +11,14 @@ struct MapLabelSymbolMeta {
     let lineMetaIndex: simd_int1
 }
 
+struct MapLabelLineCollisionsMeta {
+    let measuredText: MeasuredText
+    let scale: simd_float1
+    let localPosition: SIMD2<Float>
+    let sortRank: ushort
+    let id: UInt
+}
+
 struct MapLabelLineMeta {
     let measuredText: MeasuredText
     let scale: simd_float1
@@ -44,21 +52,22 @@ class DrawMapLabels {
     
     func draw(
         renderEncoder: MTLRenderCommandEncoder,
-        tiles: [MetalTile],
+        geoLabels: [MetalGeoLabels],
         uniformsBuffer: MTLBuffer,
         currentFBIndex: Int
     ) {
-        guard tiles.isEmpty == false else { return }
+        guard geoLabels.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
-        let mapPanning = camera.mapPanning
         var animationTime = Settings.labelsFadeAnimationTimeSeconds
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride, index: 6)
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
-        for tile in tiles {
+        let mapPanning = camera.mapPanning
+        for i in 0..<geoLabels.count {
+            let tile = geoLabels[i]
             guard let textLabels = tile.textLabels else { continue }
             var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
             

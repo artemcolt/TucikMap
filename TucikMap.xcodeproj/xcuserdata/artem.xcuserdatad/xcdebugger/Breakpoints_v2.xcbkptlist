@@ -76,8 +76,8 @@
             filePath = "TucikMap/Tile/Parse/TileMvtParser.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "250"
-            endingLineNumber = "250"
+            startingLineNumber = "251"
+            endingLineNumber = "251"
             landmarkName = "readingStage(tile:boundingBox:tileCoords:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -95,38 +95,6 @@
             startingLineNumber = "44"
             endingLineNumber = "44"
             landmarkName = "parse(tile:mvtData:boundingBox:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "DE53E4E0-9790-4D82-82BF-DBA9A3C1498E"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "TucikMap/Map/DrawAssembledMap.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "35"
-            endingLineNumber = "35"
-            landmarkName = "drawTiles(renderEncoder:uniformsBuffer:tiles:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "09069ADA-EBF0-4580-995D-1534AB45E640"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "TucikMap/Map/AssembledMapUpdater.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "50"
-            endingLineNumber = "50"
-            landmarkName = "onMetalingTileEnd(tile:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

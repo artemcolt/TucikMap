@@ -11,6 +11,7 @@ import MetalKit
 struct TilePositionTranslate {
     let scaleX: Float
     let scaleY: Float
+    let scaleZ: Float
     let offsetX: Float
     let offsetY: Float
 }
@@ -60,11 +61,13 @@ class MapMathUtils {
         
         let scaleX = tileSize / 2;
         let scaleY = tileSize / 2;
+        let scaleZ = tileSize / 2;
         let offsetX = tileWorldX + pan.x * mapFactor;
         let offsetY = tileWorldY + pan.y * mapFactor;
         return TilePositionTranslate(
             scaleX: Float(scaleX),
             scaleY: Float(scaleY),
+            scaleZ: Float(scaleZ),
             offsetX: Float(offsetX),
             offsetY: Float(offsetY)
         )
@@ -79,6 +82,7 @@ class MapMathUtils {
         return MatrixUtils.createTileModelMatrix(
             scaleX: tileTranslation.scaleX,
             scaleY: tileTranslation.scaleY,
+            scaleZ: tileTranslation.scaleZ,
             offsetX: tileTranslation.offsetX,
             offsetY: tileTranslation.offsetY
         )

@@ -9,6 +9,7 @@ import SwiftUI
 import MetalKit
 
 class Camera {
+    let screenCollisionsDetector: ScreenCollisionsDetector
     private var mapZoomState: MapZoomState!
     private var renderFrameCount: RenderFrameCount!
     var mapCadDisplayLoop: MapCADisplayLoop!
@@ -52,6 +53,7 @@ class Camera {
         metalCommandQueue: MTLCommandQueue,
         screenCollisionsDetector: ScreenCollisionsDetector
     ) {
+        self.screenCollisionsDetector = screenCollisionsDetector
         self.renderFrameCount = renderFrameCount
         self.mapZoomState = mapZoomState
         self.updateBufferedUniform = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
@@ -60,7 +62,8 @@ class Camera {
             device: device,
             camera: self,
             textTools: textTools,
-            renderFrameCount: renderFrameCount
+            renderFrameCount: renderFrameCount,
+            frameCounter: frameCounter
         )
         self.mapCadDisplayLoop = MapCADisplayLoop(
             camera: self,

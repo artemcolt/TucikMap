@@ -7,7 +7,19 @@
 
 import MetalKit
 
+struct GeoLabelsWithIntersections {
+    let intersections: [Int: [LabelIntersection]]
+    let geoLabels: [MetalGeoLabels]
+    var bufferingCounter: Int = Settings.maxBuffersInFlight
+}
+
 class ScreenCollisionsDetector {
+    private struct SortedGeoLabel {
+        let i: Int
+        let screenPositions: SIMD2<Float>
+        let mapLabelLineCollisionsMeta: MapLabelLineCollisionsMeta
+    }
+    
     private let computeLabelScreen: ComputeLabelScreen
     private let metalDevice: MTLDevice
     private let metalCommandQueue: MTLCommandQueue
@@ -20,19 +32,26 @@ class ScreenCollisionsDetector {
     private let inputScreenPositionsBuffer: MTLBuffer
     private let outputWorldPositionsBuffer: MTLBuffer
     private let inputBufferWorldPostionsSize = 1500
-    private let modelMatrixBufferSize = 15
+    private let modelMatrixBufferSize = 30
     
     private var savedLabelIntersections: [UInt: LabelIntersection] = [:]
     
-    // the most possible actual intersections data
-    private var newDataFlag: Int = Settings.maxBuffersInFlight
-    private var intersectionsResultByTiles: [Int: [LabelIntersection]] = [:]
+    // самые актуальные надписи карты
+    // для них мы считаем коллизии
+    private var geoLabels: [MetalGeoLabels] = []
     
-    func getIntersectionsByTiles() -> [Int: [LabelIntersection]]? {
-        if newDataFlag <= 0 { return nil }
+    // закэшированные надписи и результат отработки вычисления пересечений
+    private var geoLabelsWithIntersections: GeoLabelsWithIntersections = GeoLabelsWithIntersections(
+        intersections: [:], geoLabels: [], bufferingCounter: 0
+    )
+    
+    func getLabelsWithIntersections() -> GeoLabelsWithIntersections? {
+        // чтобы постоянно не перезаписывать буффера пересечений
+        // запись будет только в первые 3 кадра для тройной буферизации, а дальше использование свежих буфферов
+        if geoLabelsWithIntersections.bufferingCounter <= 0 { return nil }
         
-        newDataFlag -= 1
-        return intersectionsResultByTiles
+        geoLabelsWithIntersections.bufferingCounter -= 1
+        return geoLabelsWithIntersections
     }
     
     init(
@@ -67,27 +86,32 @@ class ScreenCollisionsDetector {
         outputWorldPositionsBuffer = metalDevice.makeBuffer(length: MemoryLayout<SIMD2<Float>>.stride * inputBufferWorldPostionsSize)!
     }
     
-    func evaluateTilesData(tiles: [MetalTile], lastUniforms: Uniforms, mapPanning: SIMD3<Double>) {
+    func setGeoLabels(geoLabels: [MetalGeoLabels]) {
+        self.geoLabels = geoLabels
+    }
+    
+    func evaluateTileGeoLabels(lastUniforms: Uniforms, mapPanning: SIMD3<Double>) {
         let startTime = CFAbsoluteTimeGetCurrent()
+        let stackCachingGeoLabels = self.geoLabels
         
         var copyToUniform = lastUniforms
         var inputComputeScreenVertices: [InputComputeScreenVertex] = []
         var modelMatrices = Array(repeating: matrix_identity_float4x4, count: modelMatrixBufferSize)
-        var metaLines: [MapLabelLineMeta] = []
+        var mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta] = []
         var labelsTileStartIndices: [Int] = []
-        var labelIds: [UInt] = []
-        for i in 0..<tiles.count {
-            let tile = tiles[i]
+        for i in 0..<stackCachingGeoLabels.count {
+            let tile = stackCachingGeoLabels[i]
             let tileModelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
             modelMatrices[i] = tileModelMatrix
             
             labelsTileStartIndices.append(-1)
             guard let textLabels = tile.textLabels else { continue }
-            let inputArray = textLabels.metaLines.map { label in InputComputeScreenVertex(location: label.localPosition, matrixId: simd_short1(i)) }
+            let inputArray = textLabels.mapLabelLineCollisionsMeta.map {
+                label in InputComputeScreenVertex(location: label.localPosition, matrixId: simd_short1(i))
+            }
             inputComputeScreenVertices.append(contentsOf: inputArray)
-            labelsTileStartIndices[labelsTileStartIndices.count - 1] = metaLines.count
-            metaLines.append(contentsOf: textLabels.metaLines)
-            labelIds.append(contentsOf: tile.textLabelsIds)
+            labelsTileStartIndices[labelsTileStartIndices.count - 1] = textLabels.mapLabelLineCollisionsMeta.count
+            mapLabelLineCollisionsMeta.append(contentsOf: textLabels.mapLabelLineCollisionsMeta)
         }
         inputModelMatricesBuffer.contents().copyMemory(
             from: &modelMatrices,
@@ -122,12 +146,27 @@ class ScreenCollisionsDetector {
             let timeSpentInNanoseconds = buffer.gpuEndTime - buffer.gpuStartTime
             _ = Double(timeSpentInNanoseconds) / 1_000_000_000.0
             
-            let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
-            var labelIntersections = [LabelIntersection] (repeating: LabelIntersection(hide: false, createdTime: 0), count: output.count)
+            var sortedGeoLabels: [SortedGeoLabel] = []
+            sortedGeoLabels.reserveCapacity(output.count)
             for i in 0..<output.count {
                 let screenPositions = output[i]
-                let metaLine = metaLines[i]
-                let collisionId = labelIds[i]
+                let mapLabelLineCollisionsMeta = mapLabelLineCollisionsMeta[i]
+                sortedGeoLabels.append(SortedGeoLabel(
+                    i: i,
+                    screenPositions: screenPositions,
+                    mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
+                ))
+            }
+            sortedGeoLabels.sort(by: { first, second in  first.mapLabelLineCollisionsMeta.sortRank < second.mapLabelLineCollisionsMeta.sortRank })
+            
+            
+            let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
+            let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
+            var labelIntersections = [LabelIntersection] (repeating: LabelIntersection(hide: false, createdTime: 0), count: output.count)
+            for sorted in sortedGeoLabels {
+                let screenPositions = sorted.screenPositions
+                let metaLine = sorted.mapLabelLineCollisionsMeta
+                let collisionId = metaLine.id
                 let added = spaceDiscretisation.addAgent(agent: CollisionAgent(
                     location: SIMD2<Float>(Float(screenPositions.x + 5000), Float(screenPositions.y + 5000)),
                     height: Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale),
@@ -135,34 +174,37 @@ class ScreenCollisionsDetector {
                 ))
                 
                 let hide = added == false
-                let previousState = self.savedLabelIntersections[collisionId]
-                let previousStateIsNil = previousState == nil
-                let statusChanged = hide != previousState?.hide
-                let updateCreatedTime = statusChanged
-                let usePreviousCreatedTime = previousStateIsNil ? 0 : previousState!.createdTime
+                let labelIntersection: LabelIntersection
+                if let previousState = self.savedLabelIntersections[collisionId] {
+                    let statusChanged = hide != previousState.hide
+                    labelIntersection = LabelIntersection(hide: hide, createdTime: statusChanged ? elapsedTime : previousState.createdTime)
+                } else {
+                    labelIntersection = LabelIntersection(hide: hide, createdTime: 0)
+                }
                 
-                let labelIntersection = LabelIntersection(
-                    hide: hide,
-                    createdTime: updateCreatedTime ? self.frameCounter.getElapsedTimeSeconds() : usePreviousCreatedTime
-                )
-                labelIntersections[i] = labelIntersection
+                labelIntersections[sorted.i] = labelIntersection
                 self.savedLabelIntersections[collisionId] = labelIntersection
             }
             
+            var intersectionsResultByTiles: [Int: [LabelIntersection]] = [:]
             var startIndex = 0
-            for i in 0..<tiles.count {
-                let tile = tiles[i]
+            for i in 0..<stackCachingGeoLabels.count {
+                let tile = stackCachingGeoLabels[i]
                 guard let textLabels = tile.textLabels else { continue }
-                let count = textLabels.metaLines.count
+                let count = textLabels.mapLabelLineCollisionsMeta.count
                 let subArray = Array(labelIntersections[startIndex ..< startIndex + count])
                 
-                self.intersectionsResultByTiles[i] = subArray
+                intersectionsResultByTiles[i] = subArray
                 startIndex += count
             }
-            self.newDataFlag = 3
+            
+            self.geoLabelsWithIntersections = GeoLabelsWithIntersections(
+                intersections: intersectionsResultByTiles,
+                geoLabels: stackCachingGeoLabels
+            )
             
             let endTime = CFAbsoluteTimeGetCurrent()
-            //let absoluteTimeSpent = endTime - startTime
+            let absoluteTimeSpent = endTime - startTime
             //print("timeSpent = \(absoluteTimeSpent)")
             //print("positions = ", spaceDiscretisation.positions)
             self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))

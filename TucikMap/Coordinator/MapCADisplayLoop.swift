@@ -16,6 +16,7 @@ class MapCADisplayLoop {
     private var loopCount: UInt64 = 0
     private var computeIntersectionsEvery: UInt64 = Settings.refreshLabelsIntersectionsEveryNDisplayLoop
     
+    
     init(camera: Camera,
          frameCounter: FrameCounter,
          renderFrameCount: RenderFrameCount,
@@ -36,11 +37,11 @@ class MapCADisplayLoop {
         loopCount += 1
         
         if (canComputeIntersectionsNow()) {
+            
             if let lastUnifroms = camera.updateBufferedUniform.lastUniforms {
-                screenCollisionDetector.evaluateTilesData(
-                    tiles: assembledMapUpdater.assembledMap.tiles,
+                screenCollisionDetector.evaluateTileGeoLabels(
                     lastUniforms: lastUnifroms,
-                    mapPanning: camera.mapPanning
+                    mapPanning: camera.mapPanning,
                 )
             }
         }

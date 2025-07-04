@@ -19,44 +19,18 @@ class MetalTile: Hashable {
         hasher.combine(tile.z)
     }
     
-    let verticesBuffer: MTLBuffer
-    let indicesBuffer: MTLBuffer
-    let indicesCount: Int
-    let stylesBuffer: MTLBuffer
-    let tile: Tile
-    let textLabels: MapLabelsAssembler.Result?
-    let textLabelsIds: [UInt]
+    let tile2dBuffers: Tile2dBuffers
+    let tile3dBuffers: Tile3dBuffers
     
-    let vertices3DBuffer: MTLBuffer?
-    let indices3DBuffer: MTLBuffer?
-    let styles3DBuffer: MTLBuffer
-    let indices3DCount: Int
+    let tile: Tile
     
     init(
-        verticesBuffer: MTLBuffer,
-        indicesBuffer: MTLBuffer,
-        indicesCount: Int,
-        stylesBuffer: MTLBuffer,
         tile: Tile,
-        textLabels: MapLabelsAssembler.Result?,
-        textLabelsIds: [UInt],
-        
-        vertices3DBuffer: MTLBuffer?,
-        indices3DBuffer: MTLBuffer?,
-        styles3DBuffer: MTLBuffer,
-        indices3DCount: Int
+        tile2dBuffers: Tile2dBuffers,
+        tile3dBuffers: Tile3dBuffers
     ) {
-        self.verticesBuffer = verticesBuffer
-        self.indicesBuffer = indicesBuffer
-        self.indicesCount = indicesCount
-        self.stylesBuffer = stylesBuffer
         self.tile = tile
-        self.textLabels = textLabels
-        self.textLabelsIds = textLabelsIds
-        
-        self.vertices3DBuffer = vertices3DBuffer
-        self.indices3DBuffer = indices3DBuffer
-        self.styles3DBuffer = styles3DBuffer
-        self.indices3DCount = indices3DCount
+        self.tile2dBuffers = tile2dBuffers
+        self.tile3dBuffers = tile3dBuffers
     }
 }

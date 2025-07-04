@@ -124,7 +124,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
         
-        camera.moveTo(lat: 55.75223153538435, lon: 37.62591025630741, zoom: 16, view: view, size: size)
+        //camera.moveTo(lat: 55.75223153538435, lon: 37.62591025630741, zoom: 16, view: view, size: size)
     }
     
     // Three-step rendering process
@@ -136,15 +136,26 @@ class Coordinator: NSObject, MTKViewDelegate {
         camera.updateBufferedUniform!.updateUniforms(viewportSize: view.drawableSize)
         let currentFBIdx = camera.updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer = camera.updateBufferedUniform.getCurrentFrameBuffer()
-        let assembledTiles = camera.assembledMapUpdater.assembledMap.tiles
+        let assembledMap = camera.assembledMapUpdater.assembledMap
+        let assembledTiles = assembledMap.tiles
+        let mapPanning = camera.mapPanning
+        var modelMatrices: [matrix_float4x4] = []
+        for tile in assembledTiles {
+            let modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
+            modelMatrices.append(modelMatrix)
+        }
+        
         
         // apply new intersection data to current tripple buffering buffer
-        if let intersectionsResultByTiles = screenCollisionsDetector.getIntersectionsByTiles() {
-            for i in 0..<assembledTiles.count {
-                guard let intersections = intersectionsResultByTiles[i] else { continue }
-                let tile = assembledTiles[i]
-                guard let textLabels = tile.textLabels else { continue }
-                guard textLabels.metaLines.count == intersections.count else { continue }
+        if let labelsWithIntersections = screenCollisionsDetector.getLabelsWithIntersections() {
+            let geoLabels = labelsWithIntersections.geoLabels
+            assembledMap.tileGeoLabels = geoLabels
+            let intersections = labelsWithIntersections.intersections
+            
+            for i in 0..<assembledMap.tileGeoLabels.count {
+                guard let intersections = intersections[i] else { continue }
+                let tileGeoLabels = geoLabels[i]
+                guard let textLabels = tileGeoLabels.textLabels else { continue }
                 let copyToBuffer = textLabels.drawMapLabelsData.intersectionsTrippleBuffer[currentFBIdx]
                 copyToBuffer.contents()
                             .copyMemory(from: intersections, byteCount: MemoryLayout<LabelIntersection>.stride * intersections.count)
@@ -171,7 +182,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.drawTiles(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
-            tiles: assembledTiles
+            tiles: assembledTiles,
+            modelMatrices: modelMatrices
         )
         renderEncoder.endEncoding()
         
@@ -186,7 +198,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.draw3dTiles(
             renderEncoder: render3dEncoder,
             uniformsBuffer: uniformsBuffer,
-            tiles: assembledTiles
+            tiles: assembledTiles,
+            modelMatrices: modelMatrices
         )
         render3dEncoder.endEncoding()
         
@@ -198,17 +211,11 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.drawMapLabels(
             renderEncoder: basicRenderEncoder,
             uniformsBuffer: uniformsBuffer,
-            tiles: assembledTiles,
+            geoLabels: assembledMap.tileGeoLabels,
             currentFBIndex: currentFBIdx
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: basicRenderEncoder)
-//        drawGrid.draw(renderEncoder: renderEncoder,
-//                      uniformsBuffer: uniformsBuffer,
-//                      camTileX: Int(camera.centerTileX),
-//                      camTileY: Int(camera.centerTileY),
-//                      gridThickness: Settings.gridThickness * mapZoomState.mapScaleFactor,
-//        )
         drawPoint.draw(
             renderEncoder: basicRenderEncoder,
             uniformsBuffer: uniformsBuffer,
@@ -216,13 +223,8 @@ class Coordinator: NSObject, MTKViewDelegate {
             position: camera.targetPosition,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
-//        drawAxis.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
-        
         
         pipelines.textPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
-        if let text = camera.assembledMapUpdater?.assembledTileTitles {
-            textTools.drawText.renderText(renderEncoder: basicRenderEncoder, uniforms: uniformsBuffer, drawTextData: text)
-        }
         drawUI.drawZoomUiText(renderCommandEncoder: basicRenderEncoder, size: view.drawableSize)
         basicRenderEncoder.endEncoding()
         

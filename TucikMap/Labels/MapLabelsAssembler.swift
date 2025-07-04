@@ -21,6 +21,7 @@ struct DrawMapLabelsBytes {
     let mapLabelLineMeta: [MapLabelLineMeta]
     let verticesCount: Int
     let atlas: MTLTexture
+    let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
 }
 
 class MapLabelsAssembler {
@@ -38,11 +39,14 @@ class MapLabelsAssembler {
         let text: String
         let scale: Float
         let localPosition: SIMD2<Float>
+        let id: UInt
+        let sortRank: ushort
     }
     
     func assembleBytes(lines: [TextLineData], font: Font) -> DrawMapLabelsBytes {
         var mapLabelSymbolMeta: [MapLabelSymbolMeta] = []
         var mapLabelLineMeta: [MapLabelLineMeta] = []
+        var mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta] = []
         var vertices: [TextVertex] = []
         
         for i in 0..<lines.count {
@@ -61,6 +65,14 @@ class MapLabelsAssembler {
                 scale: line.scale,
                 localPosition: line.localPosition
             ))
+            
+            mapLabelLineCollisionsMeta.append(MapLabelLineCollisionsMeta(
+                measuredText: measuredText,
+                scale: line.scale,
+                localPosition: line.localPosition,
+                sortRank: line.sortRank,
+                id: line.id
+            ))
         }
         
         let verticesCount = vertices.count
@@ -70,12 +82,13 @@ class MapLabelsAssembler {
             mapLabelLineMeta: mapLabelLineMeta,
             verticesCount: verticesCount,
             atlas: font.atlasTexture,
+            mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta
         )
     }
     
     struct Result {
         var drawMapLabelsData: DrawMapLabelsData
-        var metaLines: [MapLabelLineMeta]
+        var mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
     }
     
     func assemble(lines: [TextLineData], font: Font) -> Result? {
@@ -111,6 +124,6 @@ class MapLabelsAssembler {
             verticesCount: assembledBytes.verticesCount,
             atlas: assembledBytes.atlas
         )
-        return Result(drawMapLabelsData: drawData, metaLines: assembledBytes.mapLabelLineMeta)
+        return Result(drawMapLabelsData: drawData, mapLabelLineCollisionsMeta: assembledBytes.mapLabelLineCollisionsMeta)
     }
 }

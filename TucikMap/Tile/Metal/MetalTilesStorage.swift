@@ -48,61 +48,64 @@ class MetalTilesStorage {
                     )
                 )
                 
-                let verticesBuffer = metalDevice.makeBuffer(
-                    bytes: parsedTile.drawingPolygon.vertices,
-                    length: parsedTile.drawingPolygon.vertices.count * MemoryLayout<PolygonPipeline.VertexIn>.stride
-                )!
-                let indicesBuffer = metalDevice.makeBuffer(
-                    bytes: parsedTile.drawingPolygon.indices,
-                    length: parsedTile.drawingPolygon.indices.count * MemoryLayout<UInt32>.stride
-                )!
-                let stylesBuffer = metalDevice.makeBuffer(
-                    bytes: parsedTile.styles,
-                    length: parsedTile.styles.count * MemoryLayout<TilePolygonStyle>.stride
-                )!
-                
-                
-                let vertices3DBuffer = parsedTile.drawing3dPolygon.vertices.isEmpty ? nil : metalDevice.makeBuffer(
-                    bytes: parsedTile.drawing3dPolygon.vertices,
-                    length: parsedTile.drawing3dPolygon.vertices.count * MemoryLayout<Polygon3dPipeline.VertexIn>.stride
+                let tile2dBuffers = Tile2dBuffers(
+                    verticesBuffer: metalDevice.makeBuffer(
+                        bytes: parsedTile.drawingPolygon.vertices,
+                        length: parsedTile.drawingPolygon.vertices.count * MemoryLayout<PolygonPipeline.VertexIn>.stride
+                    )!,
+                    indicesBuffer: metalDevice.makeBuffer(
+                        bytes: parsedTile.drawingPolygon.indices,
+                        length: parsedTile.drawingPolygon.indices.count * MemoryLayout<UInt32>.stride
+                    )!,
+                    stylesBuffer: metalDevice.makeBuffer(
+                        bytes: parsedTile.styles,
+                        length: parsedTile.styles.count * MemoryLayout<TilePolygonStyle>.stride
+                    )!,
+                    indicesCount: parsedTile.drawingPolygon.indices.count
                 )
-                let indices3DBuffer = parsedTile.drawing3dPolygon.indices.isEmpty ? nil : metalDevice.makeBuffer(
-                    bytes: parsedTile.drawing3dPolygon.indices,
-                    length: parsedTile.drawing3dPolygon.indices.count * MemoryLayout<UInt32>.stride
+                
+                let tile3dBuffers = Tile3dBuffers(
+                    verticesBuffer: parsedTile.drawing3dPolygon.vertices.isEmpty ? nil : metalDevice.makeBuffer(
+                        bytes: parsedTile.drawing3dPolygon.vertices,
+                        length: parsedTile.drawing3dPolygon.vertices.count * MemoryLayout<Polygon3dPipeline.VertexIn>.stride
+                    ),
+                    indicesBuffer: parsedTile.drawing3dPolygon.indices.isEmpty ? nil : metalDevice.makeBuffer(
+                        bytes: parsedTile.drawing3dPolygon.indices,
+                        length: parsedTile.drawing3dPolygon.indices.count * MemoryLayout<UInt32>.stride
+                    ),
+                    stylesBuffer: metalDevice.makeBuffer(
+                        bytes: parsedTile.styles3d,
+                        length: parsedTile.styles3d.count * MemoryLayout<TilePolygonStyle>.stride
+                    )!,
+                    indicesCount: parsedTile.drawing3dPolygon.indices.count
                 )
-                let styles3DBuffer = metalDevice.makeBuffer(
-                    bytes: parsedTile.styles3d,
-                    length: parsedTile.styles3d.count * MemoryLayout<TilePolygonStyle>.stride
-                )!
                 
-                
-                let builtText = textTools.mapLabelsAssembler.assemble(
+                let textLabels = textTools.mapLabelsAssembler.assemble(
                     lines: parsedTile.textLabels.map { label in MapLabelsAssembler.TextLineData(
                         text: label.nameEn,
                         scale: label.scale,
-                        localPosition: label.localPosition
+                        localPosition: label.localPosition,
+                        id: label.id,
+                        sortRank: label.sortRank
                     )},
                     font: textTools.robotoFont.boldFont
                 )
                 
+                let metalGeoLabels = MetalGeoLabels(
+                    tile: tile,
+                    textLabels: textLabels
+                )
                 
                 let metalTile = MetalTile(
-                    verticesBuffer: verticesBuffer,
-                    indicesBuffer: indicesBuffer,
-                    indicesCount: parsedTile.drawingPolygon.indices.count,
-                    stylesBuffer: stylesBuffer,
                     tile: tile,
-                    textLabels: builtText,
-                    textLabelsIds: parsedTile.textLabels.map { label in label.id },
-                    
-                    vertices3DBuffer: vertices3DBuffer,
-                    indices3DBuffer: indices3DBuffer,
-                    styles3DBuffer: styles3DBuffer,
-                    indices3DCount: parsedTile.drawing3dPolygon.indices.count,
+                    tile2dBuffers: tile2dBuffers,
+                    tile3dBuffers: tile3dBuffers
                 )
                 
                 await MainActor.run {
-                    self.memoryMetalTile.setTile(metalTile, forKey: tile.key())
+                    let key = tile.key()
+                    self.memoryMetalTile.setTile(metalTile, forKey: key)
+                    self.memoryMetalTile.setGeoLabelsTile(metalGeoLabels, forKey: key)
                     self.onMetalingTileEnd(tile)
                 }
             }
@@ -115,6 +118,10 @@ class MetalTilesStorage {
     
     func getMetalTile(tile: Tile) -> MetalTile? {
         return memoryMetalTile.getTile(forKey: tile.key())
+    }
+    
+    func getMetalGeoLabels(tile: Tile) -> MetalGeoLabels? {
+        return memoryMetalTile.getTileGeoLabels(forKey: tile.key())
     }
     
     func requestMetalTile(tile: Tile) {

@@ -9,7 +9,6 @@ import MetalKit
 import Foundation
 
 class DrawAssembledMap {
-    
     let mapSize = Settings.mapSize
     let metalDevice: MTLDevice
     let drawMapLabels: DrawMapLabels
@@ -26,24 +25,26 @@ class DrawAssembledMap {
     func drawTiles(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        tiles: [MetalTile]
+        tiles: [MetalTile],
+        modelMatrices: [matrix_float4x4]
     ) {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
-        let mapPanning = camera.mapPanning
-        for tile in tiles {
-            var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
+        for i in 0..<tiles.count {
+            let tile = tiles[i]
+            var modelMatrix = modelMatrices[i]
+            let tile2dBuffers = tile.tile2dBuffers
             
-            renderEncoder.setVertexBuffer(tile.verticesBuffer, offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(tile.stylesBuffer, offset: 0, index: 2)
+            renderEncoder.setVertexBuffer(tile2dBuffers.verticesBuffer, offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(tile2dBuffers.stylesBuffer, offset: 0, index: 2)
             renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<float4x4>.stride, index: 3)
             
             renderEncoder.drawIndexedPrimitives(
                 type: .triangle,
-                indexCount: tile.indicesCount,
+                indexCount: tile2dBuffers.indicesCount,
                 indexType: .uint32,
-                indexBuffer: tile.indicesBuffer,
+                indexBuffer: tile2dBuffers.indicesBuffer,
                 indexBufferOffset: 0)
         }
     }
@@ -51,40 +52,42 @@ class DrawAssembledMap {
     func draw3dTiles(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        tiles: [MetalTile]
+        tiles: [MetalTile],
+        modelMatrices: [matrix_float4x4]
     ) {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
-        let mapPanning = camera.mapPanning
-        for tile in tiles {
-            guard let vertices3DBuffer = tile.vertices3DBuffer,
-                  let indices3DBuffer = tile.indices3DBuffer  else { continue }
-            var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
+        for i in 0..<tiles.count {
+            let tile = tiles[i]
+            let tileBuffers = tile.tile3dBuffers
+            guard let verticesBuffer = tileBuffers.verticesBuffer,
+                  let indicesBuffer = tileBuffers.indicesBuffer,
+                  let stylesBuffer = tileBuffers.stylesBuffer else { continue }
+            var modelMatrix = modelMatrices[i]
             
-            renderEncoder.setVertexBuffer(vertices3DBuffer, offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(tile.styles3DBuffer, offset: 0, index: 2)
+            renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(stylesBuffer, offset: 0, index: 2)
             renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<float4x4>.stride, index: 3)
             
             renderEncoder.drawIndexedPrimitives(
                 type: .triangle,
-                indexCount: tile.indices3DCount,
+                indexCount: tileBuffers.indicesCount,
                 indexType: .uint32,
-                indexBuffer: indices3DBuffer,
+                indexBuffer: indicesBuffer,
                 indexBufferOffset: 0)
         }
     }
     
-    
     func drawMapLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        tiles: [MetalTile],
+        geoLabels: [MetalGeoLabels],
         currentFBIndex: Int
     ) {
         drawMapLabels.draw(
             renderEncoder: renderEncoder,
-            tiles: tiles,
+            geoLabels: geoLabels,
             uniformsBuffer: uniformsBuffer,
             currentFBIndex: currentFBIndex
         )

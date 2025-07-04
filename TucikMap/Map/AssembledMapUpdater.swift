@@ -20,8 +20,9 @@ class AssembledMapUpdater {
     private var savedView: MTKView!
     private var metalTiles: MetalTilesStorage!
     private var renderFrameCount: RenderFrameCount!
+    private var frameCounter: FrameCounter!
     
-    var assembledMap: AssembledMap = AssembledMap(tiles: [])
+    var assembledMap: AssembledMap = AssembledMap(tiles: [], tileGeoLabels: [])
     var assembledTileTitles: DrawTextData?
     
     init(
@@ -29,12 +30,14 @@ class AssembledMapUpdater {
         device: MTLDevice,
         camera: Camera,
         textTools: TextTools,
-        renderFrameCount: RenderFrameCount
+        renderFrameCount: RenderFrameCount,
+        frameCounter: FrameCounter,
     ) {
         self.mapZoomState = mapZoomState
         self.textTools = textTools
         self.camera = camera
         self.renderFrameCount = renderFrameCount
+        self.frameCounter = frameCounter
         determineFeatureStyle = DetermineFeatureStyle()
         determineVisibleTiles = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
         tileTitleAssembler = TileTitlesAssembler(textAssembler: textTools.textAssembler)
@@ -83,29 +86,34 @@ class AssembledMapUpdater {
         let replsArray = replacements.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
-        let metalTiles = replsArray + actual
-        self.assembledMap.tiles = metalTiles
-        // new tiles -> new textLabels
-        camera.mapCadDisplayLoop.recomputeIntersections()
+        let fullMetalTilesArray = replsArray + actual
+        self.assembledMap.tiles = fullMetalTilesArray
+        
+        
+        // tile geo labels
+        var allActualReady = true
+        var actualGeoLabels: [MetalGeoLabels] = []
+        for i in 0..<visibleTiles.count {
+            let tile = visibleTiles[i]
+            
+            // get actual geo labels
+            if let metalGeoLabels = metalTiles.getMetalGeoLabels(tile: tile)  {
+                actualGeoLabels.append(metalGeoLabels)
+                continue
+            }
+            
+            allActualReady = false
+            break
+        }
+        if allActualReady {
+            camera.screenCollisionsDetector.setGeoLabels(geoLabels: actualGeoLabels)
+            camera.mapCadDisplayLoop.recomputeIntersections()
+        }
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
-        updateTitles(visibleTiles: visibleTiles)
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
-    }
-    
-    private func updateTitles(visibleTiles: [Tile]) {
-        let tileTitleOffset = Settings.tileTitleOffset
-        if Settings.drawTileCoordinates {
-            let tileTitles = self.tileTitleAssembler.assemble(
-                tiles: visibleTiles,
-                font: textTools.robotoFont.regularFont,
-                scale: Settings.tileTitleRootSize,
-                offset: SIMD2<Float>(tileTitleOffset, tileTitleOffset)
-            )
-            assembledTileTitles = tileTitles
-        }
     }
 }
