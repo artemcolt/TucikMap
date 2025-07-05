@@ -76,8 +76,8 @@
             filePath = "TucikMap/Tile/Parse/TileMvtParser.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "251"
-            endingLineNumber = "251"
+            startingLineNumber = "260"
+            endingLineNumber = "260"
             landmarkName = "readingStage(tile:boundingBox:tileCoords:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -95,6 +95,22 @@
             startingLineNumber = "44"
             endingLineNumber = "44"
             landmarkName = "parse(tile:mvtData:boundingBox:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "F112EF9B-3D38-4A04-B762-CD09F4D480AE"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "TucikMap/Tile/Parse/TileMvtParser.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "148"
+            endingLineNumber = "148"
+            landmarkName = "tryParseTextLabels(geometry:boundingBox:tileCoords:properties:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

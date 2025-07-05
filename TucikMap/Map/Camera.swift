@@ -112,6 +112,12 @@ class Camera {
         updateMap(view: view, size: size)
     }
     
+    func moveToPanningPoint(point: MapPanningTilePoint, zoom: Float, view: MTKView, size: CGSize) {
+        self.mapZoom = zoom
+        mapPanning = SIMD3<Double>(point.x, point.y, 0)
+        updateMap(view: view, size: size)
+    }
+    
     // Handle single-finger pan gesture for target translation
     @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }

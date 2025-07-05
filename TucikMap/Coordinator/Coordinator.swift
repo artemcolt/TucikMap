@@ -125,6 +125,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         camera.updateMap(view: view, size: size)
         
         //camera.moveTo(lat: 55.75223153538435, lon: 37.62591025630741, zoom: 16, view: view, size: size)
+        //let panningPoint = Tile(x: 9904, y: 5122, z: 14).getTilePointPanningCoordinates(normalizedX: -1, normalizedY: 0)
+        //camera.moveToPanningPoint(point: panningPoint, zoom: 14, view: view, size: size)
     }
     
     // Three-step rendering process
@@ -144,7 +146,6 @@ class Coordinator: NSObject, MTKViewDelegate {
             let modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
             modelMatrices.append(modelMatrix)
         }
-        
         
         // apply new intersection data to current tripple buffering buffer
         if let labelsWithIntersections = screenCollisionsDetector.getLabelsWithIntersections() {

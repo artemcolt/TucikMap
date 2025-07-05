@@ -39,7 +39,7 @@ class MetalTilesStorage {
         if filterTiles.contains(where: { t in t.key() == tile.key()}) {
             if Settings.debugAssemblingMap { print("Parsing and metaling \(tile)") }
             Task {
-                let parsedTile = tileParser.parse(
+                let parsedTile = await tileParser.parse(
                     tile: tile,
                     mvtData: data,
                     boundingBox: BoundingBox(

@@ -177,9 +177,10 @@ class ScreenCollisionsDetector {
                 let labelIntersection: LabelIntersection
                 if let previousState = self.savedLabelIntersections[collisionId] {
                     let statusChanged = hide != previousState.hide
-                    labelIntersection = LabelIntersection(hide: hide, createdTime: statusChanged ? elapsedTime : previousState.createdTime)
+                    let createdTime = statusChanged ? elapsedTime : previousState.createdTime
+                    labelIntersection = LabelIntersection(hide: hide, createdTime: createdTime)
                 } else {
-                    labelIntersection = LabelIntersection(hide: hide, createdTime: 0)
+                    labelIntersection = LabelIntersection(hide: hide, createdTime: elapsedTime)
                 }
                 
                 labelIntersections[sorted.i] = labelIntersection

@@ -31,13 +31,13 @@ class TileMvtParser {
         tile: Tile,
         mvtData: Data,
         boundingBox: BoundingBox
-    ) -> ParsedTile {
+    ) async -> ParsedTile {
         let x = tile.x
         let y = tile.y
         let z = tile.z
         let vectorTile = VectorTile(data: mvtData, x: x, y: y, z: z, projection: .noSRID, indexed: .hilbert)!
         
-        let readingStageResult = readingStage(tile: vectorTile, boundingBox: boundingBox, tileCoords: tile)
+        let readingStageResult = await readingStage(tile: vectorTile, boundingBox: boundingBox, tileCoords: tile)
         let unificationResult = unificationStage(readingStageResult: readingStageResult)
         let unification3DResult = unification3DStage(readingStageResult: readingStageResult)
         
@@ -131,18 +131,22 @@ class TileMvtParser {
         geometry: GeoJsonGeometry,
         boundingBox: BoundingBox,
         tileCoords: Tile,
-        properties: [String: Sendable]) -> ParsedTextLabel?
-    {
+        properties: [String: Sendable],
+    ) async -> ParsedTextLabel? {
         if geometry.type != .point {return nil}
         guard let point = geometry as? Point else {return nil}
         let x = point.coordinate.x
         let y = point.coordinate.y
         guard x > 0 && x < Double(Settings.tileExtent) && y > 0 && y < Double(Settings.tileExtent) else { return nil }
         guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: tileCoords) else { return nil }
+        guard let nameEn = properties["name_en"] as? String else {return nil}
         let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
-        //guard let nameEn = properties["name_en"] as? String else { return nil }
+        let panningPoint = tileCoords
+            .getTilePointPanningCoordinates(normalizedX: coordinate.x, normalizedY: coordinate.y)
+        let uniqueGeoLabelKey = UniqueGeoLabelKey(x: panningPoint.x, y: panningPoint.y, name: nameEn)
+        
         return ParsedTextLabel(
-            id: giveMeId.forScreenCollisionsDetection(),
+            id: await giveMeId.forScreenCollisionsDetection(uniqueGeoLabelKey: uniqueGeoLabelKey),
             localPosition: SIMD2<Float>(coordinate),
             nameEn: filterTextResult.text,
             scale: filterTextResult.scale,
@@ -171,7 +175,7 @@ class TileMvtParser {
         styles[style.key] = style
     }
     
-    func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) -> ReadingStageResult {
+    func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) async -> ReadingStageResult {
         var polygon3dByStyle: [UInt8: [Parsed3dPolygon]] = [:]
         
         var polygonByStyle: [UInt8: [ParsedPolygon]] = [:]
@@ -182,11 +186,16 @@ class TileMvtParser {
         for layerName in tile.layerNames {
             guard let features = tile.features(for: layerName) else { continue }
             
-            features.forEach { feature in
+            for feature in features {
                 let properties = feature.properties
                 
                 let geometry = feature.geometry
-                if let parsed = tryParseTextLabels(geometry: geometry, boundingBox: boundingBox, tileCoords: tileCoords, properties: properties) {
+                if let parsed = await tryParseTextLabels(
+                    geometry: geometry,
+                    boundingBox: boundingBox,
+                    tileCoords: tileCoords,
+                    properties: properties
+                ) {
                     textLabels.append(parsed)
                 }
                 
@@ -200,7 +209,7 @@ class TileMvtParser {
                 if styleKey == 0 {
                     // none defineded style
                     PrintStyleHelper.printNotUsedStyleToSee(detFeatureStyleData: detStyleData)
-                    return
+                    continue
                 }
                 if styles[styleKey] == nil {
                     styles[styleKey] = style
@@ -215,7 +224,7 @@ class TileMvtParser {
                     let baseZoom = 16
                     let difference = currentZ - baseZoom
                     let factor = pow(2.0, Double(difference))
-                    guard var height = properties["height"] as? Double else { return }
+                    guard var height = properties["height"] as? Double else { continue }
                     height = height * Settings.buildingsFactor * factor
                     let _ = properties["min_height"] as? Double
                     if let parsed = tryParsePolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height) {
@@ -224,7 +233,7 @@ class TileMvtParser {
                     if let parsed = tryParseMultiPolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height) {
                         polygon3dByStyle[styleKey, default: []].append(contentsOf: parsed)
                     }
-                    return
+                    continue
                 }
                 
                 if let parsed = tryParsePolygon(geometry: geometry,
