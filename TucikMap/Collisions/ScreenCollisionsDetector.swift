@@ -39,6 +39,8 @@ class ScreenCollisionsDetector {
     // самые актуальные надписи карты
     // для них мы считаем коллизии
     private var geoLabels: [MetalGeoLabels] = []
+    private var geoLabelsTimePoints: [Float] = []
+    private var actualLabelsIds: Set<UInt> = []
     
     // закэшированные надписи и результат отработки вычисления пересечений
     private var geoLabelsWithIntersections: GeoLabelsWithIntersections = GeoLabelsWithIntersections(
@@ -87,12 +89,44 @@ class ScreenCollisionsDetector {
     }
     
     func setGeoLabels(geoLabels: [MetalGeoLabels]) {
-        self.geoLabels = geoLabels
+        guard geoLabels.isEmpty == false else { return }
+        let elapsedTime = frameCounter.getElapsedTimeSeconds()
+        
+        let currentZ = geoLabels.first!.tile.z
+        var savePrevious: [MetalGeoLabels] = []
+        for label in self.geoLabels {
+            let isDifferentZ = label.tile.z != currentZ
+            if isDifferentZ {
+                label.timePoint = elapsedTime
+                savePrevious.append(label)
+            }
+        }
+        
+        // ресетит тайлы, делает их снова актуальными
+        geoLabels.forEach { label in label.timePoint = nil }
+        self.actualLabelsIds = Set(geoLabels.flatMap { label in label.containIds })
+        self.geoLabels = geoLabels + savePrevious
     }
     
-    func evaluateTileGeoLabels(lastUniforms: Uniforms, mapPanning: SIMD3<Double>) {
+    func evaluateTileGeoLabels(lastUniforms: Uniforms, mapPanning: SIMD3<Double>) -> Bool {
         let startTime = CFAbsoluteTimeGetCurrent()
-        let stackCachingGeoLabels = self.geoLabels
+        let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
+        var stackCachingGeoLabels: [MetalGeoLabels] = []
+        // Удаляет стухшие тайлы с гео метками
+        for geoLabel in self.geoLabels {
+            if geoLabel.timePoint == nil || elapsedTime - geoLabel.timePoint! < Settings.labelsFadeAnimationTimeSeconds {
+                stackCachingGeoLabels.append(geoLabel)
+            }
+        }
+        self.geoLabels = stackCachingGeoLabels
+        if self.geoLabels.count > modelMatrixBufferSize {
+            // если быстро зумить камеру туда/cюда то geoLabels будет расти в размере из-за того что анимация не успевает за изменениями
+            // в таком случае пропускаем изменения и отображаем старые данные до тех пор пока пользователь не успокоиться
+            //renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight) // продолжаем рендрить чтобы обновились данные в конце концов
+            return true // recompute is needed again but later
+        }
+        
+        let actualLabelsIdsCaching = self.actualLabelsIds
         
         var copyToUniform = lastUniforms
         var inputComputeScreenVertices: [InputComputeScreenVertex] = []
@@ -124,7 +158,7 @@ class ScreenCollisionsDetector {
         )
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
-              let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder() else { return }
+              let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder() else { return false }
         
         let computeScreenPositions = ComputeScreenPositions(
             inputModelMatricesBuffer: inputModelMatricesBuffer,
@@ -157,16 +191,40 @@ class ScreenCollisionsDetector {
                     mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
                 ))
             }
-            sortedGeoLabels.sort(by: { first, second in  first.mapLabelLineCollisionsMeta.sortRank < second.mapLabelLineCollisionsMeta.sortRank })
+            sortedGeoLabels.sort(by: { first, second in first.mapLabelLineCollisionsMeta.sortRank < second.mapLabelLineCollisionsMeta.sortRank })
             
             
             let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
             let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
             var labelIntersections = [LabelIntersection] (repeating: LabelIntersection(hide: false, createdTime: 0), count: output.count)
+            var handledActualGeoLabels: Set<UInt> = []
             for sorted in sortedGeoLabels {
                 let screenPositions = sorted.screenPositions
                 let metaLine = sorted.mapLabelLineCollisionsMeta
                 let collisionId = metaLine.id
+                let isActualLabel = actualLabelsIdsCaching.contains(collisionId)
+                
+                if isActualLabel == false {
+                    let labelIntersection: LabelIntersection
+                    if let previousState = self.savedLabelIntersections[collisionId] {
+                        let isHideAlready = previousState.hide == true
+                        let createdTime = isHideAlready ? previousState.createdTime : elapsedTime
+                        labelIntersection = LabelIntersection(hide: true, createdTime: createdTime)
+                    } else {
+                        labelIntersection = LabelIntersection(hide: true, createdTime: elapsedTime)
+                    }
+                    
+                    labelIntersections[sorted.i] = labelIntersection
+                    self.savedLabelIntersections[collisionId] = labelIntersection
+                    continue
+                }
+                
+                if handledActualGeoLabels.contains(collisionId) {
+                    labelIntersections[sorted.i] = self.savedLabelIntersections[collisionId]!
+                    continue
+                }
+                handledActualGeoLabels.insert(collisionId)
+                
                 let added = spaceDiscretisation.addAgent(agent: CollisionAgent(
                     location: SIMD2<Float>(Float(screenPositions.x + 5000), Float(screenPositions.y + 5000)),
                     height: Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale),
@@ -211,5 +269,6 @@ class ScreenCollisionsDetector {
             self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
         }
         commandBuffer.commit()
+        return false
     }
 }

@@ -50,7 +50,6 @@ class Camera {
         renderFrameCount: RenderFrameCount,
         frameCounter: FrameCounter,
         library: MTLLibrary,
-        metalCommandQueue: MTLCommandQueue,
         screenCollisionsDetector: ScreenCollisionsDetector
     ) {
         self.screenCollisionsDetector = screenCollisionsDetector

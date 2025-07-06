@@ -20,6 +20,9 @@ class MetalGeoLabels: Hashable {
     
     let tile: Tile
     let textLabels: MapLabelsAssembler.Result?
+    var containIds: [UInt] = []
+    
+    var timePoint: Float? = nil
     
     init(
         tile: Tile,
@@ -27,5 +30,7 @@ class MetalGeoLabels: Hashable {
     ) {
         self.tile = tile
         self.textLabels = textLabels
+        guard let textLabels = textLabels else { return }
+        self.containIds = textLabels.mapLabelLineCollisionsMeta.map { meta in meta.id }
     }
 }

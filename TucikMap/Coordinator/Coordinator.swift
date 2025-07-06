@@ -103,7 +103,6 @@ class Coordinator: NSObject, MTKViewDelegate {
                 renderFrameCount: renderFrameCount,
                 frameCounter: frameCounter,
                 library: pipelines.library,
-                metalCommandQueue: metalCommandQueue,
                 screenCollisionsDetector: screenCollisionsDetector
             )
             assembledMapWrapper = DrawAssembledMap(
