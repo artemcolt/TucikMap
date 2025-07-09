@@ -22,9 +22,26 @@ class DetermineVisibleTiles {
     }
     
     func determine() -> DetVisTilesResult {
+        if Settings.showOnlyTiles.count > 0 {
+            var visibleTiles: [Tile] = []
+            for tile in Settings.showOnlyTiles {
+                if tile.z > Settings.maxTileZoom {
+                    visibleTiles.append(tile.findParentTile(atZoom: Settings.maxTileZoom)!)
+                } else {
+                    visibleTiles.append(tile)
+                }
+            }
+            return DetVisTilesResult(
+                visibleTiles: visibleTiles
+            )
+        }
+        
         var centerTileX = Int(camera.centerTileX)
         var centerTileY = Int(camera.centerTileY)
         var zoomLevel = mapZoomState.zoomLevel
+        if Settings.printCenterTile {
+            print("centerTileX: \(centerTileX) centerTileY: \(centerTileY) zoomLevel: \(zoomLevel)")
+        }
         
         if zoomLevel > Settings.maxTileZoom {
             let parent = Tile(x: centerTileX, y: centerTileY, z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!

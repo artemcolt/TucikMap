@@ -123,7 +123,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
         
-        //camera.moveTo(lat: 55.75223153538435, lon: 37.62591025630741, zoom: 16, view: view, size: size)
+        //camera.moveTo(lat: 55.75184781616678, lon: 37.62915620085164, zoom: 20, view: view, size: size)
         //let panningPoint = Tile(x: 9904, y: 5122, z: 14).getTilePointPanningCoordinates(normalizedX: -1, normalizedY: 0)
         //camera.moveToPanningPoint(point: panningPoint, zoom: 14, view: view, size: size)
     }

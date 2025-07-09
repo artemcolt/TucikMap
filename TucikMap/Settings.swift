@@ -82,4 +82,6 @@ class Settings {
     static let shiftCollisionLocation: Float = 5_000
     
     static let printCenterLatLon: Bool = false
+    static let printCenterTile: Bool = false
+    static let showOnlyTiles: [Tile] = [] // Tile(x: 633890, y: 327808, z: 20)
 }

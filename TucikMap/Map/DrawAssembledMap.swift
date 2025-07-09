@@ -45,7 +45,8 @@ class DrawAssembledMap {
                 indexCount: tile2dBuffers.indicesCount,
                 indexType: .uint32,
                 indexBuffer: tile2dBuffers.indicesBuffer,
-                indexBufferOffset: 0)
+                indexBufferOffset: 0
+            )
         }
     }
     

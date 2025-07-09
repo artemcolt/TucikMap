@@ -105,22 +105,23 @@ class TileMvtParser {
     private func tryParseLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Double) -> [ParsedLineRawVertices]? {
         if geometry.type != .lineString {return nil}
         guard let line = geometry as? LineString else {return nil}
-        guard let clippedLine = line.clipped(to: boundingBox) else {return nil}
-        return parseLines(multiLine: clippedLine, width: width)
+        
+        //guard let clippedLine = line.clipped(to: boundingBox) else {return nil}
+        return parseLines(multiLine: MultiLineString([line], calculateBoundingBox: false)!, width: width)
     }
     
     private func tryParseMultiLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Double) -> [ParsedLineRawVertices]? {
         if geometry.type != .multiLineString {return nil}
         guard let multiLine = geometry as? MultiLineString else {return nil}
-        guard let clippedMultiLine = multiLine.clipped(to: boundingBox) else {return nil}
-        return parseLines(multiLine: clippedMultiLine, width: width)
+        //guard let clippedMultiLine = multiLine.clipped(to: boundingBox) else {return nil}
+        return parseLines(multiLine: multiLine, width: width)
     }
     
     private func parseLines(multiLine: MultiLineString, width: Double) -> [ParsedLineRawVertices] {
         var parsed: [ParsedLineRawVertices] = []
         for line in multiLine.lineStrings {
             let coordinates = line.coordinates
-            guard coordinates.count >= 2 else {continue}
+            guard coordinates.count >= 2 else { continue }
             let parsedLine = parseLine.parseRaw(line: coordinates, width: width)
             parsed.append(parsedLine)
         }
