@@ -38,7 +38,7 @@ class MapCADisplayLoop {
         
         if (canComputeIntersectionsNow()) {
             if let lastUnifroms = camera.updateBufferedUniform.lastUniforms {
-                recomputeIntersectionsFlag = screenCollisionDetector.evaluateTileGeoLabels(
+                recomputeIntersectionsFlag = screenCollisionDetector.evaluate(
                     lastUniforms: lastUnifroms,
                     mapPanning: camera.mapPanning,
                 )
