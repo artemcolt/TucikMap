@@ -83,5 +83,9 @@ class Settings {
     
     static let printCenterLatLon: Bool = false
     static let printCenterTile: Bool = false
-    static let showOnlyTiles: [Tile] = [] // Tile(x: 633890, y: 327808, z: 20)
+    static let showOnlyTiles: [Tile] = [ ] // Tile(x: 39617, y: 20488, z: 16)
+    
+    static let useGoToAtStart = false
+    static let goToAtStartZ: Float = 16
+    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(55.74949000658127, 37.624466601994754)
 }

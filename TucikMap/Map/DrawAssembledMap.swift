@@ -14,12 +14,19 @@ class DrawAssembledMap {
     let drawMapLabels: DrawMapLabels
     let camera: Camera
     let mapZoomState: MapZoomState
+    let sampler: MTLSamplerState
     
     init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera, mapZoomState: MapZoomState) {
         self.metalDevice = metalDevice
         self.drawMapLabels = DrawMapLabels(metalDevice: metalDevice, screenUniforms: screenUniforms, camera: camera, mapZoomState: mapZoomState)
         self.mapZoomState = mapZoomState
         self.camera = camera
+        
+        let samplerDescriptor = MTLSamplerDescriptor()
+        samplerDescriptor.magFilter = .linear
+        samplerDescriptor.minFilter = .linear
+        samplerDescriptor.mipFilter = .linear
+        sampler = metalDevice.makeSamplerState(descriptor: samplerDescriptor)!
     }
     
     func drawTiles(
@@ -92,5 +99,14 @@ class DrawAssembledMap {
             uniformsBuffer: uniformsBuffer,
             currentFBIndex: currentFBIndex
         )
+    }
+    
+    func drawRoadLabels(
+        renderEncoder: MTLRenderCommandEncoder,
+        uniformsBuffer: MTLBuffer,
+        tiles: [MetalTile],
+        modelMatrices: [float4x4]
+    ) {
+        
     }
 }

@@ -11,4 +11,5 @@ struct ReadingStageResult {
     let rawLineByStyle: [UInt8: [ParsedLineRawVertices]]
     let styles: [UInt8: FeatureStyle]
     let textLabels: [ParsedTextLabel]
+    let roadLabels: [ParsedRoadLabel]
 }

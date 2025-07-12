@@ -12,6 +12,7 @@ class ParsedTile {
     let styles: [TilePolygonStyle]
     let tile: Tile
     let textLabels: [ParsedTextLabel]
+    let roadLabels: [ParsedRoadLabel]
     
     let drawing3dPolygon: Drawing3dPolygonBytes
     let styles3d: [TilePolygonStyle]
@@ -21,6 +22,7 @@ class ParsedTile {
         styles: [TilePolygonStyle],
         tile: Tile,
         textLabels: [ParsedTextLabel],
+        roadLabels: [ParsedRoadLabel],
         drawing3dPolygon: Drawing3dPolygonBytes,
         styles3d: [TilePolygonStyle]
     ) {
@@ -28,6 +30,7 @@ class ParsedTile {
         self.styles = styles
         self.tile = tile
         self.textLabels = textLabels
+        self.roadLabels = roadLabels
         
         self.drawing3dPolygon = drawing3dPolygon
         self.styles3d = styles3d

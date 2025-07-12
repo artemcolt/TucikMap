@@ -32,7 +32,7 @@ class ScreenCollisionsDetector {
     private let inputScreenPositionsBuffer: MTLBuffer
     private let outputWorldPositionsBuffer: MTLBuffer
     private let inputBufferWorldPostionsSize = 1500
-    private let modelMatrixBufferSize = 30
+    private let modelMatrixBufferSize = 60
     
     private var savedLabelIntersections: [UInt: LabelIntersection] = [:]
     

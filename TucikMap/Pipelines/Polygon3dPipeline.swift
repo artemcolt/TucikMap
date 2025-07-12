@@ -12,6 +12,7 @@ class Polygon3dPipeline {
     
     struct VertexIn {
         let position: SIMD3<Float>
+        let normal: SIMD3<Float>
         let styleIndex: simd_uchar1
     }
     
@@ -23,9 +24,12 @@ class Polygon3dPipeline {
         vertexDescriptor.attributes[0].format = .float3
         vertexDescriptor.attributes[0].offset = 0
         vertexDescriptor.attributes[0].bufferIndex = 0
-        vertexDescriptor.attributes[1].format = .uchar
+        vertexDescriptor.attributes[1].format = .float3
         vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.size
         vertexDescriptor.attributes[1].bufferIndex = 0
+        vertexDescriptor.attributes[2].format = .uchar
+        vertexDescriptor.attributes[2].offset = MemoryLayout<SIMD3<Float>>.size * 2
+        vertexDescriptor.attributes[2].bufferIndex = 0
         vertexDescriptor.layouts[0].stride = MemoryLayout<VertexIn>.stride
         vertexDescriptor.layouts[0].stepFunction = .perVertex
         

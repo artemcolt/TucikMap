@@ -15,8 +15,9 @@ class Coordinator: NSObject, MTKViewDelegate {
     var renderFrameControl: RenderFrameControl!
     var renderFrameCount: RenderFrameCount!
     
-    var depthStencilState: MTLDepthStencilState!
-    var defaultDepthStencilState: MTLDepthStencilState!
+    var depthStencilStatePrePass: MTLDepthStencilState!
+    var depthStencilStateColorPass: MTLDepthStencilState!
+    
     var frameCounter: FrameCounter!
     
     // Helpers
@@ -57,10 +58,14 @@ class Coordinator: NSObject, MTKViewDelegate {
             self.metalDevice = device
             self.metalCommandQueue = device.makeCommandQueue()
             
-            let depthStencilDescriptor = MTLDepthStencilDescriptor()
-            depthStencilDescriptor.depthCompareFunction = .less
-            depthStencilDescriptor.isDepthWriteEnabled = true
+            let depthPrePassDescriptor = MTLDepthStencilDescriptor()
+            depthPrePassDescriptor.depthCompareFunction = .less
+            depthPrePassDescriptor.isDepthWriteEnabled = true
+            depthStencilStatePrePass = device.makeDepthStencilState(descriptor: depthPrePassDescriptor)
             
+            let depthColorPassDescriptor = MTLDepthStencilDescriptor()
+            depthColorPassDescriptor.depthCompareFunction = .equal  // Key change: only equal depths pass
+            depthColorPassDescriptor.isDepthWriteEnabled = false   // No need to write depth again
             // Настройка stencil-теста
             let stencilDescriptor = MTLStencilDescriptor()
             stencilDescriptor.stencilCompareFunction = .equal
@@ -69,15 +74,8 @@ class Coordinator: NSObject, MTKViewDelegate {
             stencilDescriptor.depthStencilPassOperation = .incrementClamp // Увеличиваем stencil при рендеринге
             stencilDescriptor.readMask = 0xFF
             stencilDescriptor.writeMask = 0xFF
-            
-            depthStencilDescriptor.frontFaceStencil = stencilDescriptor
-            depthStencilDescriptor.backFaceStencil = stencilDescriptor
-            depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)
-            
-            
-            let defaultDepthStencilDescriptor = MTLDepthStencilDescriptor()
-            defaultDepthStencilDescriptor.depthCompareFunction = .always
-            defaultDepthStencilState = device.makeDepthStencilState(descriptor: defaultDepthStencilDescriptor)
+            depthColorPassDescriptor.frontFaceStencil = stencilDescriptor
+            depthStencilStateColorPass = device.makeDepthStencilState(descriptor: depthColorPassDescriptor)!
             
             frameCounter = FrameCounter()
             mapZoomState = MapZoomState()
@@ -123,7 +121,13 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         camera.updateMap(view: view, size: size)
         
-        //camera.moveTo(lat: 55.75184781616678, lon: 37.62915620085164, zoom: 20, view: view, size: size)
+        if Settings.useGoToAtStart {
+            let goToLocationAtStart = Settings.goToLocationAtStart
+            let zoom = Settings.goToAtStartZ
+            camera.moveTo(lat: goToLocationAtStart.x, lon: goToLocationAtStart.y, zoom: zoom, view: view, size: size)
+        }
+        
+        
         //let panningPoint = Tile(x: 9904, y: 5122, z: 14).getTilePointPanningCoordinates(normalizedX: -1, normalizedY: 0)
         //camera.moveToPanningPoint(point: panningPoint, zoom: 14, view: view, size: size)
     }
@@ -189,23 +193,51 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         renderPassDescriptor.colorAttachments[0].loadAction = .load
         
-        renderPassDescriptor.depthAttachment.texture = view.depthStencilTexture
-        renderPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
-        let render3dEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
-        pipelines.polygon3dPipeline.selectPipeline(renderEncoder: render3dEncoder)
-        render3dEncoder.setDepthStencilState(depthStencilState)
-        render3dEncoder.setStencilReferenceValue(0)
+        
+        // First: Depth pre-pass (populate min depths, no color)
+        let depthPrePassDescriptor = renderPassDescriptor.copy() as! MTLRenderPassDescriptor  // Copy the original
+        depthPrePassDescriptor.depthAttachment.texture = view.depthStencilTexture
+        depthPrePassDescriptor.stencilAttachment.texture = view.depthStencilTexture
+        depthPrePassDescriptor.colorAttachments[0].loadAction = .dontCare  // No color load needed
+        depthPrePassDescriptor.colorAttachments[0].storeAction = .dontCare // Disable color writes
+        depthPrePassDescriptor.depthAttachment.loadAction = .clear         // Clear depth
+        depthPrePassDescriptor.depthAttachment.storeAction = .store        // Keep depth for next pass
+        depthPrePassDescriptor.depthAttachment.clearDepth = 1.0
+        let depthPrePassEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: depthPrePassDescriptor)!
+        pipelines.polygon3dPipeline.selectPipeline(renderEncoder: depthPrePassEncoder)
+        depthPrePassEncoder.setDepthStencilState(depthStencilStatePrePass)
+        depthPrePassEncoder.setCullMode(.back)
         assembledMapWrapper.draw3dTiles(
-            renderEncoder: render3dEncoder,
+            renderEncoder: depthPrePassEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
             modelMatrices: modelMatrices
         )
-        render3dEncoder.endEncoding()
+        depthPrePassEncoder.endEncoding()
+        
+        // Second: Color pass (draw only frontmost, with blending)
+        let colorPassDescriptor = renderPassDescriptor.copy() as! MTLRenderPassDescriptor  // Copy again
+        colorPassDescriptor.depthAttachment.texture = view.depthStencilTexture
+        colorPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
+        colorPassDescriptor.colorAttachments[0].loadAction = .load  // Or .load if you have prior content
+        colorPassDescriptor.colorAttachments[0].storeAction = .store // Write colors
+        colorPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1) // Background color
+        colorPassDescriptor.depthAttachment.loadAction = .load       // Use pre-pass depths
+        colorPassDescriptor.depthAttachment.storeAction = .dontCare  // No need after
+        let colorPassEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: colorPassDescriptor)!
+        pipelines.polygon3dPipeline.selectPipeline(renderEncoder: colorPassEncoder)
+        colorPassEncoder.setDepthStencilState(depthStencilStateColorPass)
+        colorPassEncoder.setStencilReferenceValue(0)
+        colorPassEncoder.setCullMode(.back)
+        assembledMapWrapper.draw3dTiles(
+            renderEncoder: colorPassEncoder,
+            uniformsBuffer: uniformsBuffer,
+            tiles: assembledTiles,
+            modelMatrices: modelMatrices
+        )
+        colorPassEncoder.endEncoding()
         
         
-        renderPassDescriptor.depthAttachment.texture = nil
-        renderPassDescriptor.stencilAttachment.texture = nil
         let basicRenderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
         pipelines.labelsPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
         assembledMapWrapper.drawMapLabels(
@@ -213,6 +245,14 @@ class Coordinator: NSObject, MTKViewDelegate {
             uniformsBuffer: uniformsBuffer,
             geoLabels: assembledMap.tileGeoLabels,
             currentFBIndex: currentFBIdx
+        )
+        
+        pipelines.roadLabelPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
+        assembledMapWrapper.drawRoadLabels(
+            renderEncoder: basicRenderEncoder,
+            uniformsBuffer: uniformsBuffer,
+            tiles: assembledTiles,
+            modelMatrices: modelMatrices
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: basicRenderEncoder)

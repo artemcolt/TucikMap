@@ -27,7 +27,7 @@ class MetalTile: Hashable {
     init(
         tile: Tile,
         tile2dBuffers: Tile2dBuffers,
-        tile3dBuffers: Tile3dBuffers
+        tile3dBuffers: Tile3dBuffers,
     ) {
         self.tile = tile
         self.tile2dBuffers = tile2dBuffers

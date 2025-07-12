@@ -10,46 +10,79 @@ import MVTTools
 import GISTools
 import SwiftEarcut
 import Foundation
+import simd
 
 class ParseBuilding {
     func parseBuilding(polygon: [[Coordinate3D]], parsePolygon: ParsePolygon, height: Double) -> Parsed3dPolygon? {
-            let height = Float(height)
-            guard let polygon = parsePolygon.parse(polygon: polygon) else { return nil }
+        let height = Float(height)
+        guard let parsed = parsePolygon.parse(polygon: polygon) else { return nil }
+        
+        // Roof vertices and indices
+        let roofVertices: [SIMD3<Float>] = parsed.vertices.map { vertex in SIMD3<Float>(vertex.x, vertex.y, height) }
+        let roofIndices: [UInt32] = parsed.indices
+        let roofNormals: [SIMD3<Float>] = Array(repeating: SIMD3<Float>(0, 0, 1), count: roofVertices.count)
+        
+        var combinedVertices: [SIMD3<Float>] = roofVertices
+        var combinedIndices: [UInt32] = roofIndices
+        var combinedNormals: [SIMD3<Float>] = roofNormals
+        
+        // Find boundary edges
+        var edgeToCount: [UInt64: Int] = [:]
+        for i in stride(from: 0, to: roofIndices.count, by: 3) {
+            let a = roofIndices[i]
+            let b = roofIndices[i + 1]
+            let c = roofIndices[i + 2]
             
-            // Roof vertices and indices
-            let roofVertices: [SIMD3<Float>] = polygon.vertices.map { vertex in SIMD3<Float>(vertex.x, vertex.y, Float(height)) }
-            let roofIndices: [UInt32] = polygon.indices
+            let abKey = (UInt64(a) << 32) | UInt64(b)
+            let bcKey = (UInt64(b) << 32) | UInt64(c)
+            let caKey = (UInt64(c) << 32) | UInt64(a)
             
-            // Wall vertices and indices
-            var wallVertices: [SIMD3<Float>] = []
-            var wallIndices: [UInt32] = []
-            
-            // For each vertex in the polygon, create ground and roof vertices for walls
-            for i in 0..<polygon.vertices.count {
-                let current = polygon.vertices[i]
-                let next = polygon.vertices[(i + 1) % polygon.vertices.count]
-                
-                // Wall vertices: bottom-left, bottom-right, top-right, top-left
-                let v0 = SIMD3<Float>(Float(current.x), Float(current.y), 0.0) // Bottom-left
-                let v1 = SIMD3<Float>(Float(next.x), Float(next.y), 0.0)     // Bottom-right
-                let v2 = SIMD3<Float>(Float(next.x), Float(next.y), height)   // Top-right
-                let v3 = SIMD3<Float>(Float(current.x), Float(current.y), height) // Top-left
-                
-                // Add vertices to the wall vertices array
-                let baseIndex = UInt32(wallVertices.count)
-                wallVertices.append(contentsOf: [v0, v1, v2, v3])
-                
-                // Add indices for two triangles per wall face (quad: v0-v1-v2-v3)
-                // Triangle 1: v0-v1-v2
-                wallIndices.append(contentsOf: [baseIndex, baseIndex + 1, baseIndex + 2])
-                // Triangle 2: v0-v2-v3
-                wallIndices.append(contentsOf: [baseIndex, baseIndex + 2, baseIndex + 3])
-            }
-            
-            // Combine roof and wall geometry
-            let combinedVertices = roofVertices + wallVertices
-            let combinedIndices = roofIndices + wallIndices.map { $0 + UInt32(roofVertices.count) }
-            
-            return Parsed3dPolygon(vertices: combinedVertices, indices: combinedIndices)
+            edgeToCount[abKey, default: 0] += 1
+            edgeToCount[bcKey, default: 0] += 1
+            edgeToCount[caKey, default: 0] += 1
         }
+        
+        var boundaryEdges: [(UInt32, UInt32)] = []
+        for (key, count) in edgeToCount {
+            if count == 1 {
+                let u = UInt32(key >> 32)
+                let v = UInt32(key & 0xFFFFFFFF)
+                let revKey = (UInt64(v) << 32) | UInt64(u)
+                let revCount = edgeToCount[revKey, default: 0]
+                if revCount == 0 {
+                    boundaryEdges.append((u, v))
+                }
+            }
+        }
+        
+        // Build walls
+        for (u, v) in boundaryEdges {
+            let bottomU2D = parsed.vertices[Int(u)]
+            let bottomV2D = parsed.vertices[Int(v)]
+            let bottomU = SIMD3<Float>(bottomU2D.x, bottomU2D.y, 0)
+            let bottomV = SIMD3<Float>(bottomV2D.x, bottomV2D.y, 0)
+            let topU = roofVertices[Int(u)]
+            let topV = roofVertices[Int(v)]
+            
+            let vec = bottomV2D - bottomU2D
+            let dx = vec.x
+            let dy = vec.y
+            let len = sqrt(dx * dx + dy * dy)
+            if len <= 0 {
+                continue
+            }
+            let normal = SIMD3<Float>(dy / len, -dx / len, 0)
+            
+            let base = UInt32(combinedVertices.count)
+            combinedVertices.append(contentsOf: [bottomU, bottomV, topV, topU])
+            combinedNormals.append(contentsOf: [normal, normal, normal, normal])
+            combinedIndices.append(contentsOf: [base, base + 1, base + 2, base, base + 2, base + 3])
+        }
+        
+        return Parsed3dPolygon(
+            vertices: combinedVertices,
+            normals: combinedNormals,
+            indices: combinedIndices
+        )
+    }
 }

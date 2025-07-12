@@ -46,6 +46,7 @@ class TileMvtParser {
             styles: unificationResult.styles,
             tile: tile,
             textLabels: readingStageResult.textLabels,
+            roadLabels: readingStageResult.roadLabels,
             
             drawing3dPolygon: unification3DResult.drawingPolygon,
             styles3d: unification3DResult.styles
@@ -55,20 +56,20 @@ class TileMvtParser {
     private func tryParsePolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double) -> Parsed3dPolygon? {
         if geometry.type != .polygon {return nil}
         guard let polygon = geometry as? Polygon else {return nil}
-        guard let clippedPolygon = polygon.clipped(to: boundingBox) else {
-            return nil
-        }
-        return parseBuilding.parseBuilding(polygon: clippedPolygon.coordinates, parsePolygon: parsePolygon, height: height)
+//        guard let clippedPolygon = polygon.clipped(to: boundingBox) else {
+//            return nil
+//        }
+        return parseBuilding.parseBuilding(polygon: polygon.coordinates, parsePolygon: parsePolygon, height: height)
     }
     
     private func tryParseMultiPolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double) -> [Parsed3dPolygon]? {
         if geometry.type != .multiPolygon {return nil}
         guard let multiPolygon = geometry as? MultiPolygon else { return nil }
-        guard let clippedMultiPolygon = multiPolygon.clipped(to: boundingBox) else {
-            return nil
-        }
+//        guard let clippedMultiPolygon = multiPolygon.clipped(to: boundingBox) else {
+//            return nil
+//        }
         var parsedBuidlings: [Parsed3dPolygon] = []
-        for polygon in clippedMultiPolygon.coordinates {
+        for polygon in multiPolygon.coordinates {
             guard let parsedBuilding = parseBuilding.parseBuilding(polygon: polygon, parsePolygon: parsePolygon, height: height) else { continue }
             parsedBuidlings.append(parsedBuilding)
         }
@@ -128,6 +129,33 @@ class TileMvtParser {
         return parsed
     }
     
+    private func tryParseRoadLine(geometry: GeoJsonGeometry, name: String) -> ParsedRoadLabel? {
+        if geometry.type != .lineString {return nil}
+        guard let line = geometry as? LineString else {return nil}
+        return parseRoad(coordinates: line.coordinates, name: name)
+    }
+    
+    private func tryParseRoadMultiLine(geometry: GeoJsonGeometry, name: String) -> [ParsedRoadLabel]? {
+        if geometry.type != .multiLineString {return nil}
+        guard let multiLine = geometry as? MultiLineString else {return nil}
+        var parsed: [ParsedRoadLabel] = []
+        for line in multiLine.coordinates {
+            let parsedRoad = parseRoad(coordinates: line, name: name)
+            parsed.append(parsedRoad)
+        }
+        return parsed
+    }
+    
+    private func parseRoad(coordinates: [Coordinate3D], name: String) -> ParsedRoadLabel {
+        var points: [SIMD2<Float>] = []
+        points.reserveCapacity(coordinates.count)
+        for coordinate in coordinates {
+            let point = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(coordinate.x, coordinate.y))
+            points.append(SIMD2<Float>(Float(point.x), Float(point.y)))
+        }
+        return ParsedRoadLabel(name: name, localPoints: points)
+    }
+    
     private func tryParseTextLabels(
         geometry: GeoJsonGeometry,
         boundingBox: BoundingBox,
@@ -181,8 +209,10 @@ class TileMvtParser {
         
         var polygonByStyle: [UInt8: [ParsedPolygon]] = [:]
         var rawLineByStyle: [UInt8: [ParsedLineRawVertices]] = [:]
+        
         var styles: [UInt8: FeatureStyle] = [:]
         var textLabels: [ParsedTextLabel] = []
+        var roadLabels: [ParsedRoadLabel] = []
         
         for layerName in tile.layerNames {
             guard let features = tile.features(for: layerName) else { continue }
@@ -237,6 +267,16 @@ class TileMvtParser {
                     continue
                 }
                 
+                let name = properties["name_en"] as? String
+                if layerName == "road" && name != nil {
+                    if let parsed = tryParseRoadLine(geometry: geometry, name: name!) {
+                        roadLabels.append(parsed)
+                    }
+                    if let parsed = tryParseRoadMultiLine(geometry: geometry, name: name!) {
+                        roadLabels.append(contentsOf: parsed)
+                    }
+                }
+                
                 if let parsed = tryParsePolygon(geometry: geometry,
                                                 boundingBox: boundingBox
                 ) {
@@ -269,7 +309,8 @@ class TileMvtParser {
             polygonByStyle: polygonByStyle.filter { $0.value.isEmpty == false },
             rawLineByStyle: rawLineByStyle.filter { $0.value.isEmpty == false },
             styles: styles,
-            textLabels: textLabels
+            textLabels: textLabels,
+            roadLabels: roadLabels
         )
     }
     
@@ -348,10 +389,21 @@ class TileMvtParser {
             if let polygons = polygon3dByStyle[styleKey] {
                 // Process each polygon for the current style
                 for polygon in polygons {
+                    
+                    var shaderVertices: [Polygon3dPipeline.VertexIn] = []
+                    shaderVertices.reserveCapacity(polygon.vertices.count)
+                    for i in 0..<polygon.vertices.count {
+                        let vertex = polygon.vertices[i]
+                        let normal = polygon.normals[i]
+                        shaderVertices.append(Polygon3dPipeline.VertexIn(
+                            position: vertex,
+                            normal: normal,
+                            styleIndex: styleBufferIndex
+                        ))
+                    }
+                    
                     // Append vertices to unified array
-                    unifiedVertices.append(contentsOf: polygon.vertices.map {
-                        position in Polygon3dPipeline.VertexIn(position: position, styleIndex: styleBufferIndex)
-                    })
+                    unifiedVertices.append(contentsOf: shaderVertices)
                     
                     // Adjust indices for the current polygon and append
                     let adjustedIndices = polygon.indices.map { index in

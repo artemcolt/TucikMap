@@ -90,7 +90,7 @@ class DetermineFeatureStyle {
             "fallback": SIMD4<Float>(0.5, 0.5, 0.5, 0.5),          // Neutral gray
             "background": SIMD4<Float>(1.0, 1.0, 1.0, 1.0),
             
-            "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.9),         // Warm beige
+            "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.7),         // Warm beige
         ]
         
         switch data.layerName {
@@ -157,28 +157,19 @@ class DetermineFeatureStyle {
             )
 
         case "road":
-//            if classValue == "highway" || classValue == "major_road" {
-//                return FeatureStyle(
-//                    key: 202, // Above admin
-//                    color: colors["road_major"]!,
-//                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 6)
-//                )
-//            }
+            if classValue == "secondary" || classValue == "primary" || classValue == "highway" ||
+               classValue == "major_road" || classValue == "street" || classValue == "tertiary" {
+                let startZoom = 16
+                let tileZoom = tile.z
+                let difference = Double(tileZoom - startZoom)
+                let factor = pow(2.0, difference)
+                return FeatureStyle(
+                    key: 201,
+                    color: colors["road_major"]!,
+                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 40.0 * factor)
+                )
+            }
             
-            //tertiary street pedestrian
-//            if classValue == "secondary" || classValue == "primary" {
-//                let startZoom = 16
-//                let tileZoom = tile.z
-//                let difference = Double(tileZoom - startZoom)
-//                let factor = pow(2.0, difference)
-//                return FeatureStyle(
-//                    key: 201,
-//                    color: colors["road_major"]!,
-//                    parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 35.0 * factor)
-//                )
-//            }
-            
-            // classValue == "street" || classValue == "tertiary" || classValue == "service"
             if classValue == "service" {
                 let startZoom = 16
                 let tileZoom = tile.z

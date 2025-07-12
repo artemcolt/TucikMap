@@ -80,6 +80,11 @@ class MetalTilesStorage {
                     indicesCount: parsedTile.drawing3dPolygon.indices.count
                 )
                 
+                //var roadLabelsMetal: [RoadLabelMetal] = []
+                let font = textTools.robotoFont.regularFont
+                let roadLabels = parsedTile.roadLabels
+                
+                
                 let textLabels = textTools.mapLabelsAssembler.assemble(
                     lines: parsedTile.textLabels.map { label in MapLabelsAssembler.TextLineData(
                         text: label.nameEn,
