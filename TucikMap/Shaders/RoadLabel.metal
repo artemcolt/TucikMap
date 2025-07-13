@@ -26,20 +26,95 @@ struct Uniforms {
     float elapsedTimeSeconds;
 };
 
+struct MapLabelSymbolMeta {
+    int lineMetaIndex;
+    float shiftX;
+};
 
-vertex VertexOut roadLabelsVertexShader(VertexIn vertexIn [[stage_in]],
-                                    constant Uniforms &uniforms [[buffer(1)]],
-                                    constant float4x4& modelMatrix [[buffer(2)]],
+struct MeasuredText {
+    float width;
+    float top;
+    float bottom;
+};
+
+struct MapLabelLineMeta {
+    MeasuredText measutedText;
+    float scale;
+    int startPositionIndex;
+    int endPositionIndex;
+};
+
+struct MapLabelIntersection {
+    bool intersect;
+    float createdTime;
+};
+
+float2 getScreenPosition(float4x4 modelMatrix, float2 localPosition, Uniforms worldUniforms) {
+    float4 worldLabelPos = modelMatrix * float4(localPosition, 0.0, 1.0);
+    float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
+    float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
+   
+    float2 viewportSize = worldUniforms.viewportSize;
+    float viewportWidth = viewportSize.x;
+    float viewportHeight = viewportSize.y;
+    float screenX = ((ndc.x + 1) / 2) * viewportWidth;
+    float screenY = ((ndc.y + 1) / 2) * viewportHeight;
+    float2 screenPos = float2(screenX, screenY);
+    return screenPos;
+}
+
+
+vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
+                                    constant Uniforms &screenUniforms [[buffer(1)]],
+                                    constant MapLabelSymbolMeta* symbolsMeta [[buffer(2)]],
+                                    constant MapLabelLineMeta* linesMeta [[buffer(3)]],
+                                    constant Uniforms &worldUniforms [[buffer(4)]],
+                                    constant float4x4& modelMatrix [[buffer(5)]],
+                                    constant float2* positions [[buffer(6)]],
                                     uint vertexID [[vertex_id]]
                                     ) {
-    float2 position = vertexIn.position;
-    float4 worldPosition = modelMatrix * float4(position, 0.0, 1.0);
-    float4 viewPosition = uniforms.viewMatrix * worldPosition;
-    float4 clipPosition = uniforms.projectionMatrix * viewPosition;
-   
+    int symbolIndex = vertexID / 6;
+    MapLabelSymbolMeta symbolMeta = symbolsMeta[symbolIndex];
+    int lineIndex = symbolMeta.lineMetaIndex;
+    MapLabelLineMeta lineMeta = linesMeta[lineIndex];
+    MeasuredText measuredText = lineMeta.measutedText;
+    float scale = lineMeta.scale;
+    int positionsSize = lineMeta.endPositionIndex - lineMeta.startPositionIndex;
+    
+    float shiftX = symbolMeta.shiftX * scale;
+    
+    int shiftIndex = 0;
+    float2 screenCurrent = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + shiftIndex], worldUniforms);
+    float2 screenNext = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + 1 + shiftIndex], worldUniforms);
+    float len = length(screenNext - screenCurrent);
+    
+    while (shiftX > len && positionsSize - 1 > shiftIndex) {
+        shiftX -= len;
+        shiftIndex += 1;
+        screenCurrent = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + shiftIndex], worldUniforms);
+        screenNext = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + 1 + shiftIndex], worldUniforms);
+        len = length(screenNext - screenCurrent);
+    }
+    
     VertexOut out;
-    out.position = clipPosition;
-    out.texCoord = vertexIn.texCoord;
+    float2 direction = normalize(screenNext - screenCurrent);
+    float tangentAngle = -atan2(direction.y, direction.x);
+    
+    float cosTheta = cos(tangentAngle);
+    float sinTheta = sin(tangentAngle);
+    float2x2 rotationMatrix = float2x2(
+        cosTheta, -sinTheta,
+        sinTheta, cosTheta
+    );
+    
+    float textHeight = abs(measuredText.top - measuredText.bottom);
+    float2 glyphPosition = in.position - float2(0, textHeight / 3);
+    float2 rotatedGlyphPos = rotationMatrix * glyphPosition;
+    
+    float2 vertexPos = screenCurrent + (rotatedGlyphPos * scale) + direction * shiftX;
+    float4 position = float4(vertexPos, 0.0, 1.0);
+    out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
+    out.texCoord = in.texCoord;
     return out;
 }
 

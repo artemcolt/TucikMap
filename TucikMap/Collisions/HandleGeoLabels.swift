@@ -14,6 +14,13 @@ class HandleGeoLabels {
         let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
         let modelMatrices: [matrix_float4x4]
         let metalGeoLabels: [MetalGeoLabels]
+        let geoLabelsSize: Int
+    }
+    
+    private struct SortedGeoLabel {
+        let i: Int
+        let screenPositions: SIMD2<Float>
+        let mapLabelLineCollisionsMeta: MapLabelLineCollisionsMeta
     }
     
     private let modelMatrixBufferSize = 60
@@ -22,14 +29,124 @@ class HandleGeoLabels {
     // для них мы считаем коллизии
     private var geoLabels: [MetalGeoLabels] = []
     private var geoLabelsTimePoints: [Float] = []
-    private var actualLabelsIds: Set<UInt> = []
+    var actualLabelsIds: Set<UInt> = []
     
+    private var savedLabelIntersections: [UInt: LabelIntersection] = [:]
+    
+    // закэшированные надписи и результат отработки вычисления пересечений
+    private var geoLabelsWithIntersections: GeoLabelsWithIntersections = GeoLabelsWithIntersections(
+        intersections: [:], geoLabels: [], bufferingCounter: 0
+    )
+    
+    private let renderFrameCount: RenderFrameCount
     private let frameCounter: FrameCounter
     private let mapZoomState: MapZoomState
     
-    init(frameCounter: FrameCounter, mapZoomState: MapZoomState) {
+    init(frameCounter: FrameCounter, mapZoomState: MapZoomState, renderFrameCount: RenderFrameCount) {
         self.frameCounter = frameCounter
         self.mapZoomState = mapZoomState
+        self.renderFrameCount = renderFrameCount
+    }
+    
+    func onPointsReady(result: ProjectPoints.Result) {
+        let output = result.output
+        let mapLabelLineCollisionsMeta = result.input.mapLabelLineCollisionsMeta
+        let actualLabelsIdsCaching = result.input.actualLabelsIds
+        let metalGeoLabels = result.input.metalGeoLabels
+        let geoLabelsSize = result.input.geoLabelsSize
+        
+        var sortedGeoLabels: [SortedGeoLabel] = []
+        sortedGeoLabels.reserveCapacity(output.count)
+        for i in 0..<geoLabelsSize {
+            let screenPositions = output[i]
+            let mapLabelLineCollisionsMeta = mapLabelLineCollisionsMeta[i]
+            sortedGeoLabels.append(SortedGeoLabel(
+                i: i,
+                screenPositions: screenPositions,
+                mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
+            ))
+        }
+        sortedGeoLabels.sort(by: { first, second in first.mapLabelLineCollisionsMeta.sortRank < second.mapLabelLineCollisionsMeta.sortRank })
+        
+        
+        let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
+        let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
+        var labelIntersections = [LabelIntersection] (repeating: LabelIntersection(hide: false, createdTime: 0), count: output.count)
+        var handledActualGeoLabels: Set<UInt> = []
+        for sorted in sortedGeoLabels {
+            let screenPositions = sorted.screenPositions
+            let metaLine = sorted.mapLabelLineCollisionsMeta
+            let collisionId = metaLine.id
+            let isActualLabel = actualLabelsIdsCaching.contains(collisionId)
+            
+            if isActualLabel == false {
+                let labelIntersection: LabelIntersection
+                if let previousState = self.savedLabelIntersections[collisionId] {
+                    let isHideAlready = previousState.hide == true
+                    let createdTime = isHideAlready ? previousState.createdTime : elapsedTime
+                    labelIntersection = LabelIntersection(hide: true, createdTime: createdTime)
+                } else {
+                    labelIntersection = LabelIntersection(hide: true, createdTime: elapsedTime)
+                }
+                
+                labelIntersections[sorted.i] = labelIntersection
+                self.savedLabelIntersections[collisionId] = labelIntersection
+                continue
+            }
+            
+            if handledActualGeoLabels.contains(collisionId) {
+                labelIntersections[sorted.i] = self.savedLabelIntersections[collisionId]!
+                continue
+            }
+            handledActualGeoLabels.insert(collisionId)
+            
+            let added = spaceDiscretisation.addAgent(agent: CollisionAgent(
+                location: SIMD2<Float>(Float(screenPositions.x + 5000), Float(screenPositions.y + 5000)),
+                height: Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale),
+                width: Float(metaLine.measuredText.width * metaLine.scale)
+            ))
+            
+            let hide = added == false
+            let labelIntersection: LabelIntersection
+            if let previousState = self.savedLabelIntersections[collisionId] {
+                let statusChanged = hide != previousState.hide
+                let createdTime = statusChanged ? elapsedTime : previousState.createdTime
+                labelIntersection = LabelIntersection(hide: hide, createdTime: createdTime)
+            } else {
+                labelIntersection = LabelIntersection(hide: hide, createdTime: elapsedTime)
+            }
+            
+            labelIntersections[sorted.i] = labelIntersection
+            self.savedLabelIntersections[collisionId] = labelIntersection
+        }
+        
+        var intersectionsResultByTiles: [Int: [LabelIntersection]] = [:]
+        var startIndex = 0
+        for i in 0..<metalGeoLabels.count {
+            let tile = metalGeoLabels[i]
+            guard let textLabels = tile.textLabels else { continue }
+            let count = textLabels.mapLabelLineCollisionsMeta.count
+            let subArray = Array(labelIntersections[startIndex ..< startIndex + count])
+            
+            intersectionsResultByTiles[i] = subArray
+            startIndex += count
+        }
+        
+        self.geoLabelsWithIntersections = GeoLabelsWithIntersections(
+            intersections: intersectionsResultByTiles,
+            geoLabels: metalGeoLabels
+        )
+        
+        self.renderFrameCount.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
+    }
+    
+    func getLabelsWithIntersections() -> GeoLabelsWithIntersections? {
+        // чтобы постоянно не перезаписывать буффера пересечений
+        // запись будет только в первые 3 кадра для тройной буферизации, а дальше использование свежих буфферов
+        if geoLabelsWithIntersections.bufferingCounter <= 0 { return nil }
+        
+        geoLabelsWithIntersections.bufferingCounter -= 1
+        return geoLabelsWithIntersections
     }
     
     func forEvaluateCollisions(
@@ -54,7 +171,8 @@ class HandleGeoLabels {
                 inputComputeScreenVertices: [],
                 mapLabelLineCollisionsMeta: [],
                 modelMatrices: [],
-                metalGeoLabels: []
+                metalGeoLabels: [],
+                geoLabelsSize: 0
             ) // recompute is needed again but later
         }
         
@@ -78,8 +196,28 @@ class HandleGeoLabels {
             inputComputeScreenVertices: inputComputeScreenVertices,
             mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
             modelMatrices: modelMatrices,
-            metalGeoLabels: metalGeoLabels
+            metalGeoLabels: metalGeoLabels,
+            geoLabelsSize: inputComputeScreenVertices.count
         )
     }
     
+    func setGeoLabels(geoLabels: [MetalGeoLabels]) {
+        guard geoLabels.isEmpty == false else { return }
+        let elapsedTime = frameCounter.getElapsedTimeSeconds()
+        
+        let currentZ = geoLabels.first!.tile.z
+        var savePrevious: [MetalGeoLabels] = []
+        for label in self.geoLabels {
+            let isDifferentZ = label.tile.z != currentZ
+            if isDifferentZ {
+                label.timePoint = elapsedTime
+                savePrevious.append(label)
+            }
+        }
+        
+        // ресетит тайлы, делает их снова актуальными
+        geoLabels.forEach { label in label.timePoint = nil }
+        self.actualLabelsIds = Set(geoLabels.flatMap { label in label.containIds })
+        self.geoLabels = geoLabels + savePrevious
+    }
 }

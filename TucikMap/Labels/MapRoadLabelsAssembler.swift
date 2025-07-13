@@ -1,30 +1,54 @@
 //
-//  MapLabelsAssembler.swift
+//  MapRoadLabelsAssembler.swift
 //  TucikMap
 //
-//  Created by Artem on 6/10/25.
+//  Created by Artem on 7/12/25.
 //
+
 import MetalKit
 
-struct DrawMapLabelsData {
-    let vertexBuffer: MTLBuffer
-    let mapLabelSymbolMeta: MTLBuffer
-    let mapLabelLineMeta: MTLBuffer
-    var intersectionsTrippleBuffer: [MTLBuffer]
-    let verticesCount: Int
-    let atlas: MTLTexture
-}
 
-struct DrawMapLabelsBytes {
-    let vertices: [TextVertex]
-    let mapLabelSymbolMeta: [MapLabelSymbolMeta]
-    let mapLabelLineMeta: [MapLabelLineMeta]
-    let verticesCount: Int
-    let atlas: MTLTexture
-    let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
-}
+class MapRoadLabelsAssembler {
+    struct MapLabelSymbolMeta {
+        let lineMetaIndex: simd_int1
+        let shiftX: simd_float1
+    }
 
-class MapLabelsAssembler {
+    struct MapLabelLineCollisionsMeta {
+        let measuredText: MeasuredText
+        let scale: simd_float1
+        let localPosition: SIMD2<Float>
+        let sortRank: ushort
+        let id: UInt
+    }
+
+    struct MapLabelLineMeta {
+        let measuredText: MeasuredText
+        let scale: simd_float1
+        let locationStartIndex: simd_int1
+        let locationEndIndex: simd_int1
+    }
+    
+    struct DrawMapLabelsData {
+        let vertexBuffer: MTLBuffer
+        let mapLabelSymbolMeta: MTLBuffer
+        let mapLabelLineMeta: MTLBuffer
+        var intersectionsTrippleBuffer: [MTLBuffer]
+        let verticesCount: Int
+        let atlas: MTLTexture
+        let localPositionsBuffer: MTLBuffer
+    }
+
+    struct DrawMapLabelsBytes {
+        let vertices: [TextVertex]
+        let mapLabelSymbolMeta: [MapLabelSymbolMeta]
+        let mapLabelLineMeta: [MapLabelLineMeta]
+        let verticesCount: Int
+        let atlas: MTLTexture
+        let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
+        let localPositions: [SIMD2<Float>]
+    }
+    
     struct Result {
         var drawMapLabelsData: DrawMapLabelsData
         var mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
@@ -33,7 +57,7 @@ class MapLabelsAssembler {
     struct TextLineData {
         let text: String
         let scale: Float
-        let localPosition: SIMD2<Float>
+        let localPositions: [SIMD2<Float>]
         let id: UInt
         let sortRank: ushort
     }
@@ -53,28 +77,35 @@ class MapLabelsAssembler {
         var mapLabelLineMeta: [MapLabelLineMeta] = []
         var mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta] = []
         var vertices: [TextVertex] = []
+        var localPositions: [SIMD2<Float>] = []
         
         for i in 0..<lines.count {
             let line = lines[i]
             let text = line.text
             let measuredText = createTextGeometry.measureText(text: text, fontData: font.fontData)
-            let textVertices = createTextGeometry.create(text: text, fontData: font.fontData, onGlyphCreated: { scalar in
+            let textVertices = createTextGeometry.createForRoadLabel(text: text, fontData: font.fontData, onGlyphCreated: { scalar, shiftX in
                 mapLabelSymbolMeta.append(MapLabelSymbolMeta(
-                    lineMetaIndex: simd_int1(i)
+                    lineMetaIndex: simd_int1(i),
+                    shiftX: shiftX
                 ))
             })
             vertices.append(contentsOf: textVertices)
             
+            let localPostionsStart = localPositions.count
+            localPositions.append(contentsOf: line.localPositions)
+            let localPostionsEnd = localPositions.count
+            
             mapLabelLineMeta.append(MapLabelLineMeta(
                 measuredText: measuredText,
                 scale: line.scale,
-                localPosition: line.localPosition
+                locationStartIndex: simd_int1(localPostionsStart),
+                locationEndIndex: simd_int1(localPostionsEnd)
             ))
             
             mapLabelLineCollisionsMeta.append(MapLabelLineCollisionsMeta(
                 measuredText: measuredText,
                 scale: line.scale,
-                localPosition: line.localPosition,
+                localPosition: SIMD2<Float>(0, 0),
                 sortRank: line.sortRank,
                 id: line.id
             ))
@@ -87,7 +118,8 @@ class MapLabelsAssembler {
             mapLabelLineMeta: mapLabelLineMeta,
             verticesCount: verticesCount,
             atlas: font.atlasTexture,
-            mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta
+            mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
+            localPositions: localPositions
         )
     }
     
@@ -95,6 +127,10 @@ class MapLabelsAssembler {
         guard lines.isEmpty == false else { return nil }
         let assembledBytes = assembleBytes(lines: lines, font: font)
         
+        let localPositionsBuffer = metalDevice.makeBuffer(
+            bytes: assembledBytes.localPositions,
+            length: MemoryLayout<SIMD2<Float>>.stride * assembledBytes.localPositions.count
+        )!
         let vertexBuffer = metalDevice.makeBuffer(
             bytes: assembledBytes.vertices,
             length: MemoryLayout<TextVertex>.stride * assembledBytes.verticesCount
@@ -122,7 +158,8 @@ class MapLabelsAssembler {
             mapLabelLineMeta: mapLabelLineMetaBuffer,
             intersectionsTrippleBuffer: intersectionsTrippleBuffer,
             verticesCount: assembledBytes.verticesCount,
-            atlas: assembledBytes.atlas
+            atlas: assembledBytes.atlas,
+            localPositionsBuffer: localPositionsBuffer
         )
         return Result(drawMapLabelsData: drawData, mapLabelLineCollisionsMeta: assembledBytes.mapLabelLineCollisionsMeta)
     }

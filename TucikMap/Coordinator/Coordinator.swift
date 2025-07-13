@@ -151,7 +151,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         }
         
         // apply new intersection data to current tripple buffering buffer
-        if let labelsWithIntersections = screenCollisionsDetector.getLabelsWithIntersections() {
+        if let labelsWithIntersections = screenCollisionsDetector.handleGeoLabels.getLabelsWithIntersections() {
             let geoLabels = labelsWithIntersections.geoLabels
             assembledMap.tileGeoLabels = geoLabels
             let intersections = labelsWithIntersections.intersections
@@ -263,6 +263,24 @@ class Coordinator: NSObject, MTKViewDelegate {
             position: camera.targetPosition,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
+        
+//        for i in 0..<assembledTiles.count {
+//            let tile = assembledTiles[i]
+//            let modelMatrix = modelMatrices[i]
+//            
+//            for roadLabel in tile.parsedTile.roadLabels {
+//                for point in roadLabel.localPoints {
+//                    let pointToDraw = modelMatrix * SIMD4<Float>(point.x, point.y, 0, 1)
+//                    drawPoint.draw(
+//                        renderEncoder: basicRenderEncoder,
+//                        uniformsBuffer: uniformsBuffer,
+//                        pointSize: Settings.cameraCenterPointSize,
+//                        position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
+//                        color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
+//                    )
+//                }
+//            }
+//        }
         
         pipelines.textPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
         drawUI.drawZoomUiText(renderCommandEncoder: basicRenderEncoder, size: view.drawableSize)

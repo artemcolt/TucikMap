@@ -81,15 +81,27 @@ class MetalTilesStorage {
                 )
                 
                 //var roadLabelsMetal: [RoadLabelMetal] = []
-                let font = textTools.robotoFont.regularFont
-                let roadLabels = parsedTile.roadLabels
-                
+                let roadLabelsParsed = parsedTile.roadLabels
+                let roadLabels = textTools.mapRoadLabelsAssembler.assemble(
+                    lines: roadLabelsParsed.map { roadLabel in
+                        MapRoadLabelsAssembler.TextLineData(
+                            text: roadLabel.name,
+                            scale: 50,
+                            localPositions: roadLabel.localPoints,
+                            id: 0,
+                            sortRank: 0
+                        )
+                    },
+                    font: textTools.robotoFont.boldFont
+                )
                 
                 let textLabels = textTools.mapLabelsAssembler.assemble(
                     lines: parsedTile.textLabels.map { label in MapLabelsAssembler.TextLineData(
+                        // это для GPU данные, для шейдера
                         text: label.nameEn,
                         scale: label.scale,
                         localPosition: label.localPosition,
+                        // это для рассчета коллизии на cpu
                         id: label.id,
                         sortRank: label.sortRank
                     )},
@@ -104,13 +116,14 @@ class MetalTilesStorage {
                 let metalTile = MetalTile(
                     tile: tile,
                     tile2dBuffers: tile2dBuffers,
-                    tile3dBuffers: tile3dBuffers
+                    tile3dBuffers: tile3dBuffers,
+                    roadLabels: roadLabels,
+                    parsedTile: parsedTile
                 )
                 
                 await MainActor.run {
                     let key = tile.key()
-                    self.memoryMetalTile.setTile(metalTile, forKey: key)
-                    self.memoryMetalTile.setGeoLabelsTile(metalGeoLabels, forKey: key)
+                    self.memoryMetalTile.setTileData(tile: metalTile, tileLabels: metalGeoLabels, forKey: key)
                     self.onMetalingTileEnd(tile)
                 }
             }

@@ -11,6 +11,7 @@ class TextTools {
     let createTextGeometry = CreateTextGeometry()
     let textAssembler: TextAssembler
     let mapLabelsAssembler: MapLabelsAssembler
+    let mapRoadLabelsAssembler: MapRoadLabelsAssembler
     let drawText: DrawText
     private let fontLoader: FontLoader
     private let metalDevice: MTLDevice
@@ -28,6 +29,16 @@ class TextTools {
         
         drawText = DrawText(metalDevice: metalDevice)
         textAssembler = TextAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice)
-        mapLabelsAssembler = MapLabelsAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice, frameCounter: frameCounter)
+        mapLabelsAssembler = MapLabelsAssembler(
+            createTextGeometry: createTextGeometry,
+            metalDevice: metalDevice,
+            frameCounter: frameCounter
+        )
+        
+        mapRoadLabelsAssembler = MapRoadLabelsAssembler(
+            createTextGeometry: createTextGeometry,
+            metalDevice: metalDevice,
+            frameCounter: frameCounter
+        )
     }
 }

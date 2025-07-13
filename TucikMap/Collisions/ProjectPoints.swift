@@ -16,6 +16,7 @@ class ProjectPoints {
         let metalGeoLabels: [MetalGeoLabels]
         let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
         let actualLabelsIds: Set<UInt>
+        let geoLabelsSize: Int
     }
     
     struct Result {

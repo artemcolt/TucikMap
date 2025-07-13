@@ -23,14 +23,22 @@ class MetalTile: Hashable {
     let tile3dBuffers: Tile3dBuffers
     
     let tile: Tile
+    let roadLabels: MapRoadLabelsAssembler.Result?
+    
+    let parsedTile: ParsedTile
     
     init(
         tile: Tile,
         tile2dBuffers: Tile2dBuffers,
         tile3dBuffers: Tile3dBuffers,
+        roadLabels: MapRoadLabelsAssembler.Result?,
+        parsedTile: ParsedTile
     ) {
         self.tile = tile
         self.tile2dBuffers = tile2dBuffers
         self.tile3dBuffers = tile3dBuffers
+        self.roadLabels = roadLabels
+        
+        self.parsedTile = parsedTile
     }
 }

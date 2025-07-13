@@ -106,7 +106,8 @@ class AssembledMapUpdater {
             break
         }
         if allActualReady {
-            camera.screenCollisionsDetector.setGeoLabels(geoLabels: actualGeoLabels)
+            camera.screenCollisionsDetector.handleGeoLabels.setGeoLabels(geoLabels: actualGeoLabels)
+            //camera.screenCollisionsDetector.setRoadLabels(roadLabels: actual.map { tile in tile.roadLabels }.filter { road in road != nil })
             camera.mapCadDisplayLoop.recomputeIntersections()
         }
         

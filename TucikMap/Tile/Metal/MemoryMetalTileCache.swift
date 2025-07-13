@@ -12,13 +12,11 @@ class MemoryMetalTileCache {
         self.cacheGeoLabels.totalCostLimit = maxCacheSizeInBytes
     }
     
-    func setTile(_ tile: MetalTile, forKey key: String) {
-        let estimatedCost = estimateTileByteSize(tile)
+    func setTileData(tile: MetalTile, tileLabels: MetalGeoLabels, forKey key: String) {
+        var estimatedCost = estimateTileByteSize(tile)
         cache.setObject(tile, forKey: key as NSString, cost: estimatedCost)
-    }
-    
-    func setGeoLabelsTile(_ tileLabels: MetalGeoLabels, forKey key: String) {
-        let estimatedCost = estimateTileLabelsByteSize(tileLabels)
+        
+        estimatedCost = estimateTileLabelsByteSize(tileLabels)
         cacheGeoLabels.setObject(tileLabels, forKey: key as NSString, cost: estimatedCost)
     }
     
