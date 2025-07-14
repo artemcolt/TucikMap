@@ -166,6 +166,25 @@ class Coordinator: NSObject, MTKViewDelegate {
             }
         }
         
+        if let roadLabelsDrawing = screenCollisionsDetector.getRenderingCurrentRoadLabels() {
+            let roadLabels = roadLabelsDrawing.renderingCurrentRoadLabels
+            assembledMap.roadLabels = roadLabels.map { item in item.draw }
+            
+            for i in 0..<roadLabels.count {
+                let tile = roadLabels[i]
+                let lineToStartFloats = tile.lineToStartAt
+                let startAt = tile.startAt
+                tile.draw.lineToStartFloatsBuffer[currentFBIdx].contents().copyMemory(
+                    from: lineToStartFloats,
+                    byteCount: MemoryLayout<MapRoadLabelsAssembler.LineToStartAt>.stride * lineToStartFloats.count
+                )
+                tile.draw.startRoadAtBuffer[currentFBIdx].contents().copyMemory(
+                    from: startAt,
+                    byteCount: MemoryLayout<MapRoadLabelsAssembler.StartRoadAt>.stride * startAt.count
+                )
+            }
+        }
+        
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor else {
@@ -251,8 +270,9 @@ class Coordinator: NSObject, MTKViewDelegate {
         assembledMapWrapper.drawRoadLabels(
             renderEncoder: basicRenderEncoder,
             uniformsBuffer: uniformsBuffer,
-            tiles: assembledTiles,
-            modelMatrices: modelMatrices
+            roadLabelsDrawing: assembledMap.roadLabels,
+            modelMatrices: modelMatrices,
+            currentFBIndex: currentFBIdx
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: basicRenderEncoder)
@@ -264,23 +284,23 @@ class Coordinator: NSObject, MTKViewDelegate {
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
         
-//        for i in 0..<assembledTiles.count {
-//            let tile = assembledTiles[i]
-//            let modelMatrix = modelMatrices[i]
-//            
-//            for roadLabel in tile.parsedTile.roadLabels {
-//                for point in roadLabel.localPoints {
-//                    let pointToDraw = modelMatrix * SIMD4<Float>(point.x, point.y, 0, 1)
-//                    drawPoint.draw(
-//                        renderEncoder: basicRenderEncoder,
-//                        uniformsBuffer: uniformsBuffer,
-//                        pointSize: Settings.cameraCenterPointSize,
-//                        position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
-//                        color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
-//                    )
-//                }
-//            }
-//        }
+        for i in 0..<assembledTiles.count {
+            let tile = assembledTiles[i]
+            let modelMatrix = modelMatrices[i]
+            
+            for roadLabel in tile.roadLabels.items {
+                for point in roadLabel.localPoints {
+                    let pointToDraw = modelMatrix * SIMD4<Float>(point.x, point.y, 0, 1)
+                    drawPoint.draw(
+                        renderEncoder: basicRenderEncoder,
+                        uniformsBuffer: uniformsBuffer,
+                        pointSize: Settings.cameraCenterPointSize,
+                        position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
+                        color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0),
+                    )
+                }
+            }
+        }
         
         pipelines.textPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
         drawUI.drawZoomUiText(renderCommandEncoder: basicRenderEncoder, size: view.drawableSize)

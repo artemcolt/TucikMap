@@ -9,6 +9,15 @@ import MetalKit
 
 
 class MapRoadLabelsAssembler {
+    struct StartRoadAt {
+        let startAt: simd_float1
+    }
+    
+    struct LineToStartAt {
+        let index: simd_int1
+        let count: simd_int1
+    }
+    
     struct MapLabelSymbolMeta {
         let lineMetaIndex: simd_int1
         let shiftX: simd_float1
@@ -37,6 +46,9 @@ class MapRoadLabelsAssembler {
         let verticesCount: Int
         let atlas: MTLTexture
         let localPositionsBuffer: MTLBuffer
+        let startRoadAtBuffer: [MTLBuffer]
+        let lineToStartFloatsBuffer: [MTLBuffer]
+        var maxInstances: Int
     }
 
     struct DrawMapLabelsBytes {
@@ -143,14 +155,32 @@ class MapRoadLabelsAssembler {
             bytes: assembledBytes.mapLabelLineMeta,
             length: MemoryLayout<MapLabelLineMeta>.stride * assembledBytes.mapLabelLineMeta.count
         )!
+        
+        let startRoadAtSize = 20
+        
         var intersectionsTrippleBuffer: [MTLBuffer] = []
+        var startRoadAtTrippleBuffer: [MTLBuffer] = []
+        var lineToStartFloatsTrippleBuffer: [MTLBuffer] = []
         for _ in 0..<3 {
             let intersectionsBuffer = metalDevice.makeBuffer(
                 bytes: Array(repeating: LabelIntersection(hide: true, createdTime: 0), count: lines.count),
                 length: MemoryLayout<LabelIntersection>.stride * lines.count
             )!
             intersectionsTrippleBuffer.append(intersectionsBuffer)
+            
+            let startRoadAtBuffer = metalDevice.makeBuffer(
+                bytes: Array(repeating: StartRoadAt(startAt: 0), count: startRoadAtSize),
+                length: MemoryLayout<StartRoadAt>.stride * startRoadAtSize
+            )!
+            startRoadAtTrippleBuffer.append(startRoadAtBuffer)
+            
+            let lineToStartFloatsBuffer = metalDevice.makeBuffer(
+                bytes: Array(repeating: LineToStartAt(index: 0, count: 0), count: startRoadAtSize),
+                length: MemoryLayout<LineToStartAt>.stride * startRoadAtSize
+            )!
+            lineToStartFloatsTrippleBuffer.append(lineToStartFloatsBuffer)
         }
+        
         
         let drawData = DrawMapLabelsData(
             vertexBuffer: vertexBuffer,
@@ -159,7 +189,10 @@ class MapRoadLabelsAssembler {
             intersectionsTrippleBuffer: intersectionsTrippleBuffer,
             verticesCount: assembledBytes.verticesCount,
             atlas: assembledBytes.atlas,
-            localPositionsBuffer: localPositionsBuffer
+            localPositionsBuffer: localPositionsBuffer,
+            startRoadAtBuffer: startRoadAtTrippleBuffer,
+            lineToStartFloatsBuffer: lineToStartFloatsTrippleBuffer,
+            maxInstances: 0
         )
         return Result(drawMapLabelsData: drawData, mapLabelLineCollisionsMeta: assembledBytes.mapLabelLineCollisionsMeta)
     }

@@ -106,30 +106,33 @@ class DrawAssembledMap {
     func drawRoadLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        tiles: [MetalTile],
-        modelMatrices: [float4x4]
+        roadLabelsDrawing: [MapRoadLabelsAssembler.DrawMapLabelsData],
+        modelMatrices: [float4x4],
+        currentFBIndex: Int
     ) {
-        guard tiles.isEmpty == false else { return }
+        guard roadLabelsDrawing.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
-        var animationTime = Settings.labelsFadeAnimationTimeSeconds
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
-        let mapPanning = camera.mapPanning
-        for i in 0..<tiles.count {
-            let tile = tiles[i]
-            guard let roadLabels = tile.roadLabels else { continue }
+        let drawTiles = roadLabelsDrawing
+        for i in 0..<drawTiles.count {
+            let draw = drawTiles[i]
             var modelMatrix = modelMatrices[i]
             
-            let drawMapLabelsData = roadLabels.drawMapLabelsData
-            let vertexBuffer = drawMapLabelsData.vertexBuffer
-            let verticesCount = drawMapLabelsData.verticesCount
-            let mapLabelSymbolMeta = drawMapLabelsData.mapLabelSymbolMeta
-            let mapLabelLineMeta = drawMapLabelsData.mapLabelLineMeta
-            let localPositions = drawMapLabelsData.localPositionsBuffer
-            let atlasTexture = drawMapLabelsData.atlas
+            let vertexBuffer = draw.vertexBuffer
+            let verticesCount = draw.verticesCount
+            let mapLabelSymbolMeta = draw.mapLabelSymbolMeta
+            let mapLabelLineMeta = draw.mapLabelLineMeta
+            let localPositions = draw.localPositionsBuffer
+            let atlasTexture = draw.atlas
+            let instances = draw.maxInstances
+            //guard instances > 0 else { continue }
+            
+            let startRoadAtBuffer = draw.startRoadAtBuffer[currentFBIndex]
+            let lineToStartFloatsBuffer = draw.lineToStartFloatsBuffer[currentFBIndex]
             
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(mapLabelSymbolMeta, offset: 0, index: 2)
@@ -138,7 +141,10 @@ class DrawAssembledMap {
             renderEncoder.setVertexBuffer(localPositions, offset: 0, index: 6)
             renderEncoder.setFragmentTexture(atlasTexture, index: 0)
             
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount)
+            renderEncoder.setVertexBuffer(lineToStartFloatsBuffer, offset: 0, index: 7)
+            renderEncoder.setVertexBuffer(startRoadAtBuffer, offset: 0, index: 8)
+            
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount, instanceCount: 1)
         }
     }
 }

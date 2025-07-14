@@ -76,8 +76,8 @@
             filePath = "TucikMap/Tile/Parse/TileMvtParser.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "177"
-            endingLineNumber = "177"
+            startingLineNumber = "196"
+            endingLineNumber = "196"
             landmarkName = "tryParseTextLabels(geometry:boundingBox:tileCoords:properties:)"
             landmarkType = "7">
          </BreakpointContent>

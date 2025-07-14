@@ -9,16 +9,6 @@
 using namespace metal;
 #include "Common.h"
 
-struct VertexIn {
-    float2 position [[attribute(0)]];
-    float2 texCoord [[attribute(1)]];
-};
-
-struct VertexOut {
-    float4 position [[position]];
-    float2 texCoord;
-};
-
 struct Uniforms {
     metal::float4x4 projectionMatrix;
     metal::float4x4 viewMatrix;
@@ -49,6 +39,27 @@ struct MapLabelIntersection {
     float createdTime;
 };
 
+struct StartRoadAt {
+    float startAt;
+};
+
+struct LineToStartAt {
+    int index;
+    int count;
+};
+
+struct VertexIn {
+    float2 position [[attribute(0)]];
+    float2 texCoord [[attribute(1)]];
+};
+
+struct VertexOut {
+    float4 position [[position]];
+    float2 texCoord;
+    bool ignore;
+    bool test;
+};
+
 float2 getScreenPosition(float4x4 modelMatrix, float2 localPosition, Uniforms worldUniforms) {
     float4 worldLabelPos = modelMatrix * float4(localPosition, 0.0, 1.0);
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
@@ -71,7 +82,10 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
                                     constant Uniforms &worldUniforms [[buffer(4)]],
                                     constant float4x4& modelMatrix [[buffer(5)]],
                                     constant float2* positions [[buffer(6)]],
-                                    uint vertexID [[vertex_id]]
+                                    constant LineToStartAt* lineToStartFrom [[buffer(7)]],
+                                    constant StartRoadAt* startsFrom [[buffer(8)]],
+                                    uint vertexID [[vertex_id]],
+                                    uint instanceID [[instance_id]]
                                     ) {
     int symbolIndex = vertexID / 6;
     MapLabelSymbolMeta symbolMeta = symbolsMeta[symbolIndex];
@@ -81,7 +95,47 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     float scale = lineMeta.scale;
     int positionsSize = lineMeta.endPositionIndex - lineMeta.startPositionIndex;
     
-    float shiftX = symbolMeta.shiftX * scale;
+    
+    // расчитываем длину всего пути
+    float pathLen = 0;
+    int shiftIndex2 = 0;
+    while (positionsSize - 1 > shiftIndex2) {
+        float2 screenCurrent2 = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + shiftIndex2], worldUniforms);
+        float2 screenNext2 = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + 1 + shiftIndex2], worldUniforms);
+        pathLen += length(screenNext2 - screenCurrent2);
+        shiftIndex2 += 1;
+    }
+    
+    float screenTextWidth = measuredText.width * scale;
+    float halfScreenTextWidth = 0.5 * screenTextWidth;
+    
+    // First, compute the max fitCount based on non-overlapping hierarchical levels
+    int fitCount = 0;
+    if (pathLen >= screenTextWidth) {
+        float ratio = pathLen / screenTextWidth;
+        float logVal = log2(ratio);
+        int maxLevel = max(0, int(floor(logVal)) - 1);  // Level k, starting from 0
+        fitCount = (1 << (maxLevel + 1)) - 1;  // Total labels: 2^{maxLevel + 1} - 1
+    }
+    
+    bool ignoreInstance = (int(instanceID) >= fitCount);  // Ignore extra instances
+    
+    // Now, for valid instances, compute the fractional position along the path
+    float fraction = 0.5;  // Default for ID 0
+    if (!ignoreInstance && instanceID > 0) {
+        float iid = float(instanceID);
+        float m = floor(log2(iid + 1.0)) + 1.0;  // "Denominator power" (m = level + 1)
+        int mm = int(m);
+        int cumPrev = (1 << (mm - 1)) - 1;
+        int localId = int(iid) - cumPrev;
+        float num = float(2 * localId + 1);
+        float den = pow(2.0, m);  // 2^m
+        fraction = num / den;
+    }
+    
+//    int fitCount = int(pathLen / screenTextWidth);
+//    bool ignoreInstance = instanceID >= uint(fitCount);
+    float shiftX = symbolMeta.shiftX * scale + 0.5 * pathLen - halfScreenTextWidth;
     
     int shiftIndex = 0;
     float2 screenCurrent = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + shiftIndex], worldUniforms);
@@ -95,6 +149,7 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
         screenNext = getScreenPosition(modelMatrix, positions[lineMeta.startPositionIndex + 1 + shiftIndex], worldUniforms);
         len = length(screenNext - screenCurrent);
     }
+    
     
     VertexOut out;
     float2 direction = normalize(screenNext - screenCurrent);
@@ -115,12 +170,19 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     float4 position = float4(vertexPos, 0.0, 1.0);
     out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
     out.texCoord = in.texCoord;
+    out.ignore = ignoreInstance;
+    out.test = positionsSize == 5;
     return out;
 }
 
 fragment float4 roadLabelsFragmentShader(VertexOut in [[stage_in]],
                                      texture2d<float> atlasTexture [[texture(0)]],
                                      sampler textureSampler [[sampler(0)]]) {
+    if (in.ignore) {
+        discard_fragment();
+    }
+
+    
     // Чтение значения из MSDF атласа
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
     float sigDist = median(msdf.r, msdf.g, msdf.b);
@@ -140,6 +202,10 @@ fragment float4 roadLabelsFragmentShader(VertexOut in [[stage_in]],
     float3 textColor = float3(0.0, 0.0, 0.0); // Цвет текста (например, белый)
     float3 finalColor = mix(outlineColor, textColor, textOpacity);
     float finalOpacity = max(outlineOpacity, textOpacity);
+    
+//    if (in.test) {
+//        finalColor = float3(0, 1.0, 0);
+//    }
     
     return float4(finalColor, finalOpacity);
 }

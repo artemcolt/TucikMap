@@ -17,6 +17,9 @@ class ProjectPoints {
         let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
         let actualLabelsIds: Set<UInt>
         let geoLabelsSize: Int
+        
+        let nextResultsIndex: Int
+        let roadLabelsByTiles: [RoadLabels]
     }
     
     struct Result {

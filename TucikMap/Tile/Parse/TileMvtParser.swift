@@ -147,13 +147,32 @@ class TileMvtParser {
     }
     
     private func parseRoad(coordinates: [Coordinate3D], name: String) -> ParsedRoadLabel {
+//        var localPathLen = 0
+//        let screenLenFactor = Double(20)
+//        var pathLen = Double(0)
+//        for i in 0..<coordinates.count-1 {
+//            let coordinate = coordinates[i]
+//            let next = coordinates[i + 1]
+//            
+//            let currentPoint = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(coordinate.x, coordinate.y))
+//            let nextPoint = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(next.x, next.y))
+//            let length = length(nextPoint - currentPoint) * screenLenFactor
+//            pathLen += length
+//        }
+        
         var points: [SIMD2<Float>] = []
         points.reserveCapacity(coordinates.count)
         for coordinate in coordinates {
-            let point = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(coordinate.x, coordinate.y))
-            points.append(SIMD2<Float>(Float(point.x), Float(point.y)))
+            let currentPoint = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(coordinate.x, coordinate.y))
+            points.append(SIMD2<Float>(Float(currentPoint.x), Float(currentPoint.y)))
         }
-        return ParsedRoadLabel(name: name, localPoints: points)
+        
+//        let symbolPredictSize = Double(5)
+//        let symbolsCount = name.count
+//        let textWidth = Double(symbolsCount) * symbolPredictSize
+//        if textWidth >= pathLen { return nil }
+        
+        return ParsedRoadLabel(name: name, localPoints: points, pathLen: Float(0))
     }
     
     private func tryParseTextLabels(
@@ -204,6 +223,7 @@ class TileMvtParser {
         styles[style.key] = style
     }
     
+    var parseLimitTest = 1
     func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) async -> ReadingStageResult {
         var polygon3dByStyle: [UInt8: [Parsed3dPolygon]] = [:]
         
@@ -268,12 +288,13 @@ class TileMvtParser {
                 }
                 
                 let name = properties["name_en"] as? String
-                if layerName == "road" && name != nil {
-                    if let parsed = tryParseRoadLine(geometry: geometry, name: name!) {
+                if layerName == "road" && parseLimitTest > 0  {
+                    parseLimitTest -= 1
+                    if let parsed = tryParseRoadLine(geometry: geometry, name: name ?? "no street name") {
                         roadLabels.append(parsed)
                     }
-                    if let parsed = tryParseRoadMultiLine(geometry: geometry, name: name!) {
-                        roadLabels.append(contentsOf: parsed)
+                    if let parsed = tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name") {
+                        roadLabels.append(contentsOf: [parsed[1]])
                     }
                 }
                 

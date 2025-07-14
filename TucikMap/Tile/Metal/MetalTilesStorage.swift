@@ -80,7 +80,6 @@ class MetalTilesStorage {
                     indicesCount: parsedTile.drawing3dPolygon.indices.count
                 )
                 
-                //var roadLabelsMetal: [RoadLabelMetal] = []
                 let roadLabelsParsed = parsedTile.roadLabels
                 let roadLabels = textTools.mapRoadLabelsAssembler.assemble(
                     lines: roadLabelsParsed.map { roadLabel in
@@ -94,6 +93,19 @@ class MetalTilesStorage {
                     },
                     font: textTools.robotoFont.boldFont
                 )
+                
+                var roadLabelsMeta: [RoadLabel] = []
+                for i in 0..<roadLabelsParsed.count {
+                    let parsed = roadLabelsParsed[i]
+                    let meta = roadLabels!.mapLabelLineCollisionsMeta[i]
+                    roadLabelsMeta.append(RoadLabel(
+                        name: parsed.name,
+                        localPoints: parsed.localPoints,
+                        measuredText: meta.measuredText,
+                        scale: meta.scale
+                    ))
+                }
+                
                 
                 let textLabels = textTools.mapLabelsAssembler.assemble(
                     lines: parsedTile.textLabels.map { label in MapLabelsAssembler.TextLineData(
@@ -117,8 +129,7 @@ class MetalTilesStorage {
                     tile: tile,
                     tile2dBuffers: tile2dBuffers,
                     tile3dBuffers: tile3dBuffers,
-                    roadLabels: roadLabels,
-                    parsedTile: parsedTile
+                    roadLabels: RoadLabels(items: roadLabelsMeta, draw: roadLabels?.drawMapLabelsData),
                 )
                 
                 await MainActor.run {

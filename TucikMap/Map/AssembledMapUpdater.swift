@@ -22,7 +22,11 @@ class AssembledMapUpdater {
     private var renderFrameCount: RenderFrameCount!
     private var frameCounter: FrameCounter!
     
-    var assembledMap: AssembledMap = AssembledMap(tiles: [], tileGeoLabels: [])
+    var assembledMap: AssembledMap = AssembledMap(
+        tiles: [],
+        tileGeoLabels: [],
+        roadLabels: []
+    )
     var assembledTileTitles: DrawTextData?
     
     init(
@@ -107,7 +111,7 @@ class AssembledMapUpdater {
         }
         if allActualReady {
             camera.screenCollisionsDetector.handleGeoLabels.setGeoLabels(geoLabels: actualGeoLabels)
-            //camera.screenCollisionsDetector.setRoadLabels(roadLabels: actual.map { tile in tile.roadLabels }.filter { road in road != nil })
+            camera.screenCollisionsDetector.setRoadLabels(roadLabelsByTiles: actual.map { tile in tile.roadLabels })
             camera.mapCadDisplayLoop.recomputeIntersections()
         }
         
