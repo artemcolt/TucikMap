@@ -36,6 +36,7 @@ class MapRoadLabelsAssembler {
         let scale: simd_float1
         let locationStartIndex: simd_int1
         let locationEndIndex: simd_int1
+        let worldPathLen: simd_float1
     }
     
     struct DrawMapLabelsData {
@@ -72,6 +73,7 @@ class MapRoadLabelsAssembler {
         let localPositions: [SIMD2<Float>]
         let id: UInt
         let sortRank: ushort
+        let pathLen: Float
     }
     
     private let createTextGeometry: CreateTextGeometry
@@ -93,6 +95,7 @@ class MapRoadLabelsAssembler {
         
         for i in 0..<lines.count {
             let line = lines[i]
+                        
             let text = line.text
             let measuredText = createTextGeometry.measureText(text: text, fontData: font.fontData)
             let textVertices = createTextGeometry.createForRoadLabel(text: text, fontData: font.fontData, onGlyphCreated: { scalar, shiftX in
@@ -111,7 +114,8 @@ class MapRoadLabelsAssembler {
                 measuredText: measuredText,
                 scale: line.scale,
                 locationStartIndex: simd_int1(localPostionsStart),
-                locationEndIndex: simd_int1(localPostionsEnd)
+                locationEndIndex: simd_int1(localPostionsEnd),
+                worldPathLen: line.pathLen
             ))
             
             mapLabelLineCollisionsMeta.append(MapLabelLineCollisionsMeta(

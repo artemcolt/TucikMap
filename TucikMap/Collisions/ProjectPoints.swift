@@ -11,6 +11,7 @@ class ProjectPoints {
     struct ProjectInput {
         let modelMatrices: [matrix_float4x4]
         let uniforms: Uniforms
+        let mapPanning: SIMD3<Double>
         let inputComputeScreenVertices: [InputComputeScreenVertex]
         
         let metalGeoLabels: [MetalGeoLabels]

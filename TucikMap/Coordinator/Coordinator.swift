@@ -294,7 +294,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                     drawPoint.draw(
                         renderEncoder: basicRenderEncoder,
                         uniformsBuffer: uniformsBuffer,
-                        pointSize: Settings.cameraCenterPointSize,
+                        pointSize: Settings.cameraCenterPointSize * 0.5,
                         position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
                         color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0),
                     )

@@ -18,11 +18,13 @@ struct RoadLabel {
     let localPoints: [SIMD2<Float>]
     let measuredText: MeasuredText
     let scale: Float
+    let pathLen: Float
 }
 
 struct RoadLabels {
     let items: [RoadLabel]
     var draw: MapRoadLabelsAssembler.DrawMapLabelsData?
+    var tile: Tile
 }
 
 struct RenderingCurrentRoadLabels {
@@ -90,45 +92,105 @@ class ScreenCollisionsDetector {
         self.roadLabelsByTiles = roadLabelsByTiles
     }
     
+    private func localTilePositionToScreenSpacePosition(modelMatrix: matrix_float4x4, localPosition: SIMD2<Float>, worldUniforms: Uniforms) -> SIMD2<Float> {
+        let worldLabelPos = modelMatrix * SIMD4<Float>(localPosition.x, localPosition.y, 0.0, 1.0);
+        let clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
+        let ndc = SIMD3<Float>(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
+       
+        let viewportSize = worldUniforms.viewportSize;
+        let viewportWidth = viewportSize.x;
+        let viewportHeight = viewportSize.y;
+        let screenX = ((ndc.x + 1) / 2) * viewportWidth;
+        let screenY = ((ndc.y + 1) / 2) * viewportHeight;
+        let screenPos = SIMD2<Float>(screenX, screenY);
+        return screenPos;
+    }
+    
     private func onPointsReady(result: ProjectPoints.Result) {
         handleGeoLabels.onPointsReady(result: result)
         
-        let roadTitleSpacing = Float(100)
+        let uniforms = result.input.uniforms
+        let mapPanning = result.input.mapPanning
         let input = result.input
         let output = result.output
         let nextResultIndex = input.nextResultsIndex
-        var roadLabelsByTiles = input.roadLabelsByTiles
+        let roadLabelsByTiles = input.roadLabelsByTiles
         var renderingCurrentRoadLabels: [RenderingCurrentRoadLabels] = []
+        var outputIndexShift = 0
         for tileRoadLabels in roadLabelsByTiles {
+            let modelMatrix = tileRoadLabels.tile.getModelMatrix(mapZoomState: mapZoomState, pan: mapPanning)
             var lineToStartFloats: [MapRoadLabelsAssembler.LineToStartAt] = []
             var startRoadLabelsAtFull: [MapRoadLabelsAssembler.StartRoadAt] = []
             var maxInstances = 0
-//            for roadLabel in tileRoadLabels.items {
-//                let measuredText = roadLabel.measuredText
-//                let count = roadLabel.localPoints.count
-//                var startRoadLabelsAt: [MapRoadLabelsAssembler.StartRoadAt] = []
-//                var screenPathLen: Float = 0
+            for roadLabel in tileRoadLabels.items {
+                let worldPathLen = roadLabel.pathLen
+                let measuredText = roadLabel.measuredText
+                let textScreenWidth = measuredText.width * roadLabel.scale
+                var startRoadLabelsAt: [MapRoadLabelsAssembler.StartRoadAt] = []
+                let localPositions = roadLabel.localPoints
+                let count = roadLabel.localPoints.count
+                
+                
+                var screenPathLen = Float(0);
+                for i in 0..<count-1 {
+                    let currentScreen = output[nextResultIndex + i + outputIndexShift]
+                    let nextScreen = output[nextResultIndex + i + outputIndexShift + 1]
+                    let screenLen = length(nextScreen - currentScreen)
+                    screenPathLen += screenLen
+                }
+                
+//                let factor = Float(0.5);
+//                
+//                var textStartScreenShift = Float(0);
+//                var previousScreenLen = Float(0);
+//                var worldTextCenter = worldPathLen * factor;
 //                for i in 0..<count-1 {
-//                    let current = output[nextResultIndex + i]
-//                    let next = output[nextResultIndex + i + 1]
-//                    let len = length(next - current)
-//                    screenPathLen += len
+//                    let current = localPositions[i];
+//                    let next = localPositions[i + 1];
+//                    let len = length(next - current);
+//                    
+//                    let currentScreen = output[nextResultIndex + i + outputIndexShift];
+//                    let nextScreen = output[nextResultIndex + i + outputIndexShift + 1];
+//                    let screenLen = length(nextScreen - currentScreen);
+//                    
+//                    if worldTextCenter - len < 0 || i == count-2 {
+//                        let inSegmentWorldLen = worldTextCenter;
+//                        let direction = normalize(next - current);
+//                        let worldPoint = current + direction * inSegmentWorldLen;
+//                        let screenPoint = localTilePositionToScreenSpacePosition(
+//                            modelMatrix: modelMatrix,
+//                            localPosition: worldPoint,
+//                            worldUniforms: uniforms
+//                        );
+//                        let inSegmentScreenLen = length(screenPoint - currentScreen);
+//                        
+//                        textStartScreenShift = previousScreenLen + inSegmentScreenLen - textScreenWidth / 2;
+//                        break;
+//                    }
+//                    worldTextCenter -= len;
+//                    previousScreenLen += screenLen;
 //                }
-//                let textScreenWidth = measuredText.width * roadLabel.scale
-//                let textSpacingWidth = textScreenWidth + roadTitleSpacing
-//                let fitCount = Int(screenPathLen / textSpacingWidth)
-//                if maxInstances < fitCount { maxInstances = fitCount }
-//                for i in 0..<fitCount {
-//                    let startFrom = Float(i) * textSpacingWidth
-//                    //let factor = startFrom / screenPathLen
-//                    startRoadLabelsAt.append(MapRoadLabelsAssembler.StartRoadAt(startAt: startFrom))
-//                }
-//                lineToStartFloats.append(MapRoadLabelsAssembler.LineToStartAt(
-//                    index: simd_int1(startRoadLabelsAtFull.count),
-//                    count: simd_int1(startRoadLabelsAt.count)
-//                ))
-//                startRoadLabelsAtFull.append(contentsOf: startRoadLabelsAt)
-//            }
+//                
+//                let textEndScreenShift = textStartScreenShift + textScreenWidth
+//                print("0 textStartScreenShift = ", textStartScreenShift, " textEndScreenShift = ", textEndScreenShift, " ", screenPathLen)
+                
+                let factors: [Float] = [0.0, 1.0, 0.5];
+                
+                outputIndexShift += count
+                if factors.count > maxInstances {
+                    maxInstances = factors.count
+                }
+                
+                for factor in factors {
+                    startRoadLabelsAt.append(MapRoadLabelsAssembler.StartRoadAt(startAt: factor))
+                }
+                
+                lineToStartFloats.append(MapRoadLabelsAssembler.LineToStartAt(
+                    index: simd_int1(startRoadLabelsAtFull.count),
+                    count: simd_int1(startRoadLabelsAt.count)
+                ))
+                startRoadLabelsAtFull.append(contentsOf: startRoadLabelsAt)
+            }
             
             var draw = tileRoadLabels.draw!
             draw.maxInstances = maxInstances
@@ -171,6 +233,7 @@ class ScreenCollisionsDetector {
         projectPoints.project(input: ProjectPoints.ProjectInput(
             modelMatrices: result.modelMatrices,
             uniforms: lastUniforms,
+            mapPanning: mapPanning,
             inputComputeScreenVertices: inputComputeScreenVertices,
             
             metalGeoLabels: result.metalGeoLabels,
@@ -179,7 +242,7 @@ class ScreenCollisionsDetector {
             geoLabelsSize: result.geoLabelsSize,
             
             nextResultsIndex: nextResultsIndex,
-            roadLabelsByTiles: roadLabelsByTiles
+            roadLabelsByTiles: roadLabelsByTiles,
         ))
         
         return false

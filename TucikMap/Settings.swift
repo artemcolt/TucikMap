@@ -87,5 +87,5 @@ class Settings {
     
     static let useGoToAtStart = true
     static let goToAtStartZ: Float = 16
-    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(55.74949000658127, 37.624466601994754)
+    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(55.75158400792652, 37.62741826226008)
 }

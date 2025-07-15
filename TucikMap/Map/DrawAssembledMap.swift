@@ -129,7 +129,7 @@ class DrawAssembledMap {
             let localPositions = draw.localPositionsBuffer
             let atlasTexture = draw.atlas
             let instances = draw.maxInstances
-            //guard instances > 0 else { continue }
+            guard instances > 0 else { continue }
             
             let startRoadAtBuffer = draw.startRoadAtBuffer[currentFBIndex]
             let lineToStartFloatsBuffer = draw.lineToStartFloatsBuffer[currentFBIndex]
@@ -144,7 +144,7 @@ class DrawAssembledMap {
             renderEncoder.setVertexBuffer(lineToStartFloatsBuffer, offset: 0, index: 7)
             renderEncoder.setVertexBuffer(startRoadAtBuffer, offset: 0, index: 8)
             
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount, instanceCount: 1)
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount, instanceCount: instances)
         }
     }
 }

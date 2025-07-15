@@ -147,19 +147,6 @@ class TileMvtParser {
     }
     
     private func parseRoad(coordinates: [Coordinate3D], name: String) -> ParsedRoadLabel {
-//        var localPathLen = 0
-//        let screenLenFactor = Double(20)
-//        var pathLen = Double(0)
-//        for i in 0..<coordinates.count-1 {
-//            let coordinate = coordinates[i]
-//            let next = coordinates[i + 1]
-//            
-//            let currentPoint = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(coordinate.x, coordinate.y))
-//            let nextPoint = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(next.x, next.y))
-//            let length = length(nextPoint - currentPoint) * screenLenFactor
-//            pathLen += length
-//        }
-        
         var points: [SIMD2<Float>] = []
         points.reserveCapacity(coordinates.count)
         for coordinate in coordinates {
@@ -167,12 +154,15 @@ class TileMvtParser {
             points.append(SIMD2<Float>(Float(currentPoint.x), Float(currentPoint.y)))
         }
         
-//        let symbolPredictSize = Double(5)
-//        let symbolsCount = name.count
-//        let textWidth = Double(symbolsCount) * symbolPredictSize
-//        if textWidth >= pathLen { return nil }
+        var worldPathLen = Float(0);
+        for i in 0..<points.count-1 {
+            let currentPosition = points[i];
+            let nextPosition = points[i+1];
+            let length = length(nextPosition - currentPosition);
+            worldPathLen += length;
+        }
         
-        return ParsedRoadLabel(name: name, localPoints: points, pathLen: Float(0))
+        return ParsedRoadLabel(name: name, localPoints: points, pathLen: worldPathLen)
     }
     
     private func tryParseTextLabels(

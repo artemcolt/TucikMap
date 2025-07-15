@@ -88,7 +88,8 @@ class MetalTilesStorage {
                             scale: 50,
                             localPositions: roadLabel.localPoints,
                             id: 0,
-                            sortRank: 0
+                            sortRank: 0,
+                            pathLen: roadLabel.pathLen
                         )
                     },
                     font: textTools.robotoFont.boldFont
@@ -102,7 +103,8 @@ class MetalTilesStorage {
                         name: parsed.name,
                         localPoints: parsed.localPoints,
                         measuredText: meta.measuredText,
-                        scale: meta.scale
+                        scale: meta.scale,
+                        pathLen: parsed.pathLen
                     ))
                 }
                 
@@ -129,7 +131,11 @@ class MetalTilesStorage {
                     tile: tile,
                     tile2dBuffers: tile2dBuffers,
                     tile3dBuffers: tile3dBuffers,
-                    roadLabels: RoadLabels(items: roadLabelsMeta, draw: roadLabels?.drawMapLabelsData),
+                    roadLabels: RoadLabels(
+                        items: roadLabelsMeta,
+                        draw: roadLabels?.drawMapLabelsData,
+                        tile: tile
+                    ),
                 )
                 
                 await MainActor.run {

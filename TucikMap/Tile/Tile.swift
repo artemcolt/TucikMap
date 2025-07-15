@@ -118,4 +118,8 @@ struct Tile {
         
         return MapPanningTilePoint(x: -globalX, y: globalY)
     }
+    
+    func getModelMatrix(mapZoomState: MapZoomState, pan: SIMD3<Double>) -> matrix_float4x4 {
+        return MapMathUtils.getTileModelMatrix(tile: self, mapZoomState: mapZoomState, pan: pan)
+    }
 }
