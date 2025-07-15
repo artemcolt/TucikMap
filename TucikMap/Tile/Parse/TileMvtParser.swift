@@ -213,7 +213,7 @@ class TileMvtParser {
         styles[style.key] = style
     }
     
-    var parseLimitTest = 1
+    var parsedCountTest = 0
     func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) async -> ReadingStageResult {
         var polygon3dByStyle: [UInt8: [Parsed3dPolygon]] = [:]
         
@@ -278,14 +278,16 @@ class TileMvtParser {
                 }
                 
                 let name = properties["name_en"] as? String
-                if layerName == "road" && parseLimitTest > 0  {
-                    parseLimitTest -= 1
-                    if let parsed = tryParseRoadLine(geometry: geometry, name: name ?? "no street name") {
-                        roadLabels.append(parsed)
+                if layerName == "road" && name != nil { // && (name == "Kremlin Embankment")
+                    if parsedCountTest == 1 || parsedCountTest == 0 || true {
+                        if let parsed = tryParseRoadLine(geometry: geometry, name: name ?? "no street name") {
+                            roadLabels.append(parsed)
+                        }
+                        if let parsed = tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name") {
+                            roadLabels.append(contentsOf: parsed)
+                        }
                     }
-                    if let parsed = tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name") {
-                        roadLabels.append(contentsOf: [parsed[1]])
-                    }
+                    parsedCountTest += 1
                 }
                 
                 if let parsed = tryParsePolygon(geometry: geometry,

@@ -59,7 +59,7 @@ class MapRoadLabelsAssembler {
         let verticesCount: Int
         let atlas: MTLTexture
         let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
-        let localPositions: [SIMD2<Float>]
+        let localPositions: [LocalPosition]
     }
     
     struct Result {
@@ -74,6 +74,10 @@ class MapRoadLabelsAssembler {
         let id: UInt
         let sortRank: ushort
         let pathLen: Float
+    }
+    
+    struct LocalPosition {
+        let position: SIMD2<Float>
     }
     
     private let createTextGeometry: CreateTextGeometry
@@ -91,7 +95,7 @@ class MapRoadLabelsAssembler {
         var mapLabelLineMeta: [MapLabelLineMeta] = []
         var mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta] = []
         var vertices: [TextVertex] = []
-        var localPositions: [SIMD2<Float>] = []
+        var localPositions: [LocalPosition] = []
         
         for i in 0..<lines.count {
             let line = lines[i]
@@ -107,7 +111,7 @@ class MapRoadLabelsAssembler {
             vertices.append(contentsOf: textVertices)
             
             let localPostionsStart = localPositions.count
-            localPositions.append(contentsOf: line.localPositions)
+            localPositions.append(contentsOf: line.localPositions.map { pos in LocalPosition(position: pos) })
             let localPostionsEnd = localPositions.count
             
             mapLabelLineMeta.append(MapLabelLineMeta(
@@ -145,7 +149,7 @@ class MapRoadLabelsAssembler {
         
         let localPositionsBuffer = metalDevice.makeBuffer(
             bytes: assembledBytes.localPositions,
-            length: MemoryLayout<SIMD2<Float>>.stride * assembledBytes.localPositions.count
+            length: MemoryLayout<LocalPosition>.stride * assembledBytes.localPositions.count
         )!
         let vertexBuffer = metalDevice.makeBuffer(
             bytes: assembledBytes.vertices,

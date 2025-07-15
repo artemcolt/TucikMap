@@ -31,6 +31,7 @@ struct RenderingCurrentRoadLabels {
     let draw: MapRoadLabelsAssembler.DrawMapLabelsData
     let lineToStartAt: [MapRoadLabelsAssembler.LineToStartAt]
     let startAt: [MapRoadLabelsAssembler.StartRoadAt]
+    let tile: Tile
 }
 
 struct RenderingRoads {
@@ -106,6 +107,40 @@ class ScreenCollisionsDetector {
         return screenPos;
     }
     
+    func getScreenArcPosition(
+        worldArcPos: Float,
+        localPositions: [simd_float2],
+        output: [simd_float2],
+        nextResultIndex: Int,
+        outputIndexShift: Int,
+        modelMatrix: simd_float4x4,
+        uniforms: Uniforms
+    ) -> Float {
+        var remaining = worldArcPos
+        var screenCum: Float = 0
+        let count = localPositions.count
+        for i in 0..<count - 1 {
+            let current = localPositions[i]
+            let next = localPositions[i + 1]
+            let len = length(next - current)
+            if remaining < len || i == count - 2 {
+                let inSegmentWorldLen = remaining
+                let direction = normalize(next - current)
+                let worldPoint = current + direction * inSegmentWorldLen
+                let screenPoint = localTilePositionToScreenSpacePosition(modelMatrix: modelMatrix, localPosition: worldPoint, worldUniforms: uniforms)
+                let currentScreen = output[nextResultIndex + i + outputIndexShift]
+                let inSegmentScreenLen = length(screenPoint - currentScreen)
+                return screenCum + inSegmentScreenLen
+            }
+            remaining -= len
+            let currentScreen = output[nextResultIndex + i + outputIndexShift]
+            let nextScreen = output[nextResultIndex + i + outputIndexShift + 1]
+            let screenLen = length(nextScreen - currentScreen)
+            screenCum += screenLen
+        }
+        return screenCum
+    }
+    
     private func onPointsReady(result: ProjectPoints.Result) {
         handleGeoLabels.onPointsReady(result: result)
         
@@ -118,63 +153,72 @@ class ScreenCollisionsDetector {
         var renderingCurrentRoadLabels: [RenderingCurrentRoadLabels] = []
         var outputIndexShift = 0
         for tileRoadLabels in roadLabelsByTiles {
+            guard var draw = tileRoadLabels.draw else { continue }
+            
             let modelMatrix = tileRoadLabels.tile.getModelMatrix(mapZoomState: mapZoomState, pan: mapPanning)
             var lineToStartFloats: [MapRoadLabelsAssembler.LineToStartAt] = []
             var startRoadLabelsAtFull: [MapRoadLabelsAssembler.StartRoadAt] = []
             var maxInstances = 0
-            for roadLabel in tileRoadLabels.items {
+            for roadLabelIndex in 0..<tileRoadLabels.items.count {
+                let roadLabel = tileRoadLabels.items[roadLabelIndex]
                 let worldPathLen = roadLabel.pathLen
                 let measuredText = roadLabel.measuredText
-                let textScreenWidth = measuredText.width * roadLabel.scale
+                let textScreenWidth = measuredText.width * roadLabel.scale + Settings.roadLabelScreenSpacing
                 var startRoadLabelsAt: [MapRoadLabelsAssembler.StartRoadAt] = []
                 let localPositions = roadLabel.localPoints
                 let count = roadLabel.localPoints.count
-                
-                
-                var screenPathLen = Float(0);
-                for i in 0..<count-1 {
-                    let currentScreen = output[nextResultIndex + i + outputIndexShift]
-                    let nextScreen = output[nextResultIndex + i + outputIndexShift + 1]
-                    let screenLen = length(nextScreen - currentScreen)
-                    screenPathLen += screenLen
-                }
-                
-//                let factor = Float(0.5);
 //                
-//                var textStartScreenShift = Float(0);
-//                var previousScreenLen = Float(0);
-//                var worldTextCenter = worldPathLen * factor;
+//                
+//                var screenPathLen = Float(0);
 //                for i in 0..<count-1 {
-//                    let current = localPositions[i];
-//                    let next = localPositions[i + 1];
-//                    let len = length(next - current);
-//                    
-//                    let currentScreen = output[nextResultIndex + i + outputIndexShift];
-//                    let nextScreen = output[nextResultIndex + i + outputIndexShift + 1];
-//                    let screenLen = length(nextScreen - currentScreen);
-//                    
-//                    if worldTextCenter - len < 0 || i == count-2 {
-//                        let inSegmentWorldLen = worldTextCenter;
-//                        let direction = normalize(next - current);
-//                        let worldPoint = current + direction * inSegmentWorldLen;
-//                        let screenPoint = localTilePositionToScreenSpacePosition(
-//                            modelMatrix: modelMatrix,
-//                            localPosition: worldPoint,
-//                            worldUniforms: uniforms
-//                        );
-//                        let inSegmentScreenLen = length(screenPoint - currentScreen);
-//                        
-//                        textStartScreenShift = previousScreenLen + inSegmentScreenLen - textScreenWidth / 2;
-//                        break;
-//                    }
-//                    worldTextCenter -= len;
-//                    previousScreenLen += screenLen;
+//                    let currentScreen = output[nextResultIndex + i + outputIndexShift]
+//                    let nextScreen = output[nextResultIndex + i + outputIndexShift + 1]
+//                    let screenLen = length(nextScreen - currentScreen)
+//                    screenPathLen += screenLen
 //                }
 //                
-//                let textEndScreenShift = textStartScreenShift + textScreenWidth
-//                print("0 textStartScreenShift = ", textStartScreenShift, " textEndScreenShift = ", textEndScreenShift, " ", screenPathLen)
+//                //print("screenPathLen = ", screenPathLen)
+//                
+//                // Now, perform the subdivision to find all valid factors.
+//                var queue: [(Float, Float)] = [(0.0, worldPathLen)]
+//                var centers: [Float] = [] // World arc positions for centers
+//                var intervals: [(Float, Float)] = [] // Screen [start, end] intervals for placed texts
+//
+//                while !queue.isEmpty {
+//                    let segment = queue.removeFirst() // Breadth-first
+//                    let midWorld = (segment.0 + segment.1) / 2
+//                    let screenMid = getScreenArcPosition(worldArcPos: midWorld, localPositions: localPositions, output: output, nextResultIndex: nextResultIndex, outputIndexShift: outputIndexShift, modelMatrix: modelMatrix, uniforms: uniforms)
+//                    let halfText = textScreenWidth / 2
+//                    let textStart = screenMid - halfText
+//                    let textEnd = screenMid + halfText
+//                    
+//                    if textStart < 0 || textEnd > screenPathLen {
+//                        continue
+//                    }
+//                    
+//                    var overlaps = false
+//                    for interval in intervals {
+//                        let existingStart = interval.0
+//                        let existingEnd = interval.1
+//                        if max(textStart, existingStart) < min(textEnd, existingEnd) {
+//                            overlaps = true
+//                            break
+//                        }
+//                    }
+//                    
+//                    if !overlaps {
+//                        centers.append(midWorld)
+//                        intervals.append((textStart, textEnd))
+//                        queue.append((segment.0, midWorld))
+//                        queue.append((midWorld, segment.1))
+//                    }
+//                }
+//
+//                let factors = centers.map { $0 / worldPathLen }.sorted()
                 
-                let factors: [Float] = [0.0, 1.0, 0.5];
+                let factors: [Float] = [0.5];
+                
+                //print(roadLabelIndex, " ", factors)
                 
                 outputIndexShift += count
                 if factors.count > maxInstances {
@@ -192,13 +236,13 @@ class ScreenCollisionsDetector {
                 startRoadLabelsAtFull.append(contentsOf: startRoadLabelsAt)
             }
             
-            var draw = tileRoadLabels.draw!
             draw.maxInstances = maxInstances
                         
             renderingCurrentRoadLabels.append(RenderingCurrentRoadLabels(
                 draw: draw,
                 lineToStartAt: lineToStartFloats,
-                startAt: startRoadLabelsAtFull
+                startAt: startRoadLabelsAtFull,
+                tile: tileRoadLabels.tile
             ))
         }
         

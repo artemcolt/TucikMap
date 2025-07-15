@@ -106,8 +106,7 @@ class DrawAssembledMap {
     func drawRoadLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        roadLabelsDrawing: [MapRoadLabelsAssembler.DrawMapLabelsData],
-        modelMatrices: [float4x4],
+        roadLabelsDrawing: [MetalRoadLabels],
         currentFBIndex: Int
     ) {
         guard roadLabelsDrawing.isEmpty == false else { return }
@@ -117,10 +116,13 @@ class DrawAssembledMap {
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
+        let mapPanning = camera.mapPanning
         let drawTiles = roadLabelsDrawing
         for i in 0..<drawTiles.count {
-            let draw = drawTiles[i]
-            var modelMatrix = modelMatrices[i]
+            let metalRoad = drawTiles[i]
+            guard let draw = metalRoad.draw else { continue }
+            let tile = metalRoad.tile
+            var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile, mapZoomState: mapZoomState, pan: mapPanning)
             
             let vertexBuffer = draw.vertexBuffer
             let verticesCount = draw.verticesCount

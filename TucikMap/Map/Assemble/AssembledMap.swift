@@ -10,11 +10,11 @@ import MetalKit
 class AssembledMap {
     var tiles: [MetalTile]
     var tileGeoLabels: [MetalGeoLabels]
-    var roadLabels: [MapRoadLabelsAssembler.DrawMapLabelsData]
+    var roadLabels: [MetalRoadLabels]
     
     init(tiles: [MetalTile],
-         tileGeoLabels:  [MetalGeoLabels],
-         roadLabels: [MapRoadLabelsAssembler.DrawMapLabelsData]
+         tileGeoLabels: [MetalGeoLabels],
+         roadLabels: [MetalRoadLabels]
     ) {
         self.tileGeoLabels = tileGeoLabels
         self.roadLabels = roadLabels
