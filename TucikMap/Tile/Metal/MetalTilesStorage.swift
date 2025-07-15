@@ -95,19 +95,6 @@ class MetalTilesStorage {
                     font: textTools.robotoFont.boldFont
                 )
                 
-                var roadLabelsMeta: [RoadLabel] = []
-                for i in 0..<roadLabelsParsed.count {
-                    let parsed = roadLabelsParsed[i]
-                    let meta = roadLabels!.mapLabelLineCollisionsMeta[i]
-                    roadLabelsMeta.append(RoadLabel(
-                        name: parsed.name,
-                        localPoints: parsed.localPoints,
-                        measuredText: meta.measuredText,
-                        scale: meta.scale,
-                        pathLen: parsed.pathLen
-                    ))
-                }
-                
                 
                 let textLabels = textTools.mapLabelsAssembler.assemble(
                     lines: parsedTile.textLabels.map { label in MapLabelsAssembler.TextLineData(
@@ -122,6 +109,11 @@ class MetalTilesStorage {
                     font: textTools.robotoFont.boldFont
                 )
                 
+                let metalRoadLabels = MetalRoadLabels(
+                    tile: tile,
+                    roadLabels: roadLabels
+                )
+                
                 let metalGeoLabels = MetalGeoLabels(
                     tile: tile,
                     textLabels: textLabels
@@ -131,16 +123,16 @@ class MetalTilesStorage {
                     tile: tile,
                     tile2dBuffers: tile2dBuffers,
                     tile3dBuffers: tile3dBuffers,
-                    roadLabels: RoadLabels(
-                        items: roadLabelsMeta,
-                        draw: roadLabels?.drawMapLabelsData,
-                        tile: tile
-                    ),
                 )
                 
                 await MainActor.run {
                     let key = tile.key()
-                    self.memoryMetalTile.setTileData(tile: metalTile, tileLabels: metalGeoLabels, forKey: key)
+                    self.memoryMetalTile.setTileData(
+                        tile: metalTile,
+                        tileLabels: metalGeoLabels,
+                        roadLabels: metalRoadLabels,
+                        forKey: key
+                    )
                     self.onMetalingTileEnd(tile)
                 }
             }
@@ -157,6 +149,10 @@ class MetalTilesStorage {
     
     func getMetalGeoLabels(tile: Tile) -> MetalGeoLabels? {
         return memoryMetalTile.getTileGeoLabels(forKey: tile.key())
+    }
+    
+    func getMetalRoadLabels(tile: Tile) -> MetalRoadLabels? {
+        return memoryMetalTile.getTileRoadLabels(forKey: tile.key())
     }
     
     func requestMetalTile(tile: Tile) {

@@ -26,9 +26,10 @@ class MapRoadLabelsAssembler {
     struct MapLabelLineCollisionsMeta {
         let measuredText: MeasuredText
         let scale: simd_float1
-        let localPosition: SIMD2<Float>
+        let localPositions: [SIMD2<Float>]
         let sortRank: ushort
         let id: UInt
+        let pathLen: Float
     }
 
     struct MapLabelLineMeta {
@@ -49,7 +50,6 @@ class MapRoadLabelsAssembler {
         let localPositionsBuffer: MTLBuffer
         let startRoadAtBuffer: [MTLBuffer]
         let lineToStartFloatsBuffer: [MTLBuffer]
-        var maxInstances: Int
     }
 
     struct DrawMapLabelsBytes {
@@ -125,9 +125,10 @@ class MapRoadLabelsAssembler {
             mapLabelLineCollisionsMeta.append(MapLabelLineCollisionsMeta(
                 measuredText: measuredText,
                 scale: line.scale,
-                localPosition: SIMD2<Float>(0, 0),
+                localPositions: line.localPositions,
                 sortRank: line.sortRank,
-                id: line.id
+                id: line.id,
+                pathLen: line.pathLen
             ))
         }
         
@@ -199,8 +200,7 @@ class MapRoadLabelsAssembler {
             atlas: assembledBytes.atlas,
             localPositionsBuffer: localPositionsBuffer,
             startRoadAtBuffer: startRoadAtTrippleBuffer,
-            lineToStartFloatsBuffer: lineToStartFloatsTrippleBuffer,
-            maxInstances: 0
+            lineToStartFloatsBuffer: lineToStartFloatsTrippleBuffer
         )
         return Result(drawMapLabelsData: drawData, mapLabelLineCollisionsMeta: assembledBytes.mapLabelLineCollisionsMeta)
     }

@@ -54,7 +54,8 @@ class DrawMapLabels {
         renderEncoder: MTLRenderCommandEncoder,
         geoLabels: [MetalGeoLabels],
         uniformsBuffer: MTLBuffer,
-        currentFBIndex: Int
+        currentFBIndex: Int,
+        tileModelMatrices: TileModelMatrices
     ) {
         guard geoLabels.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
@@ -66,10 +67,9 @@ class DrawMapLabels {
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
         let mapPanning = camera.mapPanning
-        for i in 0..<geoLabels.count {
-            let tile = geoLabels[i]
+        for tile in geoLabels {
             guard let textLabels = tile.textLabels else { continue }
-            var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
+            var modelMatrix = tileModelMatrices.get(tile: tile.tile)
             
             let drawMapLabelsData = textLabels.drawMapLabelsData
             let vertexBuffer = drawMapLabelsData.vertexBuffer

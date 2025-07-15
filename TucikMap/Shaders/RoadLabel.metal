@@ -91,7 +91,7 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
                                     constant StartRoadAt* startsFrom [[buffer(8)]],
                                     uint vertexID [[vertex_id]],
                                     uint instanceID [[instance_id]]
-                                    ) {
+                                        ) {
     int symbolIndex = vertexID / 6;
     MapLabelSymbolMeta symbolMeta = symbolsMeta[symbolIndex];
     int lineIndex = symbolMeta.lineMetaIndex;
@@ -114,6 +114,16 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     int positionsSize = lineMeta.endPositionIndex - lineMeta.startPositionIndex; // сколько всего точек в массиве
     float textFactor = startRoadAt.startAt;
     
+//    float screenPathLen = 0;
+//    for (int i = 0; i < positionsSize - 1; i++) {
+//        float2 current = localPositions[startLocalPositionIndex + i].position;
+//        float2 next = localPositions[startLocalPositionIndex + i + 1].position;
+//        float2 currentScreen = localTilePositionToScreenSpacePosition(modelMatrix, current, worldUniforms);
+//        float2 nextScreen = localTilePositionToScreenSpacePosition(modelMatrix, next, worldUniforms);
+//        float screenLen = length(nextScreen - currentScreen);
+//        screenPathLen += screenLen;
+//    }
+    //ignoreInstance = screenPathLen || (screenPathLen <= textScreenWidth);
     
     float textStartScreenShift = 0;
     float previousScreenLen = 0;

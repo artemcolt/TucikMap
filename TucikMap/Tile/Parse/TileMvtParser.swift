@@ -278,16 +278,19 @@ class TileMvtParser {
                 }
                 
                 let name = properties["name_en"] as? String
-                if layerName == "road" && name != nil { // && (name == "Kremlin Embankment")
-                    if parsedCountTest == 1 || parsedCountTest == 0 || true {
+                if layerName == "road" && name != nil {
+                    let testCondition = Settings.renderOnlyRoadsArray.contains(name!) || Settings.renderOnlyRoadsArray.isEmpty
+                    let fromToTestCond = Settings.renderRoadArrayFromTo.isEmpty ||
+                        (Settings.renderRoadArrayFromTo[0] <= parsedCountTest && parsedCountTest <= Settings.renderRoadArrayFromTo[1])
+                    if testCondition && fromToTestCond {
                         if let parsed = tryParseRoadLine(geometry: geometry, name: name ?? "no street name") {
                             roadLabels.append(parsed)
                         }
                         if let parsed = tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name") {
                             roadLabels.append(contentsOf: parsed)
                         }
+                        parsedCountTest += 1
                     }
-                    parsedCountTest += 1
                 }
                 
                 if let parsed = tryParsePolygon(geometry: geometry,

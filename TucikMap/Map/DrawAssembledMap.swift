@@ -35,14 +35,13 @@ class DrawAssembledMap {
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
         tiles: [MetalTile],
-        modelMatrices: [matrix_float4x4]
+        tileModelMatrices: TileModelMatrices
     ) {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
-        for i in 0..<tiles.count {
-            let tile = tiles[i]
-            var modelMatrix = modelMatrices[i]
+        for tile in tiles {
+            var modelMatrix = tileModelMatrices.get(tile: tile.tile)
             let tile2dBuffers = tile.tile2dBuffers
             
             renderEncoder.setVertexBuffer(tile2dBuffers.verticesBuffer, offset: 0, index: 0)
@@ -63,18 +62,17 @@ class DrawAssembledMap {
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
         tiles: [MetalTile],
-        modelMatrices: [matrix_float4x4]
+        tileModelMatrices: TileModelMatrices
     ) {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
-        for i in 0..<tiles.count {
-            let tile = tiles[i]
+        for tile in tiles {
             let tileBuffers = tile.tile3dBuffers
             guard let verticesBuffer = tileBuffers.verticesBuffer,
                   let indicesBuffer = tileBuffers.indicesBuffer,
                   let stylesBuffer = tileBuffers.stylesBuffer else { continue }
-            var modelMatrix = modelMatrices[i]
+            var modelMatrix = tileModelMatrices.get(tile: tile.tile)
             
             renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(stylesBuffer, offset: 0, index: 2)
@@ -93,21 +91,24 @@ class DrawAssembledMap {
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
         geoLabels: [MetalGeoLabels],
-        currentFBIndex: Int
+        currentFBIndex: Int,
+        tileModelMatrices: TileModelMatrices
     ) {
         drawMapLabels.draw(
             renderEncoder: renderEncoder,
             geoLabels: geoLabels,
             uniformsBuffer: uniformsBuffer,
-            currentFBIndex: currentFBIndex
+            currentFBIndex: currentFBIndex,
+            tileModelMatrices: tileModelMatrices
         )
     }
     
     func drawRoadLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        roadLabelsDrawing: [MetalRoadLabels],
-        currentFBIndex: Int
+        roadLabelsDrawing: [FinalDrawRoadLabel],
+        currentFBIndex: Int,
+        tileModelMatrices: TileModelMatrices
     ) {
         guard roadLabelsDrawing.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
@@ -116,13 +117,14 @@ class DrawAssembledMap {
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
-        let mapPanning = camera.mapPanning
         let drawTiles = roadLabelsDrawing
-        for i in 0..<drawTiles.count {
-            let metalRoad = drawTiles[i]
-            guard let draw = metalRoad.draw else { continue }
+        for finalDraw in drawTiles {
+            let metalRoad = finalDraw.metalRoadLabels
+            let instances = finalDraw.maxInstances
+            guard let roadLabels = metalRoad.roadLabels else { continue }
+            let draw = roadLabels.drawMapLabelsData
             let tile = metalRoad.tile
-            var modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile, mapZoomState: mapZoomState, pan: mapPanning)
+            var modelMatrix = tileModelMatrices.get(tile: tile)
             
             let vertexBuffer = draw.vertexBuffer
             let verticesCount = draw.verticesCount
@@ -130,7 +132,6 @@ class DrawAssembledMap {
             let mapLabelLineMeta = draw.mapLabelLineMeta
             let localPositions = draw.localPositionsBuffer
             let atlasTexture = draw.atlas
-            let instances = draw.maxInstances
             guard instances > 0 else { continue }
             
             let startRoadAtBuffer = draw.startRoadAtBuffer[currentFBIndex]

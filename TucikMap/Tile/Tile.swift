@@ -50,10 +50,21 @@ struct UniqueGeoLabelKey : Hashable {
     }
 }
 
-struct Tile {
+struct Tile: Hashable {
     let x: Int
     let y: Int
     let z: Int
+    
+    static func == (lhs: Tile, rhs: Tile) -> Bool {
+        return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z
+    }
+    
+    // Ручная реализация хэширования
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
+        hasher.combine(z)
+    }
     
     func key() -> String {
         return "\(z)_\(x)_\(y)"

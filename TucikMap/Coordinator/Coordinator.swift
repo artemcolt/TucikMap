@@ -132,6 +132,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         //camera.moveToPanningPoint(point: panningPoint, zoom: 14, view: view, size: size)
     }
     
+    var colors: [String: SIMD4<Float>] = [:]
+    
     // Three-step rendering process
     func draw(in view: MTKView) {
         // Wait until the previous frame's GPU work has completed
@@ -144,11 +146,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         let assembledMap = camera.assembledMapUpdater.assembledMap
         let assembledTiles = assembledMap.tiles
         let mapPanning = camera.mapPanning
-        var modelMatrices: [matrix_float4x4] = []
-        for tile in assembledTiles {
-            let modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
-            modelMatrices.append(modelMatrix)
-        }
+        
+        let tileModelMatrices: TileModelMatrices = TileModelMatrices(mapZoomState: mapZoomState, pan: mapPanning)
         
         // apply new intersection data to current tripple buffering buffer
         if let labelsWithIntersections = screenCollisionsDetector.handleGeoLabels.getLabelsWithIntersections() {
@@ -168,17 +167,23 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         if let roadLabelsDrawing = screenCollisionsDetector.getRenderingCurrentRoadLabels() {
             let roadLabels = roadLabelsDrawing.renderingCurrentRoadLabels
-            assembledMap.roadLabels = roadLabels.map { item in MetalRoadLabels(tile: item.tile, draw: item.draw) }
+            assembledMap.roadLabels = roadLabels.map { item in FinalDrawRoadLabel(
+                metalRoadLabels: item.metalRoadLabels,
+                maxInstances: item.maxInstances
+            ) }
             
             for i in 0..<roadLabels.count {
-                let tile = roadLabels[i]
-                let lineToStartFloats = tile.lineToStartAt
-                let startAt = tile.startAt
-                tile.draw.lineToStartFloatsBuffer[currentFBIdx].contents().copyMemory(
+                let roadLabel = roadLabels[i]
+                guard let roadLabels = roadLabel.metalRoadLabels.roadLabels else { continue }
+                let draw = roadLabels.drawMapLabelsData
+                let tile = roadLabel.metalRoadLabels.tile
+                let lineToStartFloats = roadLabel.lineToStartAt
+                let startAt = roadLabel.startAt
+                draw.lineToStartFloatsBuffer[currentFBIdx].contents().copyMemory(
                     from: lineToStartFloats,
                     byteCount: MemoryLayout<MapRoadLabelsAssembler.LineToStartAt>.stride * lineToStartFloats.count
                 )
-                tile.draw.startRoadAtBuffer[currentFBIdx].contents().copyMemory(
+                draw.startRoadAtBuffer[currentFBIdx].contents().copyMemory(
                     from: startAt,
                     byteCount: MemoryLayout<MapRoadLabelsAssembler.StartRoadAt>.stride * startAt.count
                 )
@@ -206,7 +211,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
-            modelMatrices: modelMatrices
+            tileModelMatrices: tileModelMatrices
         )
         renderEncoder.endEncoding()
         
@@ -218,10 +223,10 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: roadLabelsEncoder,
             uniformsBuffer: uniformsBuffer,
             roadLabelsDrawing: assembledMap.roadLabels,
-            currentFBIndex: currentFBIdx
+            currentFBIndex: currentFBIdx,
+            tileModelMatrices: tileModelMatrices
         )
         roadLabelsEncoder.endEncoding()
-        
         
         
         
@@ -242,7 +247,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: depthPrePassEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
-            modelMatrices: modelMatrices
+            tileModelMatrices: tileModelMatrices
         )
         depthPrePassEncoder.endEncoding()
         
@@ -264,7 +269,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: colorPassEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
-            modelMatrices: modelMatrices
+            tileModelMatrices: tileModelMatrices
         )
         colorPassEncoder.endEncoding()
         
@@ -275,7 +280,8 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: basicRenderEncoder,
             uniformsBuffer: uniformsBuffer,
             geoLabels: assembledMap.tileGeoLabels,
-            currentFBIndex: currentFBIdx
+            currentFBIndex: currentFBIdx,
+            tileModelMatrices: tileModelMatrices
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: basicRenderEncoder)
@@ -289,9 +295,18 @@ class Coordinator: NSObject, MTKViewDelegate {
         
 //        for i in 0..<assembledTiles.count {
 //            let tile = assembledTiles[i]
-//            let modelMatrix = modelMatrices[i]
+//            let modelMatrix = tileModelMatrices.get(tile: tile.tile)
 //            
-//            for roadLabel in tile.roadLabels.items {
+//            for i2 in 0..<tile.roadLabels.items.count {
+//                let key = "\(i)\(i2)"
+//                var color = colors[key]
+//                if color == nil {
+//                    let randomColor = SIMD4<Float>(Float.random(in: 0...1), Float.random(in: 0...1), Float.random(in: 0...1), 1.0)
+//                    colors[key] = randomColor
+//                    color = randomColor
+//                }
+//                
+//                let roadLabel = tile.roadLabels.items[i2]
 //                for point in roadLabel.localPoints {
 //                    let pointToDraw = modelMatrix * SIMD4<Float>(point.x, point.y, 0, 1)
 //                    drawPoint.draw(
@@ -299,7 +314,7 @@ class Coordinator: NSObject, MTKViewDelegate {
 //                        uniformsBuffer: uniformsBuffer,
 //                        pointSize: Settings.cameraCenterPointSize * 0.5,
 //                        position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
-//                        color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0),
+//                        color: color!,
 //                    )
 //                }
 //            }

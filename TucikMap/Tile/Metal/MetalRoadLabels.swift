@@ -17,13 +17,13 @@ class MetalRoadLabels: Hashable {
     }
     
     let tile: Tile
-    let draw: MapRoadLabelsAssembler.DrawMapLabelsData?
+    let roadLabels: MapRoadLabelsAssembler.Result?
     
     init(
         tile: Tile,
-        draw: MapRoadLabelsAssembler.DrawMapLabelsData?,
+        roadLabels: MapRoadLabelsAssembler.Result?,
     ) {
         self.tile = tile
-        self.draw = draw
+        self.roadLabels = roadLabels
     }
 }

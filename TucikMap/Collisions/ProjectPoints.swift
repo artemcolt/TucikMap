@@ -20,7 +20,7 @@ class ProjectPoints {
         let geoLabelsSize: Int
         
         let nextResultsIndex: Int
-        let roadLabelsByTiles: [RoadLabels]
+        let roadLabels: [MetalRoadLabels]
     }
     
     struct Result {
