@@ -35,6 +35,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     // Map
     var mapZoomState: MapZoomState!
     var camera: Camera!
+    var applyLabelsState: ApplyLabelsState!
     
     // UI
     var drawUI: DrawUI!
@@ -109,6 +110,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                 camera: camera,
                 mapZoomState: mapZoomState
             )
+            applyLabelsState = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector, assembledMap: camera.assembledMapUpdater.assembledMap)
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
             self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: camera.mapCadDisplayLoop, renderFrameCount: renderFrameCount)
         }
@@ -132,7 +134,6 @@ class Coordinator: NSObject, MTKViewDelegate {
         //camera.moveToPanningPoint(point: panningPoint, zoom: 14, view: view, size: size)
     }
     
-    var colors: [String: SIMD4<Float>] = [:]
     
     // Three-step rendering process
     func draw(in view: MTKView) {
@@ -140,55 +141,22 @@ class Coordinator: NSObject, MTKViewDelegate {
         // This ensures we don't try to update a buffer that's still in use
         _ = camera.updateBufferedUniform!.semaphore.wait(timeout: .distantFuture)
         
-        camera.updateBufferedUniform!.updateUniforms(viewportSize: view.drawableSize)
-        let currentFBIdx = camera.updateBufferedUniform.getCurrentFrameBufferIndex()
-        let uniformsBuffer = camera.updateBufferedUniform.getCurrentFrameBuffer()
-        let assembledMap = camera.assembledMapUpdater.assembledMap
-        let assembledTiles = assembledMap.tiles
-        let mapPanning = camera.mapPanning
+        let updateBufferedUniform = camera.updateBufferedUniform!
+        updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
+        camera.updateMapState(view: view)
         
-        let tileModelMatrices: TileModelMatrices = TileModelMatrices(mapZoomState: mapZoomState, pan: mapPanning)
+        let currentFBIdx            = updateBufferedUniform.getCurrentFrameBufferIndex()
+        let uniformsBuffer          = updateBufferedUniform.getCurrentFrameBuffer()
+        let assembledMap            = camera.assembledMapUpdater.assembledMap
+        let assembledTiles          = assembledMap.tiles
+        let mapPanning              = camera.mapPanning
+        let tileFrameProps          = TileFrameProps(mapZoomState: mapZoomState,
+                                                     pan: mapPanning,
+                                                     uniforms: updateBufferedUniform.lastUniforms!)
         
-        // apply new intersection data to current tripple buffering buffer
-        if let labelsWithIntersections = screenCollisionsDetector.handleGeoLabels.getLabelsWithIntersections() {
-            let geoLabels = labelsWithIntersections.geoLabels
-            assembledMap.tileGeoLabels = geoLabels
-            let intersections = labelsWithIntersections.intersections
-            
-            for i in 0..<assembledMap.tileGeoLabels.count {
-                guard let intersections = intersections[i] else { continue }
-                let tileGeoLabels = geoLabels[i]
-                guard let textLabels = tileGeoLabels.textLabels else { continue }
-                let copyToBuffer = textLabels.drawMapLabelsData.intersectionsTrippleBuffer[currentFBIdx]
-                copyToBuffer.contents()
-                            .copyMemory(from: intersections, byteCount: MemoryLayout<LabelIntersection>.stride * intersections.count)
-            }
-        }
+        // Применяем если есть актуальные данные меток для свежего кадра
+        applyLabelsState.apply(currentFBIdx: currentFBIdx)
         
-        if let roadLabelsDrawing = screenCollisionsDetector.getRenderingCurrentRoadLabels() {
-            let roadLabels = roadLabelsDrawing.renderingCurrentRoadLabels
-            assembledMap.roadLabels = roadLabels.map { item in FinalDrawRoadLabel(
-                metalRoadLabels: item.metalRoadLabels,
-                maxInstances: item.maxInstances
-            ) }
-            
-            for i in 0..<roadLabels.count {
-                let roadLabel = roadLabels[i]
-                guard let roadLabels = roadLabel.metalRoadLabels.roadLabels else { continue }
-                let draw = roadLabels.drawMapLabelsData
-                let tile = roadLabel.metalRoadLabels.tile
-                let lineToStartFloats = roadLabel.lineToStartAt
-                let startAt = roadLabel.startAt
-                draw.lineToStartFloatsBuffer[currentFBIdx].contents().copyMemory(
-                    from: lineToStartFloats,
-                    byteCount: MemoryLayout<MapRoadLabelsAssembler.LineToStartAt>.stride * lineToStartFloats.count
-                )
-                draw.startRoadAtBuffer[currentFBIdx].contents().copyMemory(
-                    from: startAt,
-                    byteCount: MemoryLayout<MapRoadLabelsAssembler.StartRoadAt>.stride * startAt.count
-                )
-            }
-        }
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
@@ -211,7 +179,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
-            tileModelMatrices: tileModelMatrices
+            tileFrameProps: tileFrameProps
         )
         renderEncoder.endEncoding()
         
@@ -224,7 +192,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             uniformsBuffer: uniformsBuffer,
             roadLabelsDrawing: assembledMap.roadLabels,
             currentFBIndex: currentFBIdx,
-            tileModelMatrices: tileModelMatrices
+            tileFrameProps: tileFrameProps
         )
         roadLabelsEncoder.endEncoding()
         
@@ -247,7 +215,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: depthPrePassEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
-            tileModelMatrices: tileModelMatrices
+            tileFrameProps: tileFrameProps
         )
         depthPrePassEncoder.endEncoding()
         
@@ -269,7 +237,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             renderEncoder: colorPassEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
-            tileModelMatrices: tileModelMatrices
+            tileFrameProps: tileFrameProps
         )
         colorPassEncoder.endEncoding()
         
@@ -281,7 +249,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             uniformsBuffer: uniformsBuffer,
             geoLabels: assembledMap.tileGeoLabels,
             currentFBIndex: currentFBIdx,
-            tileModelMatrices: tileModelMatrices
+            tileFrameProps: tileFrameProps
         )
         
         pipelines.basePipeline.selectPipeline(renderEncoder: basicRenderEncoder)
@@ -293,32 +261,25 @@ class Coordinator: NSObject, MTKViewDelegate {
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
         
-//        for i in 0..<assembledTiles.count {
-//            let tile = assembledTiles[i]
-//            let modelMatrix = tileModelMatrices.get(tile: tile.tile)
-//            
-//            for i2 in 0..<tile.roadLabels.items.count {
-//                let key = "\(i)\(i2)"
-//                var color = colors[key]
-//                if color == nil {
-//                    let randomColor = SIMD4<Float>(Float.random(in: 0...1), Float.random(in: 0...1), Float.random(in: 0...1), 1.0)
-//                    colors[key] = randomColor
-//                    color = randomColor
-//                }
-//                
-//                let roadLabel = tile.roadLabels.items[i2]
-//                for point in roadLabel.localPoints {
-//                    let pointToDraw = modelMatrix * SIMD4<Float>(point.x, point.y, 0, 1)
-//                    drawPoint.draw(
-//                        renderEncoder: basicRenderEncoder,
-//                        uniformsBuffer: uniformsBuffer,
-//                        pointSize: Settings.cameraCenterPointSize * 0.5,
-//                        position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
-//                        color: color!,
-//                    )
-//                }
-//            }
-//        }
+        let testPoints = screenCollisionsDetector.testPoints
+        for point in testPoints {
+            let color = SIMD4<Float>(0.0, 1.0, 0.0, 1.0)
+            drawPoint.draw(
+                renderEncoder: basicRenderEncoder,
+                uniformsBuffer: screenUniforms.screenUniformBuffer,
+                pointSize: 15,
+                position: SIMD3<Float>(point.x, point.y, 0),
+                color: color
+            )
+        }
+        
+        
+        if Settings.drawRoadPointsDebug {
+            drawRoadPoints(assembledMap: assembledMap,
+                           tileFrameProps: tileFrameProps,
+                           basicRenderEncoder: basicRenderEncoder,
+                           uniformsBuffer: uniformsBuffer)
+        }
         
         pipelines.textPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
         drawUI.drawZoomUiText(renderCommandEncoder: basicRenderEncoder, size: view.drawableSize)
@@ -333,5 +294,47 @@ class Coordinator: NSObject, MTKViewDelegate {
     
     private func renderComplete() {
         camera.updateBufferedUniform!.semaphore.signal()
+    }
+    
+    private var colors: [String: SIMD4<Float>] = [:]
+    private func drawRoadPoints(
+        assembledMap: AssembledMap,
+        tileFrameProps: TileFrameProps,
+        basicRenderEncoder: MTLRenderCommandEncoder,
+        uniformsBuffer: MTLBuffer
+    ) {
+        for i in 0..<assembledMap.roadLabels.count {
+            let tileRoadLabels = assembledMap.roadLabels[i]
+            let metalRoadLabels = tileRoadLabels.metalRoadLabels
+            let tile = metalRoadLabels.tile
+            guard let roadLabels = metalRoadLabels.roadLabels else { continue }
+            let props = tileFrameProps.get(tile: tile)
+            let modelMatrix = props.model
+            guard props.contains else { continue } 
+            let metas = roadLabels.mapLabelsCpuMeta
+            
+            for i2 in 0..<metas.count {
+                let key = "\(i)\(i2)"
+                var color = colors[key]
+                if color == nil {
+                    let randomColor = SIMD4<Float>(Float.random(in: 0...1), Float.random(in: 0...1), Float.random(in: 0...1), 1.0)
+                    colors[key] = randomColor
+                    color = randomColor
+                }
+                
+                let meta = metas[i2]
+                let localPositions = meta.localPositions
+                for point in localPositions {
+                    let pointToDraw = modelMatrix * SIMD4<Float>(point.x, point.y, 0, 1)
+                    drawPoint.draw(
+                        renderEncoder: basicRenderEncoder,
+                        uniformsBuffer: uniformsBuffer,
+                        pointSize: Settings.cameraCenterPointSize * 0.5,
+                        position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
+                        color: color!,
+                    )
+                }
+            }
+        }
     }
 }

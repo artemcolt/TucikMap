@@ -61,6 +61,7 @@ class AssembledMapUpdater {
         savedView = view
         visibleTilesResult = determineVisibleTiles.determine()
         let visibleTiles = visibleTilesResult.visibleTiles
+        guard visibleTiles.isEmpty == false else { return }
         metalTiles.setupTilesFilter(filterTiles: visibleTiles)
         
         var replacements = Set<MetalTile>()
@@ -114,8 +115,7 @@ class AssembledMapUpdater {
             break
         }
         if allActualReady {
-            camera.screenCollisionsDetector.handleGeoLabels.setGeoLabels(geoLabels: actualGeoLabels)
-            camera.screenCollisionsDetector.setRoadLabels(roadLabelsByTiles: actualRoadLabels)
+            camera.screenCollisionsDetector.newState(roadLabelsByTiles: actualRoadLabels, geoLabels: actualGeoLabels, view: view)
             camera.mapCadDisplayLoop.recomputeIntersections()
         }
         

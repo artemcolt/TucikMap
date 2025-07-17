@@ -114,17 +114,7 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     int positionsSize = lineMeta.endPositionIndex - lineMeta.startPositionIndex; // сколько всего точек в массиве
     float textFactor = startRoadAt.startAt;
     
-//    float screenPathLen = 0;
-//    for (int i = 0; i < positionsSize - 1; i++) {
-//        float2 current = localPositions[startLocalPositionIndex + i].position;
-//        float2 next = localPositions[startLocalPositionIndex + i + 1].position;
-//        float2 currentScreen = localTilePositionToScreenSpacePosition(modelMatrix, current, worldUniforms);
-//        float2 nextScreen = localTilePositionToScreenSpacePosition(modelMatrix, next, worldUniforms);
-//        float screenLen = length(nextScreen - currentScreen);
-//        screenPathLen += screenLen;
-//    }
-    //ignoreInstance = screenPathLen || (screenPathLen <= textScreenWidth);
-    
+    float2 screenPoint = float2(0, 0);
     float textStartScreenShift = 0;
     float previousScreenLen = 0;
     float worldTextCenter = worldPathLen * textFactor;
@@ -141,7 +131,7 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
             float inSegmentWorldLen = worldTextCenter;
             float inSegmentWorldFactor = inSegmentWorldLen / len;
             float2 worldPoint = mix(current, next, inSegmentWorldFactor);
-            float2 screenPoint = localTilePositionToScreenSpacePosition(modelMatrix, worldPoint, worldUniforms);
+            screenPoint = localTilePositionToScreenSpacePosition(modelMatrix, worldPoint, worldUniforms);
             float inSegmentScreenLen = length(screenPoint - currentScreen);
             
             textStartScreenShift = previousScreenLen + inSegmentScreenLen - textScreenWidth / 2;
@@ -151,8 +141,14 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
         previousScreenLen += screenLen;
     }
     
-    textStartScreenShift += glyphShift * scale;
-    
+    // если центральная точка метки на дороге выходит за пределы экрана то игнорируем ее
+    float2 viewportSize = worldUniforms.viewportSize;
+    if (screenPoint.x + textScreenWidth < 0 ||
+        screenPoint.y + textScreenWidth < 0 ||
+        screenPoint.x - textScreenWidth > viewportSize.x ||
+        screenPoint.y - textScreenWidth > viewportSize.y) {
+        ignoreInstance = true;
+    }
     
     // Мы нашли стартовую точку на длине экранной кривой и теперь рисуем текст
     int shiftIndex = 0;
@@ -162,8 +158,10 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     float2 screenNext = localTilePositionToScreenSpacePosition(modelMatrix,
                                                                localPositions[startLocalPositionIndex + 1 + shiftIndex].position,
                                                                worldUniforms);
-    float len = length(screenNext - screenCurrent);
     
+    textStartScreenShift += glyphShift * scale;
+    
+    float len = length(screenNext - screenCurrent);
     while (textStartScreenShift > len && positionsSize - 1 > shiftIndex) {
         textStartScreenShift -= len;
         shiftIndex += 1;

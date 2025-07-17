@@ -22,56 +22,51 @@ class DetermineVisibleTiles {
     }
     
     func determine() -> DetVisTilesResult {
+        var visibleTiles: [Tile] = []
         if Settings.showOnlyTiles.count > 0 {
-            var visibleTiles: [Tile] = []
             for tile in Settings.showOnlyTiles {
                 if tile.z > Settings.maxTileZoom {
+                    // Если показ этого тайла невозможен из за ограничений в зуме то нужно найти родительский тайл
                     visibleTiles.append(tile.findParentTile(atZoom: Settings.maxTileZoom)!)
                 } else {
                     visibleTiles.append(tile)
                 }
             }
-            return DetVisTilesResult(
-                visibleTiles: visibleTiles
-            )
-        }
-        
-        var centerTileX = Int(camera.centerTileX)
-        var centerTileY = Int(camera.centerTileY)
-        var zoomLevel = mapZoomState.zoomLevel
-        if Settings.printCenterTile {
-            print("centerTileX: \(centerTileX) centerTileY: \(centerTileY) zoomLevel: \(zoomLevel)")
-        }
-        
-        if zoomLevel > Settings.maxTileZoom {
-            let parent = Tile(x: centerTileX, y: centerTileY, z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
-            centerTileX = parent.x
-            centerTileY = parent.y
-            zoomLevel = parent.z
-        }
-        
-        let powZoomLevel = pow(2.0, Float(zoomLevel))
-        let tilesCount = Int(powZoomLevel)
-        let maxTileCoord = tilesCount - 1
-        
-        // Определяем диапазон видимых тайлов
-        let halfTilesX = visibleTilesX / 2
-        let halfTilesY = visibleTilesY / 2
-        
-        var visibleTiles: [Tile] = []
-        // Перебираем все видимые тайлы
-        for tileX in (centerTileX - halfTilesX)...(centerTileX + halfTilesX) {
-            for tileY in (centerTileY - halfTilesY)...(centerTileY + halfTilesY) {
-                let skip = tileX < 0 || tileY < 0 || tileX > maxTileCoord || tileY > maxTileCoord
-                if skip {continue}
-                
-                // Добавляем тайл с текущим уровнем зума
-                visibleTiles.append(Tile(x: tileX, y: tileY, z: zoomLevel))
+        } else {
+            var centerTileX = Int(camera.centerTileX)
+            var centerTileY = Int(camera.centerTileY)
+            var zoomLevel = mapZoomState.zoomLevel
+            if Settings.printCenterTile {
+                print("centerTileX: \(centerTileX) centerTileY: \(centerTileY) zoomLevel: \(zoomLevel)")
+            }
+            
+            if zoomLevel > Settings.maxTileZoom {
+                let parent = Tile(x: centerTileX, y: centerTileY, z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
+                centerTileX = parent.x
+                centerTileY = parent.y
+                zoomLevel = parent.z
+            }
+            
+            let powZoomLevel = pow(2.0, Float(zoomLevel))
+            let tilesCount = Int(powZoomLevel)
+            let maxTileCoord = tilesCount - 1
+            
+            // Определяем диапазон видимых тайлов
+            let halfTilesX = visibleTilesX / 2
+            let halfTilesY = visibleTilesY / 2
+            
+            // Перебираем все видимые тайлы
+            for tileX in (centerTileX - halfTilesX)...(centerTileX + halfTilesX) {
+                for tileY in (centerTileY - halfTilesY)...(centerTileY + halfTilesY) {
+                    let skip = tileX < 0 || tileY < 0 || tileX > maxTileCoord || tileY > maxTileCoord
+                    if skip {continue}
+                    
+                    // Добавляем тайл с текущим уровнем зума
+                    visibleTiles.append(Tile(x: tileX, y: tileY, z: zoomLevel))
+                }
             }
         }
         
-        return DetVisTilesResult(
-            visibleTiles: visibleTiles
-        )
+        return DetVisTilesResult(visibleTiles: visibleTiles)
     }
 }

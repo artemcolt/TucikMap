@@ -83,7 +83,7 @@ class Settings {
     
     static let printCenterLatLon: Bool = false
     static let printCenterTile: Bool = false
-    static let showOnlyTiles: [Tile] = [   ] // Tile(x: 39617, y: 20488, z: 16), Tile(x: 39617, y: 20489, z: 16)
+    static let showOnlyTiles: [Tile] = [ Tile(x: 39617, y: 20488, z: 16) ] // Tile(x: 39617, y: 20488, z: 16)
     
     static let useGoToAtStart = true
     static let goToAtStartZ: Float = 16
@@ -92,6 +92,8 @@ class Settings {
     static let maxRoadLabelsDivision = 1
     static let roadLabelScreenSpacing = Float(0)
     
-    static let renderOnlyRoadsArray: [String] = [] // "Sofiyskaya Embankment"
-    static let renderRoadArrayFromTo: [Int] = []
+    static let renderOnlyRoadsArray: [String] = ["Kremlin Embankment"] // "Sofiyskaya Embankment"
+    static let renderRoadArrayFromTo: [Int] = [0, 0]
+    
+    static let drawRoadPointsDebug: Bool = false
 }

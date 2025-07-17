@@ -9,9 +9,13 @@ import MetalKit
 import Foundation
 
 class DrawAssembledMap {
+    struct FinalDrawRoadLabel {
+        let metalRoadLabels: MetalRoadLabels
+        let maxInstances: Int
+    }
+    
     let mapSize = Settings.mapSize
     let metalDevice: MTLDevice
-    let drawMapLabels: DrawMapLabels
     let camera: Camera
     let mapZoomState: MapZoomState
     let sampler: MTLSamplerState
@@ -19,7 +23,6 @@ class DrawAssembledMap {
     
     init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera, mapZoomState: MapZoomState) {
         self.metalDevice = metalDevice
-        self.drawMapLabels = DrawMapLabels(metalDevice: metalDevice, screenUniforms: screenUniforms, camera: camera, mapZoomState: mapZoomState)
         self.mapZoomState = mapZoomState
         self.camera = camera
         self.screenUniforms = screenUniforms
@@ -35,13 +38,16 @@ class DrawAssembledMap {
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
         tiles: [MetalTile],
-        tileModelMatrices: TileModelMatrices
+        tileFrameProps: TileFrameProps
     ) {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
         for tile in tiles {
-            var modelMatrix = tileModelMatrices.get(tile: tile.tile)
+            var tileProps = tileFrameProps.get(tile: tile.tile)
+            guard tileProps.contains else { continue }
+                    
+            var modelMatrix = tileProps.model
             let tile2dBuffers = tile.tile2dBuffers
             
             renderEncoder.setVertexBuffer(tile2dBuffers.verticesBuffer, offset: 0, index: 0)
@@ -62,17 +68,20 @@ class DrawAssembledMap {
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
         tiles: [MetalTile],
-        tileModelMatrices: TileModelMatrices
+        tileFrameProps: TileFrameProps
     ) {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
-        for tile in tiles {
-            let tileBuffers = tile.tile3dBuffers
+        for metalTile in tiles {
+            let tileBuffers = metalTile.tile3dBuffers
             guard let verticesBuffer = tileBuffers.verticesBuffer,
                   let indicesBuffer = tileBuffers.indicesBuffer,
                   let stylesBuffer = tileBuffers.stylesBuffer else { continue }
-            var modelMatrix = tileModelMatrices.get(tile: tile.tile)
+            let tile = metalTile.tile
+            let props = tileFrameProps.get(tile: tile)
+            guard props.contains else { continue }
+            var modelMatrix = props.model
             
             renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(stylesBuffer, offset: 0, index: 2)
@@ -92,15 +101,41 @@ class DrawAssembledMap {
         uniformsBuffer: MTLBuffer,
         geoLabels: [MetalGeoLabels],
         currentFBIndex: Int,
-        tileModelMatrices: TileModelMatrices
+        tileFrameProps: TileFrameProps
     ) {
-        drawMapLabels.draw(
-            renderEncoder: renderEncoder,
-            geoLabels: geoLabels,
-            uniformsBuffer: uniformsBuffer,
-            currentFBIndex: currentFBIndex,
-            tileModelMatrices: tileModelMatrices
-        )
+        guard geoLabels.isEmpty == false else { return }
+        
+        var animationTime = Settings.labelsFadeAnimationTimeSeconds
+        renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)
+        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 1)
+        renderEncoder.setVertexBuffer(uniformsBuffer,                           offset: 0, index: 4)
+        renderEncoder.setFragmentSamplerState(sampler, index: 0)
+        
+        for metalTile in geoLabels {
+            guard let textLabels        = metalTile.textLabels else { continue }
+            
+            let tile                    = metalTile.tile
+            let props                   = tileFrameProps.get(tile: tile)
+            guard props.contains else { continue }
+            
+            var modelMatrix             = props.model
+            let metalDrawMapLabels      = textLabels.metalDrawMapLabels
+            let vertexBuffer            = metalDrawMapLabels.vertexBuffer
+            let verticesCount           = metalDrawMapLabels.verticesCount
+            let mapLabelSymbolMeta      = metalDrawMapLabels.mapLabelSymbolMeta
+            let mapLabelGpuMeta         = metalDrawMapLabels.mapLabelGpuMeta
+            let intersectionsBuffer     = metalDrawMapLabels.intersectionsTrippleBuffer[currentFBIndex]
+            let atlasTexture            = metalDrawMapLabels.atlas
+            
+            renderEncoder.setVertexBuffer(vertexBuffer,         offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(mapLabelSymbolMeta,   offset: 0, index: 2)
+            renderEncoder.setVertexBuffer(mapLabelGpuMeta,      offset: 0, index: 3)
+            renderEncoder.setVertexBuffer(intersectionsBuffer,  offset: 0, index: 5)
+            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 7)
+            renderEncoder.setFragmentTexture(atlasTexture, index: 0)
+            
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount)
+        }
     }
     
     func drawRoadLabels(
@@ -108,7 +143,7 @@ class DrawAssembledMap {
         uniformsBuffer: MTLBuffer,
         roadLabelsDrawing: [FinalDrawRoadLabel],
         currentFBIndex: Int,
-        tileModelMatrices: TileModelMatrices
+        tileFrameProps: TileFrameProps
     ) {
         guard roadLabelsDrawing.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
@@ -117,19 +152,20 @@ class DrawAssembledMap {
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
-        let drawTiles = roadLabelsDrawing
-        for finalDraw in drawTiles {
+        for finalDraw in roadLabelsDrawing {
             let metalRoad = finalDraw.metalRoadLabels
             let instances = finalDraw.maxInstances
             guard let roadLabels = metalRoad.roadLabels else { continue }
-            let draw = roadLabels.drawMapLabelsData
+            let draw = roadLabels.draw
             let tile = metalRoad.tile
-            var modelMatrix = tileModelMatrices.get(tile: tile)
+            let tileProps = tileFrameProps.get(tile: tile)
+            guard tileProps.contains else { continue }
+            var modelMatrix = tileProps.model
             
             let vertexBuffer = draw.vertexBuffer
             let verticesCount = draw.verticesCount
             let mapLabelSymbolMeta = draw.mapLabelSymbolMeta
-            let mapLabelLineMeta = draw.mapLabelLineMeta
+            let mapLabelLineMeta = draw.mapLabelGpuMeta
             let localPositions = draw.localPositionsBuffer
             let atlasTexture = draw.atlas
             guard instances > 0 else { continue }

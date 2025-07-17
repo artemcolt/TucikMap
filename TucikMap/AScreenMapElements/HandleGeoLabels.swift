@@ -7,11 +7,16 @@
 
 import MetalKit
 
+
+// Отвечает за отображение меток городов и стран
+// опередляет какие показывать, а какие нет
+// определяет сколько хранить метки тайла,а какие удалить
+// определяет пересечения меток
 class HandleGeoLabels {
     struct ForEvaluationResult {
         let recallLater: Bool
-        let inputComputeScreenVertices: [InputComputeScreenVertex]
-        let mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta]
+        let inputComputeScreenVertices: [ComputeScreenPositions.Vertex]
+        let mapLabelLineCollisionsMeta: [MapLabelsAssembler.MapLabelCpuMeta]
         let modelMatrices: [matrix_float4x4]
         let metalGeoLabels: [MetalGeoLabels]
         let geoLabelsSize: Int
@@ -20,7 +25,7 @@ class HandleGeoLabels {
     private struct SortedGeoLabel {
         let i: Int
         let screenPositions: SIMD2<Float>
-        let mapLabelLineCollisionsMeta: MapLabelLineCollisionsMeta
+        let mapLabelCpuMeta: MapLabelsAssembler.MapLabelCpuMeta
     }
     
     private let modelMatrixBufferSize = 60
@@ -48,12 +53,12 @@ class HandleGeoLabels {
         self.renderFrameCount = renderFrameCount
     }
     
-    func onPointsReady(result: ProjectPoints.Result) {
-        let output = result.output
-        let mapLabelLineCollisionsMeta = result.input.mapLabelLineCollisionsMeta
-        let actualLabelsIdsCaching = result.input.actualLabelsIds
-        let metalGeoLabels = result.input.metalGeoLabels
-        let geoLabelsSize = result.input.geoLabelsSize
+    func onPointsReady(result: CombinedCompSP.Result, spaceDiscretisation: SpaceDiscretisation) {
+        let output                          = result.output
+        let mapLabelLineCollisionsMeta      = result.mapLabelLineCollisionsMeta
+        let actualLabelsIdsCaching          = result.actualLabelsIds
+        let metalGeoLabels                  = result.metalGeoLabels
+        let geoLabelsSize                   = result.geoLabelsSize
         
         var sortedGeoLabels: [SortedGeoLabel] = []
         sortedGeoLabels.reserveCapacity(output.count)
@@ -63,19 +68,18 @@ class HandleGeoLabels {
             sortedGeoLabels.append(SortedGeoLabel(
                 i: i,
                 screenPositions: screenPositions,
-                mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
+                mapLabelCpuMeta: mapLabelLineCollisionsMeta,
             ))
         }
-        sortedGeoLabels.sort(by: { first, second in first.mapLabelLineCollisionsMeta.sortRank < second.mapLabelLineCollisionsMeta.sortRank })
+        sortedGeoLabels.sort(by: { first, second in first.mapLabelCpuMeta.sortRank < second.mapLabelCpuMeta.sortRank })
         
         
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
-        let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
         var labelIntersections = [LabelIntersection] (repeating: LabelIntersection(hide: false, createdTime: 0), count: output.count)
         var handledActualGeoLabels: Set<UInt> = []
         for sorted in sortedGeoLabels {
             let screenPositions = sorted.screenPositions
-            let metaLine = sorted.mapLabelLineCollisionsMeta
+            let metaLine = sorted.mapLabelCpuMeta
             let collisionId = metaLine.id
             let isActualLabel = actualLabelsIdsCaching.contains(collisionId)
             
@@ -125,7 +129,7 @@ class HandleGeoLabels {
         for i in 0..<metalGeoLabels.count {
             let tile = metalGeoLabels[i]
             guard let textLabels = tile.textLabels else { continue }
-            let count = textLabels.mapLabelLineCollisionsMeta.count
+            let count = textLabels.mapLabelCpuMeta.count
             let subArray = Array(labelIntersections[startIndex ..< startIndex + count])
             
             intersectionsResultByTiles[i] = subArray
@@ -152,7 +156,7 @@ class HandleGeoLabels {
     func forEvaluateCollisions(
         mapPanning: SIMD3<Double>
     ) -> ForEvaluationResult {
-        var inputComputeScreenVertices: [InputComputeScreenVertex] = []
+        var inputComputeScreenVertices: [ComputeScreenPositions.Vertex] = []
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
         var metalGeoLabels: [MetalGeoLabels] = []
         // Удаляет стухшие тайлы с гео метками
@@ -177,18 +181,18 @@ class HandleGeoLabels {
         }
         
         var modelMatrices = Array(repeating: matrix_identity_float4x4, count: modelMatrixBufferSize)
-        var mapLabelLineCollisionsMeta: [MapLabelLineCollisionsMeta] = []
+        var mapLabelLineCollisionsMeta: [MapLabelsAssembler.MapLabelCpuMeta] = []
         for i in 0..<metalGeoLabels.count {
             let tile = metalGeoLabels[i]
             let tileModelMatrix = MapMathUtils.getTileModelMatrix(tile: tile.tile, mapZoomState: mapZoomState, pan: mapPanning)
             modelMatrices[i] = tileModelMatrix
             
             guard let textLabels = tile.textLabels else { continue }
-            let inputArray = textLabels.mapLabelLineCollisionsMeta.map {
-                label in InputComputeScreenVertex(location: label.localPosition, matrixId: simd_short1(i))
+            let inputArray = textLabels.mapLabelCpuMeta.map {
+                label in ComputeScreenPositions.Vertex(location: label.localPosition, matrixId: simd_short1(i))
             }
             inputComputeScreenVertices.append(contentsOf: inputArray)
-            mapLabelLineCollisionsMeta.append(contentsOf: textLabels.mapLabelLineCollisionsMeta)
+            mapLabelLineCollisionsMeta.append(contentsOf: textLabels.mapLabelCpuMeta)
         }
         
         return ForEvaluationResult(

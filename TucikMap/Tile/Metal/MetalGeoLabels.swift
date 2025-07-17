@@ -31,6 +31,6 @@ class MetalGeoLabels: Hashable {
         self.tile = tile
         self.textLabels = textLabels
         guard let textLabels = textLabels else { return }
-        self.containIds = textLabels.mapLabelLineCollisionsMeta.map { meta in meta.id }
+        self.containIds = textLabels.mapLabelCpuMeta.map { meta in meta.id }
     }
 }

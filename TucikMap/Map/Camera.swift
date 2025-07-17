@@ -14,6 +14,8 @@ class Camera {
     private var renderFrameCount: RenderFrameCount!
     var mapCadDisplayLoop: MapCADisplayLoop!
     
+    private var mapStateChangedFlag: Bool = false
+    
     // Camera properties
     private(set) var cameraPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0)
     let targetPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
@@ -224,17 +226,21 @@ class Camera {
         forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
         cameraPosition = targetPosition + forward * cameraDistance
         
-        let changed = updateCameraCenterTile()
-        // reassemble map if needed
-        // if there are new visible tiles
-        if changed {
-            assembledMapUpdater?.update(view: view, useOnlyCached: false)
-        }
+        mapStateChangedFlag = updateCameraCenterTile()
         
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
         
         if Settings.printCenterLatLon {
             print(getCenterLatLon())
+        }
+    }
+    
+    func updateMapState(view: MTKView) {
+        // reassemble map if needed
+        // if there are new visible tiles
+        if mapStateChangedFlag {
+            assembledMapUpdater?.update(view: view, useOnlyCached: false)
+            mapStateChangedFlag = false
         }
     }
     

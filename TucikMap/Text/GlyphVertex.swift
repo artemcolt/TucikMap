@@ -1,11 +1,11 @@
 //
-//  LabelsVertexIn.swift
+//  GlyphVertex.swift
 //  TucikMap
 //
-//  Created by Artem on 6/9/25.
+//  Created by Artem on 7/16/25.
 //
 
-struct LabelsVertexIn {
+struct GlyphVertex {
     let position: SIMD2<Float>
     let texCoord: SIMD2<Float>
 }

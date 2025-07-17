@@ -21,7 +21,7 @@ class RoadLabelPipeline {
         vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.size
         vertexDescriptor.attributes[1].bufferIndex = 0
         // Макет буфера вершин
-        vertexDescriptor.layouts[0].stride = MemoryLayout<LabelsVertexIn>.stride
+        vertexDescriptor.layouts[0].stride = MemoryLayout<GlyphVertex>.stride
         vertexDescriptor.layouts[0].stepFunction = .perVertex
         vertexDescriptor.layouts[0].stepRate = 1
         
