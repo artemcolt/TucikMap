@@ -33,6 +33,8 @@ struct MapLabelLineMeta {
     int startPositionIndex;
     int endPositionIndex;
     float worldPathLen;
+    bool isVertical;
+    bool negativeDirection;
 };
 
 struct MapLabelIntersection {
@@ -89,6 +91,7 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
                                     constant LocalPosition* localPositions [[buffer(6)]],
                                     constant LineToStartAt* lineToStartFrom [[buffer(7)]],
                                     constant StartRoadAt* startsFrom [[buffer(8)]],
+                                    constant float& rotationYaw [[buffer(9)]],
                                     uint vertexID [[vertex_id]],
                                     uint instanceID [[instance_id]]
                                         ) {
@@ -114,13 +117,24 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     int positionsSize = lineMeta.endPositionIndex - lineMeta.startPositionIndex; // сколько всего точек в массиве
     float textFactor = startRoadAt.startAt;
     
+    bool isToTheRight = lineMeta.negativeDirection == false;
+    if (lineMeta.isVertical == false) {
+        bool inversionState = sin(rotationYaw) > 0;
+        isToTheRight = isToTheRight ^ inversionState;
+    } else {
+        bool inversionState = cos(rotationYaw) < 0;
+        isToTheRight = isToTheRight ^ inversionState;
+    }
+    int sign = isToTheRight ? 1 : -1;
+    int addIndex = isToTheRight ? 0 : positionsSize - 1;
+    
     float2 screenPoint = float2(0, 0);
     float textStartScreenShift = 0;
     float previousScreenLen = 0;
     float worldTextCenter = worldPathLen * textFactor;
     for (int i = 0; i < positionsSize - 1; i++) {
-        float2 current = localPositions[startLocalPositionIndex + i].position;
-        float2 next = localPositions[startLocalPositionIndex + i + 1].position;
+        float2 current = localPositions[startLocalPositionIndex + addIndex + sign * (i)].position;
+        float2 next = localPositions[startLocalPositionIndex + addIndex + sign * (i + 1)].position;
         float len = length(next - current);
         
         float2 currentScreen = localTilePositionToScreenSpacePosition(modelMatrix, current, worldUniforms);
@@ -141,6 +155,7 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
         previousScreenLen += screenLen;
     }
     
+    
     // если центральная точка метки на дороге выходит за пределы экрана то игнорируем ее
     float2 viewportSize = worldUniforms.viewportSize;
     if (screenPoint.x + textScreenWidth < 0 ||
@@ -150,27 +165,28 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
         ignoreInstance = true;
     }
     
+    textStartScreenShift += glyphShift * scale;
+    
     // Мы нашли стартовую точку на длине экранной кривой и теперь рисуем текст
     int shiftIndex = 0;
     float2 screenCurrent = localTilePositionToScreenSpacePosition(modelMatrix,
-                                                                  localPositions[startLocalPositionIndex + shiftIndex].position,
+                                                                  localPositions[startLocalPositionIndex + addIndex + sign * shiftIndex].position,
                                                                   worldUniforms);
     float2 screenNext = localTilePositionToScreenSpacePosition(modelMatrix,
-                                                               localPositions[startLocalPositionIndex + 1 + shiftIndex].position,
+                                                               localPositions[startLocalPositionIndex + addIndex + sign * (1 + shiftIndex)].position,
                                                                worldUniforms);
     
-    textStartScreenShift += glyphShift * scale;
     
     float len = length(screenNext - screenCurrent);
     while (textStartScreenShift > len && positionsSize - 1 > shiftIndex) {
         textStartScreenShift -= len;
         shiftIndex += 1;
         screenCurrent = localTilePositionToScreenSpacePosition(modelMatrix,
-                                                               localPositions[startLocalPositionIndex + shiftIndex].position,
+                                                               localPositions[startLocalPositionIndex + addIndex + sign * shiftIndex].position,
                                                                worldUniforms
                                                                );
         screenNext = localTilePositionToScreenSpacePosition(modelMatrix,
-                                                            localPositions[startLocalPositionIndex + 1 + shiftIndex].position,
+                                                            localPositions[startLocalPositionIndex + addIndex + sign * (1 + shiftIndex)].position,
                                                             worldUniforms
                                                             );
         len = length(screenNext - screenCurrent);

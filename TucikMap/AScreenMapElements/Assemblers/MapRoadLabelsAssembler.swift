@@ -41,6 +41,8 @@ class MapRoadLabelsAssembler {
         let locationStartIndex  : simd_int1
         let locationEndIndex    : simd_int1
         let worldPathLen        : simd_float1
+        let isVertical          : simd_bool
+        let negativeDirection   : simd_bool
     }
     
     // Для отрисовки всех меток одного тайла
@@ -117,16 +119,30 @@ class MapRoadLabelsAssembler {
             let textVertices        = createTextGeometry.createForRoadLabel(text: text, fontData: font.fontData, onGlyphCreated: onGlyphCreated)
             vertices.append(contentsOf: textVertices)
             
+            var fullDeltaX = Float(0)
+            var fullDeltaY = Float(0)
+            for i in 0..<line.localPositions.count-1 {
+                let current = line.localPositions[i]
+                let next = line.localPositions[i + 1]
+                let deltaX = next.x - current.x
+                let deltaY = next.y - current.y
+                fullDeltaX += deltaX
+                fullDeltaY += deltaY
+            }
+            
             let localPostionsStart  = localPositions.count
             localPositions.append(contentsOf: line.localPositions.map { pos in LocalPosition(position: pos) })
             let localPostionsEnd    = localPositions.count
             
+            let isVertical = abs(fullDeltaY) > abs(fullDeltaX)
             mapLabelGpuMeta.append(MapLabelGpuMeta(
                 measuredText: measuredText,
                 scale: line.scale,
                 locationStartIndex: simd_int1(localPostionsStart),
                 locationEndIndex: simd_int1(localPostionsEnd),
-                worldPathLen: line.pathLen
+                worldPathLen: line.pathLen,
+                isVertical: isVertical,
+                negativeDirection: isVertical ? (fullDeltaY < 0) : (fullDeltaX < 0)
             ))
             
             mapLabelCpuMeta.append(MapLabelCpuMeta(

@@ -44,7 +44,7 @@ class DrawAssembledMap {
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
         for tile in tiles {
-            var tileProps = tileFrameProps.get(tile: tile.tile)
+            let tileProps = tileFrameProps.get(tile: tile.tile)
             guard tileProps.contains else { continue }
                     
             var modelMatrix = tileProps.model
@@ -152,36 +152,44 @@ class DrawAssembledMap {
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
+        var rotationYaw = (camera.rotationYaw - Float.pi / 2).truncatingRemainder(dividingBy: 2 * Float.pi)
+        renderEncoder.setVertexBytes(&rotationYaw, length: MemoryLayout<Float>.size, index: 9)
+        
         for finalDraw in roadLabelsDrawing {
-            let metalRoad = finalDraw.metalRoadLabels
-            let instances = finalDraw.maxInstances
-            guard let roadLabels = metalRoad.roadLabels else { continue }
-            let draw = roadLabels.draw
-            let tile = metalRoad.tile
-            let tileProps = tileFrameProps.get(tile: tile)
-            guard tileProps.contains else { continue }
-            var modelMatrix = tileProps.model
+            let metalRoad               = finalDraw.metalRoadLabels
+            let instances               = finalDraw.maxInstances
             
-            let vertexBuffer = draw.vertexBuffer
-            let verticesCount = draw.verticesCount
-            let mapLabelSymbolMeta = draw.mapLabelSymbolMeta
-            let mapLabelLineMeta = draw.mapLabelGpuMeta
-            let localPositions = draw.localPositionsBuffer
-            let atlasTexture = draw.atlas
+            guard let roadLabels        = metalRoad.roadLabels else { continue }
+            
+            let draw                    = roadLabels.draw
+            let tile                    = metalRoad.tile
+            let tileProps               = tileFrameProps.get(tile: tile)
+            
+            guard tileProps.contains else { continue }
+            
+            var modelMatrix             = tileProps.model
+            
+            let vertexBuffer            = draw.vertexBuffer
+            let verticesCount           = draw.verticesCount
+            let mapLabelSymbolMeta      = draw.mapLabelSymbolMeta
+            let mapLabelLineMeta        = draw.mapLabelGpuMeta
+            let localPositions          = draw.localPositionsBuffer
+            let atlasTexture            = draw.atlas
+            
             guard instances > 0 else { continue }
             
-            let startRoadAtBuffer = draw.startRoadAtBuffer[currentFBIndex]
+            let startRoadAtBuffer       = draw.startRoadAtBuffer[currentFBIndex]
             let lineToStartFloatsBuffer = draw.lineToStartFloatsBuffer[currentFBIndex]
             
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(mapLabelSymbolMeta, offset: 0, index: 2)
-            renderEncoder.setVertexBuffer(mapLabelLineMeta, offset: 0, index: 3)
-            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 5)
-            renderEncoder.setVertexBuffer(localPositions, offset: 0, index: 6)
-            renderEncoder.setFragmentTexture(atlasTexture, index: 0)
+            renderEncoder.setVertexBuffer(vertexBuffer,             offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(mapLabelSymbolMeta,       offset: 0, index: 2)
+            renderEncoder.setVertexBuffer(mapLabelLineMeta,         offset: 0, index: 3)
+            renderEncoder.setVertexBuffer(localPositions,           offset: 0, index: 6)
+            renderEncoder.setVertexBuffer(lineToStartFloatsBuffer,  offset: 0, index: 7)
+            renderEncoder.setVertexBuffer(startRoadAtBuffer,        offset: 0, index: 8)
             
-            renderEncoder.setVertexBuffer(lineToStartFloatsBuffer, offset: 0, index: 7)
-            renderEncoder.setVertexBuffer(startRoadAtBuffer, offset: 0, index: 8)
+            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 5)
+            renderEncoder.setFragmentTexture(atlasTexture, index: 0)
             
             renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount, instanceCount: instances)
         }

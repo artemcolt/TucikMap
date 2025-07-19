@@ -14,35 +14,36 @@ class Camera {
     private var renderFrameCount: RenderFrameCount!
     var mapCadDisplayLoop: MapCADisplayLoop!
     
-    private var mapStateChangedFlag: Bool = false
     
     // Camera properties
-    private(set) var cameraPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0)
-    let targetPosition: SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
-    private(set) var mapPanning: SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
-    private(set) var cameraDistance: Float = Settings.nullZoomCameraDistance // Расстояние от камеры до цели
-    private(set) var mapZoom: Float = 0
-    private(set) var cameraQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1) // Кватернион ориентации камеры
-    private(set) var cameraYawQuaternion: simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
-    private(set) var updateBufferedUniform: UpdateBufferedUniform!
-    private(set) var assembledMapUpdater: AssembledMapUpdater!
-    private(set) var forward: SIMD3<Float> = SIMD3<Float>(0, 0, 1)
+    private(set) var cameraPosition         : SIMD3<Float> = SIMD3<Float>(0, 0, 0)
+    let targetPosition                      : SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
+    private(set) var mapPanning             : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
+    private(set) var cameraDistance         : Float = Settings.nullZoomCameraDistance // Расстояние от камеры до цели
+    private(set) var mapZoom                : Float = 0
+    private(set) var cameraQuaternion       : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1) // Кватернион ориентации камеры
+    private(set) var cameraYawQuaternion    : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
+    private(set) var updateBufferedUniform  : UpdateBufferedUniform!
+    private(set) var assembledMapUpdater    : AssembledMapUpdater!
+    private(set) var forward                : SIMD3<Float> = SIMD3<Float>(0, 0, 1)
     
-    private(set) var cameraPitch: Float = 0
-    private(set) var centerTileX: Float = 0
-    private(set) var centerTileY: Float = 0
+    private(set) var cameraPitch            : Float = 0
+    private(set) var centerTileX            : Float = 0
+    private(set) var centerTileY            : Float = 0
+    private(set) var rotationYaw            : Float = 0
     
-    private var previousCenterTileX: Int = -1
-    private var previousCenterTileY: Int = -1
-    private var previousBorderedZoomLevel: Int = -1
+    private var previousCenterTileX         : Int = -1
+    private var previousCenterTileY         : Int = -1
+    private var previousBorderedZoomLevel   : Int = -1
+    private var mapStateChangedFlag         : Bool = false
     
-    private var pinchDeltaDistance: Float = 0
-    private var twoFingerDeltaPitch: Float = 0
-    private var rotationDeltaYaw: Float = 0
-    private var panDeltaX: Float = 0
-    private var panDeltaY: Float = 0
+    private var pinchDeltaDistance          : Float = 0
+    private var twoFingerDeltaPitch         : Float = 0
+    private var panDeltaX                   : Float = 0
+    private var panDeltaY                   : Float = 0
+    private var rotationDeltaYaw            : Float = 0
     
-    private var lastTime: TimeInterval = 0
+    private var lastTime                    : TimeInterval = 0
     
     
     init(
@@ -54,24 +55,20 @@ class Camera {
         library: MTLLibrary,
         screenCollisionsDetector: ScreenCollisionsDetector
     ) {
-        self.screenCollisionsDetector = screenCollisionsDetector
-        self.renderFrameCount = renderFrameCount
-        self.mapZoomState = mapZoomState
-        self.updateBufferedUniform = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
-        self.assembledMapUpdater = AssembledMapUpdater(
-            mapZoomState: mapZoomState,
-            device: device,
-            camera: self,
-            textTools: textTools,
-            renderFrameCount: renderFrameCount,
-            frameCounter: frameCounter
-        )
-        self.mapCadDisplayLoop = MapCADisplayLoop(
-            camera: self,
-            frameCounter: frameCounter,
-            renderFrameCount: renderFrameCount,
-            screenCollisionDetector: screenCollisionsDetector
-        )
+        self.screenCollisionsDetector   = screenCollisionsDetector
+        self.renderFrameCount           = renderFrameCount
+        self.mapZoomState               = mapZoomState
+        self.updateBufferedUniform      = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
+        self.assembledMapUpdater        = AssembledMapUpdater(mapZoomState: mapZoomState,
+                                                              device: device,
+                                                              camera: self,
+                                                              textTools: textTools,
+                                                              renderFrameCount: renderFrameCount,
+                                                              frameCounter: frameCounter)
+        self.mapCadDisplayLoop          = MapCADisplayLoop(camera: self,
+                                                           frameCounter: frameCounter,
+                                                           renderFrameCount: renderFrameCount,
+                                                           screenCollisionDetector: screenCollisionsDetector)
     }
     
     func getCenterLatLon() -> (lat: Double, lon: Double) {
@@ -191,6 +188,7 @@ class Camera {
         
         // Rotation
         // Rotate around world Z-axis (yaw)
+        rotationYaw += rotationDeltaYaw
         let yawQuaternion = simd_quatf(angle: rotationDeltaYaw, axis: SIMD3<Float>(0, 0, 1))
         cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
         cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning

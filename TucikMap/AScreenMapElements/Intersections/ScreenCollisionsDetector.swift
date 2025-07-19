@@ -6,6 +6,7 @@
 //
 
 import MetalKit
+import simd
 
 struct LabelIntersection {
     let hide: Bool
@@ -143,6 +144,7 @@ class ScreenCollisionsDetector {
                 let count               = localPositions.count
                 var screenPathLen       = Float(0);
                 let glyphShifts         = roadLabel.glyphShifts
+                let scale               = roadLabel.scale
                 
                 var startRoadLabelsAt   : [MapRoadLabelsAssembler.StartRoadAt] = []
                 
@@ -214,33 +216,33 @@ class ScreenCollisionsDetector {
                 }
                 
                 
+                
                 // Учитываем пересечения, коллизии
                 if factors.isEmpty == false {
-                    testPoints.append(textCenterScreenPoint)
+                    // TODO оптимизировать
+                    var agents: [CollisionAgent] = []
+                    agents.reserveCapacity(glyphShifts.count)
+                    for glyphShift in glyphShifts {
+                        var startScreen = textStartScreenShift + glyphShift * scale
+                        for i in 0..<count-1 {
+                            let screenCurrent = output[startRoadResultsIndex + i + outputIndexShift]
+                            let screenNext = output[startRoadResultsIndex + i + outputIndexShift + 1]
+                            let len = length(screenNext - screenCurrent)
+                            if startScreen - len < 0 {
+                                let direction = normalize(screenNext - screenCurrent)
+                                let screenPoint = screenCurrent + direction * startScreen
+                                //testPoints.append(screenPoint + SIMD2<Float>(halfScale, halfScale))
+                                agents.append(CollisionAgent(location: screenPoint, height: scale, width: scale))
+                                break;
+                            }
+                            startScreen -= len
+                        }
+                    }
                     
-//                    let scale           = roadLabel.scale
-//                    let textHeight      = abs(measuredText.top - measuredText.bottom);
-//                    
-//                    // TODO оптимизировать
-//                    var shiftIndex                  = 0;
-//                    var textStartScreenShiftTemp    = textStartScreenShift
-//                    let screenCurrent               = output[startRoadResultsIndex + outputIndexShift];
-//                    let screenNext                  = output[startRoadResultsIndex + outputIndexShift + 1];
-//                    var len                         = length(screenNext - screenCurrent);
-//                    
-//                    //textStartScreenShiftTemp += glyphShift * scale;
-//                    
-//                    while (textStartScreenShiftTemp > len && count - 1 > shiftIndex) {
-//                        textStartScreenShiftTemp -= len;
-//                        shiftIndex += 1;
-//                        let screenCurrent   = output[startRoadResultsIndex + outputIndexShift + shiftIndex];
-//                        let screenNext      = output[startRoadResultsIndex + outputIndexShift + 1 + shiftIndex];
-//                        len = length(screenNext - screenCurrent);
-//                    }
-//                    
-//                    let direction = normalize(screenNext - screenCurrent);
-//                    let vertexPos = screenCurrent + direction * textStartScreenShiftTemp;
-//                    testPoints.append(vertexPos)
+                    let contains = spaceDiscretisation.addAgentsAsSingle(agents: agents)
+                    if contains == false {
+                        factors = []
+                    }
                 }
                 
                 
@@ -262,9 +264,9 @@ class ScreenCollisionsDetector {
             }
             
             renderingCurrentRoadLabels.append(DrawTileRoadLabelsPrep(lineToStartAt: lineToStartFloats,
-                                                                         startAt: startRoadLabelsAtFull,
-                                                                         metalRoadLabels: metalRoadLabels,
-                                                                         maxInstances: maxInstances))
+                                                                     startAt: startRoadLabelsAtFull,
+                                                                     metalRoadLabels: metalRoadLabels,
+                                                                     maxInstances: maxInstances))
         }
         
         self.currentRenderingRoads = RenderingRoadLabelsTB(tilesPrepare: renderingCurrentRoadLabels,

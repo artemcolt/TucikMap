@@ -11,12 +11,13 @@ public struct CollisionAgent {
     public let bounds: LTRBBounds
     
     public init(location: SIMD2<Float>, height: Float, width: Float) {
+        let shift = Float(5000)
         let halfW1 = width / 2
         let halfH1 = height / 2
-        let l1 = location.x - halfW1
-        let r1 = location.x + halfW1
-        let b1 = location.y - halfH1
-        let t1 = location.y + halfH1
+        let l1 = location.x + shift - halfW1
+        let r1 = location.x + shift + halfW1
+        let b1 = location.y + shift - halfH1
+        let t1 = location.y + shift + halfH1
         bounds = LTRBBounds(l: l1, t: t1, r: r1, b: b1)
     }
 }
@@ -75,6 +76,43 @@ public class SpaceDiscretisation {
         for x in positionXLeft...positionXRight {
             for y in positionYBottom...positionYTop {
                 clusters[x][y] = agent
+            }
+        }
+        
+        return true
+    }
+    
+    public func addAgentsAsSingle(agents: [CollisionAgent]) -> Bool {
+        for agent in agents {
+            let bounds = agent.bounds
+            
+            let positionXLeft = max(min(Int(floor(bounds.l / clusterSize)), count - 1), 0)
+            let positionXRight = max(min(Int(floor(bounds.r / clusterSize)), count - 1), 0)
+            let positionYBottom = max(min(Int(floor(bounds.b / clusterSize)), count - 1), 0)
+            let positionYTop = max(min(Int(floor(bounds.t / clusterSize)), count - 1), 0)
+            
+            for x in positionXLeft...positionXRight {
+                for y in positionYBottom...positionYTop {
+                    guard let compareWith = clusters[x][y] else { continue }
+                    if compareWith.bounds.intersects(with: bounds) {
+                        return false
+                    }
+                }
+            }
+        }
+        
+        for agent in agents {
+            let bounds = agent.bounds
+            
+            let positionXLeft = max(min(Int(floor(bounds.l / clusterSize)), count - 1), 0)
+            let positionXRight = max(min(Int(floor(bounds.r / clusterSize)), count - 1), 0)
+            let positionYBottom = max(min(Int(floor(bounds.b / clusterSize)), count - 1), 0)
+            let positionYTop = max(min(Int(floor(bounds.t / clusterSize)), count - 1), 0)
+            
+            for x in positionXLeft...positionXRight {
+                for y in positionYBottom...positionYTop {
+                    clusters[x][y] = agent
+                }
             }
         }
         

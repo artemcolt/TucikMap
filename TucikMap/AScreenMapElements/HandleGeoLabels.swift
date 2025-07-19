@@ -105,7 +105,7 @@ class HandleGeoLabels {
             handledActualGeoLabels.insert(collisionId)
             
             let added = spaceDiscretisation.addAgent(agent: CollisionAgent(
-                location: SIMD2<Float>(Float(screenPositions.x + 5000), Float(screenPositions.y + 5000)),
+                location: SIMD2<Float>(Float(screenPositions.x), Float(screenPositions.y)),
                 height: Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale),
                 width: Float(metaLine.measuredText.width * metaLine.scale)
             ))
