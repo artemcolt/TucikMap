@@ -17,7 +17,7 @@ class MemoryMetalTileCache {
     }
     
     func setTileData(tile: MetalTile, tileLabels: MetalGeoLabels, roadLabels: MetalRoadLabels, forKey key: String) {
-        var estimatedCost = estimateTileByteSize(tile)
+        let estimatedCost = estimateTileByteSize(tile)
         cache.setObject(tile, forKey: key as NSString, cost: estimatedCost)
         
         cacheGeoLabels.setObject(tileLabels, forKey: key as NSString, cost: 1)

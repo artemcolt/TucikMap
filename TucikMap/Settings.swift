@@ -66,23 +66,25 @@ class Settings {
     
     static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 10
     
-    static var forceRenderOnDisplayUpdate: Bool = false
+    static var forceRenderOnDisplayUpdate   : Bool = false
     
-    static var horizontalGridDivisionSize: Float = 500
-    static var verticalGridDivisionSize: Float = 500
+    static var horizontalGridDivisionSize   : Float = 500
+    static var verticalGridDivisionSize     : Float = 500
+    static var maxInputComputeScreenPoints  : Int = 3000
     
-    static var labelsFadeAnimationTimeSeconds: Float = 0.3
+    static var labelsFadeAnimationTimeSeconds: Float = 0.3 // 0.3
     static let buildingsFactor = 0.006
     
-    static let zoomLevelMax: Float = 20.9
+    static let zoomLevelMax             : Float = 20.9
     
-    static let gridCollisionSize: Float = 1000
-    static let worldCollisionSize: Float = 12_000
-    static let shiftCollisionLocation: Float = 5_000
+    static let gridCollisionSize        : Float = 1000
+    static let worldCollisionSize       : Float = 12_000
+    static let shiftCollisionLocation   : Float = 5_000
     
-    static let printCenterLatLon: Bool = false
-    static let printCenterTile: Bool = false
-    static let showOnlyTiles: [Tile] = [  ] // Tile(x: 39617, y: 20488, z: 16)
+    static let printCenterLatLon        : Bool = false
+    static let printCenterTile          : Bool = false
+    static let showOnlyTiles            : [Tile] = [] // Tile(x: 39617, y: 20488, z: 16)
+    static let allowOnlyTiles           : [Tile] = [] // Tile(x: 19808, y: 10244, z: 15) Tile(x: 19808, y: 10244, z: 15), Tile(x: 39617, y: 20488, z: 16)
     
     static let useGoToAtStart = true
     static let goToAtStartZ: Float = 16
@@ -93,7 +95,10 @@ class Settings {
     
     static let getOnlySpecificMapLabels: [String] = [] // "Cameroon", "Nigeria", "South Sudan", "Africa", "South Sudan", "Kitay-gorod"
     static let renderOnlyRoadsArray: [String] = [] // "Sofiyskaya Embankment" "Kremlin Embankment" "Ilyinka St" "Raushskaya Embankment"
-    static let renderRoadArrayFromTo: [Int] = []
+    static let renderRoadArrayFromTo: [Int] = [] // 0, 0
     
     static let drawRoadPointsDebug: Bool = false
+    
+    static let roadLabelTextSize: Float = 40
+    static let geoLabelsModelMatrixBufferSize: Int = 40
 }

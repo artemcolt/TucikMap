@@ -97,7 +97,7 @@ class MapRoadLabelsAssembler {
         self.frameCounter           = frameCounter
     }
     
-    private func createArraysForGpu(lines: [TextLineData], font: Font) -> DrawMapLabels {
+    private func createArrays(lines: [TextLineData], font: Font) -> DrawMapLabels {
         var mapLabelSymbolMeta          : [MapLabelSymbolMeta] = []
         var mapLabelGpuMeta             : [MapLabelGpuMeta] = []
         var mapLabelCpuMeta             : [MapLabelCpuMeta] = []
@@ -119,15 +119,15 @@ class MapRoadLabelsAssembler {
             let textVertices        = createTextGeometry.createForRoadLabel(text: text, fontData: font.fontData, onGlyphCreated: onGlyphCreated)
             vertices.append(contentsOf: textVertices)
             
-            var fullDeltaX = Float(0)
-            var fullDeltaY = Float(0)
+            var fullDeltaX          = Float(0)
+            var fullDeltaY          = Float(0)
             for i in 0..<line.localPositions.count-1 {
-                let current = line.localPositions[i]
-                let next = line.localPositions[i + 1]
-                let deltaX = next.x - current.x
-                let deltaY = next.y - current.y
-                fullDeltaX += deltaX
-                fullDeltaY += deltaY
+                let current     = line.localPositions[i]
+                let next        = line.localPositions[i + 1]
+                let deltaX      = next.x - current.x
+                let deltaY      = next.y - current.y
+                fullDeltaX      += deltaX
+                fullDeltaY      += deltaY
             }
             
             let localPostionsStart  = localPositions.count
@@ -171,13 +171,12 @@ class MapRoadLabelsAssembler {
     func assemble(lines: [TextLineData], font: Font) -> Result? {
         guard lines.isEmpty == false else { return nil }
         
-        let arraysForGpu                = createArraysForGpu(lines: lines, font: font)
+        let arraysForGpu                = createArrays(lines: lines, font: font)
         let localPositions              = arraysForGpu.localPositions
         let vertices                    = arraysForGpu.vertices
         let mapLabelSymbolMeta          = arraysForGpu.mapLabelSymbolMeta
         let mapLabelGpuMeta             = arraysForGpu.mapLabelGpuMeta
         let verticesCount               = arraysForGpu.verticesCount
-        let startRoadAtSize             = 20
         let atlas                       = arraysForGpu.atlas
         let mapLabelCpuMeta             = arraysForGpu.mapLabelCpuMeta
         
@@ -203,12 +202,13 @@ class MapRoadLabelsAssembler {
                                                              length: MemoryLayout<LabelIntersection>.stride * lines.count)!
             intersectionsTrippleBuffer.append(intersectionsBuffer)
             
-            let startRoadAtBuffer = metalDevice.makeBuffer(bytes: Array(repeating: StartRoadAt(startAt: 0), count: startRoadAtSize),
-                                                           length: MemoryLayout<StartRoadAt>.stride * startRoadAtSize)!
+            let startAtLimit = lines.count * 2 // берем с запасом небольшим потому что еще может быть на одной дороге несколько факторов для названия улиц
+            let startRoadAtBuffer = metalDevice.makeBuffer(bytes: Array(repeating: StartRoadAt(startAt: 0), count: startAtLimit),
+                                                           length: MemoryLayout<StartRoadAt>.stride * startAtLimit)!
             startRoadAtTrippleBuffer.append(startRoadAtBuffer)
             
-            let lineToStartFloatsBuffer = metalDevice.makeBuffer(bytes: Array(repeating: LineToStartAt(index: 0, count: 0), count: startRoadAtSize),
-                                                                 length: MemoryLayout<LineToStartAt>.stride * startRoadAtSize)!
+            let lineToStartFloatsBuffer = metalDevice.makeBuffer(bytes: Array(repeating: LineToStartAt(index: 0, count: 0), count: lines.count),
+                                                                 length: MemoryLayout<LineToStartAt>.stride * lines.count)!
             lineToStartFloatsTrippleBuffer.append(lineToStartFloatsBuffer)
         }
         

@@ -49,12 +49,16 @@ class ApplyLabelsState {
                 
                 guard let roadLabels    = metalRoadLabels.roadLabels else { continue }
                 let draw                = roadLabels.draw
+                let labelIntersections  = tileRoadLabels.labelIntersections
                 
                 draw.lineToStartFloatsBuffer[currentFBIdx].contents().copyMemory(from: lineToStartAt,
                                                                                  byteCount: MemoryLayout<MapRoadLabelsAssembler.LineToStartAt>.stride * lineToStartAt.count)
                 
                 draw.startRoadAtBuffer[currentFBIdx].contents().copyMemory(from: startAt,
                                                                            byteCount: MemoryLayout<MapRoadLabelsAssembler.StartRoadAt>.stride * startAt.count)
+                
+                draw.intersectionsTrippleBuffer[currentFBIdx].contents().copyMemory(from: labelIntersections,
+                                                                                    byteCount: MemoryLayout<LabelIntersection>.stride * labelIntersections.count)
                 
                 finalRoadLabels.append(DrawAssembledMap.FinalDrawRoadLabel(metalRoadLabels: tileRoadLabels.metalRoadLabels,
                                                                            maxInstances: tileRoadLabels.maxInstances))

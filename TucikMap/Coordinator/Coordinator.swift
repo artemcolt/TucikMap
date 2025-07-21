@@ -261,17 +261,17 @@ class Coordinator: NSObject, MTKViewDelegate {
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
         
-        let testPoints = screenCollisionsDetector.testPoints
-        for point in testPoints {
-            let color = SIMD4<Float>(0.0, 1.0, 0.0, 1.0)
-            drawPoint.draw(
-                renderEncoder: basicRenderEncoder,
-                uniformsBuffer: screenUniforms.screenUniformBuffer,
-                pointSize: 15,
-                position: SIMD3<Float>(point.x, point.y, 0),
-                color: color
-            )
-        }
+//        let testPoints = screenCollisionsDetector.testPoints
+//        for point in testPoints {
+//            let color = SIMD4<Float>(0.0, 1.0, 0.0, 1.0)
+//            drawPoint.draw(
+//                renderEncoder: basicRenderEncoder,
+//                uniformsBuffer: screenUniforms.screenUniformBuffer,
+//                pointSize: 15,
+//                position: SIMD3<Float>(point.x, point.y, 0),
+//                color: color
+//            )
+//        }
         
         
         if Settings.drawRoadPointsDebug {

@@ -60,7 +60,8 @@ struct VertexOut {
     float4 position [[position]];
     float2 texCoord;
     bool ignore;
-    bool test;
+    bool show;
+    float progress;
 };
 
 struct LocalPosition {
@@ -92,6 +93,8 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
                                     constant LineToStartAt* lineToStartFrom [[buffer(7)]],
                                     constant StartRoadAt* startsFrom [[buffer(8)]],
                                     constant float& rotationYaw [[buffer(9)]],
+                                    constant MapLabelIntersection* intersections [[buffer(10)]],
+                                    constant float& animationDuration [[buffer(11)]],
                                     uint vertexID [[vertex_id]],
                                     uint instanceID [[instance_id]]
                                         ) {
@@ -213,17 +216,19 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
     out.texCoord = in.texCoord;
     out.ignore = ignoreInstance;
-    out.test = positionsSize == 5;
+    
+    MapLabelIntersection intersection = intersections[lineIndex];
+    out.show = intersection.intersect == false;
+    out.progress = (worldUniforms.elapsedTimeSeconds - intersection.createdTime) / animationDuration;
     return out;
 }
 
 fragment float4 roadLabelsFragmentShader(VertexOut in [[stage_in]],
-                                     texture2d<float> atlasTexture [[texture(0)]],
-                                     sampler textureSampler [[sampler(0)]]) {
+                                         texture2d<float> atlasTexture [[texture(0)]],
+                                         sampler textureSampler [[sampler(0)]]) {
     if (in.ignore) {
         discard_fragment();
     }
-
     
     // Чтение значения из MSDF атласа
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
@@ -245,9 +250,6 @@ fragment float4 roadLabelsFragmentShader(VertexOut in [[stage_in]],
     float3 finalColor = mix(outlineColor, textColor, textOpacity);
     float finalOpacity = max(outlineOpacity, textOpacity);
     
-//    if (in.test) {
-//        finalColor = float3(0, 1.0, 0);
-//    }
-    
-    return float4(finalColor, finalOpacity);
+    float show = mix(1 - in.progress, in.progress, in.show ? 1 : 0);
+    return float4(finalColor, finalOpacity * show);
 }

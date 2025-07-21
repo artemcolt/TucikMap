@@ -33,6 +33,7 @@ class CombinedCompSP {
         // startRoadResultsIndex - данные о дорогах начинаются с этого индекса в output
         let startRoadResultsIndex           : Int
         let roadLabels                      : [MetalRoadLabels]
+        let actualRoadLabelsIds             : Set<UInt>
     }
     
     // Результат работы класса для дальнейших вычислений
@@ -49,6 +50,7 @@ class CombinedCompSP {
         
         let startRoadResultsIndex           : Int
         let metalRoadLabelsTiles            : [MetalRoadLabels]
+        let actualRoadLabelsIds             : Set<UInt>
     }
     
     private let computeScreenPositions          : ComputeScreenPositions // переводит из мировых в координаты экрана
@@ -60,8 +62,10 @@ class CombinedCompSP {
     private let outputWorldPositionsBuffer      : MTLBuffer
     private let onPointsReady                   : (Result) -> Void
     
-    private let inputBufferWorldPostionsSize    = 1500 // размер для входного буффера точек, максимально может быть столько точек
-    private let modelMatrixBufferSize           = 60   // размер для входного буффера матриц, макисмально может быть столько матриц
+    // размер для входного буффера точек, максимально может быть столько точек
+    private let inputBufferWorldPostionsSize    = Settings.maxInputComputeScreenPoints
+    // размер для входного буффера матриц, макисмально может быть столько матриц
+    private let modelMatrixBufferSize           = Settings.geoLabelsModelMatrixBufferSize
     
     init(
         computeScreenPositions: ComputeScreenPositions,
@@ -105,6 +109,7 @@ class CombinedCompSP {
         let roadLabels                      = input.roadLabels
         let actualLabelsIds                 = input.actualLabelsIds
         let geoLabelsSize                   = input.geoLabelsSize
+        let actualRoadLabelIds              = input.actualRoadLabelsIds
         
         // для вызова заполянем текущие буффера в GPU
         // и вызывваем на GPU рассчет
@@ -147,7 +152,8 @@ class CombinedCompSP {
                                      geoLabelsSize: geoLabelsSize,
                                      
                                      startRoadResultsIndex: startRoadResultsIndex,
-                                     metalRoadLabelsTiles: roadLabels
+                                     metalRoadLabelsTiles: roadLabels,
+                                     actualRoadLabelsIds: actualRoadLabelIds
                 )
                 
                 self.onPointsReady(result)

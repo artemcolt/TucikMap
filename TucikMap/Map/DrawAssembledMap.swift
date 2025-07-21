@@ -44,11 +44,11 @@ class DrawAssembledMap {
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
         for tile in tiles {
-            let tileProps = tileFrameProps.get(tile: tile.tile)
+            let tileProps       = tileFrameProps.get(tile: tile.tile)
             guard tileProps.contains else { continue }
                     
-            var modelMatrix = tileProps.model
-            let tile2dBuffers = tile.tile2dBuffers
+            var modelMatrix     = tileProps.model
+            let tile2dBuffers   = tile.tile2dBuffers
             
             renderEncoder.setVertexBuffer(tile2dBuffers.verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(tile2dBuffers.stylesBuffer, offset: 0, index: 2)
@@ -145,15 +145,16 @@ class DrawAssembledMap {
         currentFBIndex: Int,
         tileFrameProps: TileFrameProps
     ) {
+        var animationTime = Settings.labelsFadeAnimationTimeSeconds
         guard roadLabelsDrawing.isEmpty == false else { return }
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
+        renderEncoder.setVertexBuffer(uniformsBuffer,                     offset: 0, index: 4)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 4)
         
         var rotationYaw = (camera.rotationYaw - Float.pi / 2).truncatingRemainder(dividingBy: 2 * Float.pi)
-        renderEncoder.setVertexBytes(&rotationYaw, length: MemoryLayout<Float>.size, index: 9)
+        renderEncoder.setVertexBytes(&rotationYaw, length: MemoryLayout<Float>.size,             index: 9)
+        renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,         index: 11)
         
         for finalDraw in roadLabelsDrawing {
             let metalRoad               = finalDraw.metalRoadLabels
@@ -180,6 +181,7 @@ class DrawAssembledMap {
             
             let startRoadAtBuffer       = draw.startRoadAtBuffer[currentFBIndex]
             let lineToStartFloatsBuffer = draw.lineToStartFloatsBuffer[currentFBIndex]
+            let intersectionsBuffer     = draw.intersectionsTrippleBuffer[currentFBIndex]
             
             renderEncoder.setVertexBuffer(vertexBuffer,             offset: 0, index: 0)
             renderEncoder.setVertexBuffer(mapLabelSymbolMeta,       offset: 0, index: 2)
@@ -187,6 +189,7 @@ class DrawAssembledMap {
             renderEncoder.setVertexBuffer(localPositions,           offset: 0, index: 6)
             renderEncoder.setVertexBuffer(lineToStartFloatsBuffer,  offset: 0, index: 7)
             renderEncoder.setVertexBuffer(startRoadAtBuffer,        offset: 0, index: 8)
+            renderEncoder.setVertexBuffer(intersectionsBuffer,      offset: 0, index: 10)
             
             renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 5)
             renderEncoder.setFragmentTexture(atlasTexture, index: 0)

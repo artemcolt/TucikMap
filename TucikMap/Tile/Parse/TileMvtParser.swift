@@ -129,24 +129,24 @@ class TileMvtParser {
         return parsed
     }
     
-    private func tryParseRoadLine(geometry: GeoJsonGeometry, name: String) -> ParsedRoadLabel? {
+    private func tryParseRoadLine(geometry: GeoJsonGeometry, name: String) async -> ParsedRoadLabel? {
         if geometry.type != .lineString {return nil}
         guard let line = geometry as? LineString else {return nil}
-        return parseRoad(coordinates: line.coordinates, name: name)
+        return await parseRoad(coordinates: line.coordinates, name: name)
     }
     
-    private func tryParseRoadMultiLine(geometry: GeoJsonGeometry, name: String) -> [ParsedRoadLabel]? {
+    private func tryParseRoadMultiLine(geometry: GeoJsonGeometry, name: String) async -> [ParsedRoadLabel]? {
         if geometry.type != .multiLineString {return nil}
         guard let multiLine = geometry as? MultiLineString else {return nil}
         var parsed: [ParsedRoadLabel] = []
         for line in multiLine.coordinates {
-            let parsedRoad = parseRoad(coordinates: line, name: name)
+            let parsedRoad = await parseRoad(coordinates: line, name: name)
             parsed.append(parsedRoad)
         }
         return parsed
     }
     
-    private func parseRoad(coordinates: [Coordinate3D], name: String) -> ParsedRoadLabel {
+    private func parseRoad(coordinates: [Coordinate3D], name: String) async -> ParsedRoadLabel {
         var points: [SIMD2<Float>] = []
         points.reserveCapacity(coordinates.count)
         for coordinate in coordinates {
@@ -162,7 +162,7 @@ class TileMvtParser {
             worldPathLen += length;
         }
         
-        return ParsedRoadLabel(name: name, localPoints: points, pathLen: worldPathLen)
+        return ParsedRoadLabel(name: name, localPoints: points, pathLen: worldPathLen, id: await giveMeId.getIdForRoadLabel())
     }
     
     private func tryParseTextLabels(
@@ -184,7 +184,7 @@ class TileMvtParser {
         let uniqueGeoLabelKey = UniqueGeoLabelKey(x: panningPoint.x, y: panningPoint.y, name: nameEn)
         
         return ParsedTextLabel(
-            id: await giveMeId.forScreenCollisionsDetection(uniqueGeoLabelKey: uniqueGeoLabelKey),
+            id: await giveMeId.getIdForLabel(uniqueGeoLabelKey: uniqueGeoLabelKey),
             localPosition: SIMD2<Float>(coordinate),
             nameEn: filterTextResult.text,
             scale: filterTextResult.scale,
@@ -284,10 +284,10 @@ class TileMvtParser {
                         (Settings.renderRoadArrayFromTo[0] <= parsedCountTest && parsedCountTest <= Settings.renderRoadArrayFromTo[1])
                     if testCondition {
                         if fromToTestCond {
-                            if let parsed = tryParseRoadLine(geometry: geometry, name: name ?? "no street name") {
+                            if let parsed = await tryParseRoadLine(geometry: geometry, name: name ?? "no street name") {
                                 roadLabels.append(parsed)
                             }
-                            if let parsed = tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name") {
+                            if let parsed = await tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name") {
                                 roadLabels.append(contentsOf: parsed)
                             }
                         }

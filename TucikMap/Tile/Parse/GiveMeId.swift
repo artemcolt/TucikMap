@@ -9,7 +9,7 @@ actor GiveMeId {
     private var textLabelsCurrent: UInt = 0
     private var ids: [UniqueGeoLabelKey:UInt] = [:]
     
-    func forScreenCollisionsDetection(uniqueGeoLabelKey: UniqueGeoLabelKey) -> UInt {
+    func getIdForLabel(uniqueGeoLabelKey: UniqueGeoLabelKey) -> UInt {
         if let dedicated = ids[uniqueGeoLabelKey] {
             return dedicated
         }
@@ -17,5 +17,12 @@ actor GiveMeId {
         textLabelsCurrent += 1
         ids[uniqueGeoLabelKey] = textLabelsCurrent
         return textLabelsCurrent
+    }
+    
+    private var idForRoadLabelIncrement: UInt = 0
+    
+    func getIdForRoadLabel() -> UInt {
+        idForRoadLabelIncrement += 1
+        return idForRoadLabelIncrement
     }
 }

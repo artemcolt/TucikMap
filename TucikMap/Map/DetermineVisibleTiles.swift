@@ -62,7 +62,12 @@ class DetermineVisibleTiles {
                     if skip {continue}
                     
                     // Добавляем тайл с текущим уровнем зума
-                    visibleTiles.append(Tile(x: tileX, y: tileY, z: zoomLevel))
+                    let tile = Tile(x: tileX, y: tileY, z: zoomLevel)
+                    if Settings.allowOnlyTiles.isEmpty {
+                        visibleTiles.append(tile)
+                    } else if Settings.allowOnlyTiles.contains(tile) {
+                        visibleTiles.append(tile)
+                    }
                 }
             }
         }

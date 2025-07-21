@@ -85,9 +85,9 @@ class MetalTilesStorage {
                     lines: roadLabelsParsed.map { roadLabel in
                         MapRoadLabelsAssembler.TextLineData(
                             text: roadLabel.name,
-                            scale: 50,
+                            scale: Settings.roadLabelTextSize,
                             localPositions: roadLabel.localPoints,
-                            id: 0,
+                            id: roadLabel.id,
                             sortRank: 0,
                             pathLen: roadLabel.pathLen
                         )

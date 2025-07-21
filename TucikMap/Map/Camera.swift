@@ -35,7 +35,7 @@ class Camera {
     private var previousCenterTileX         : Int = -1
     private var previousCenterTileY         : Int = -1
     private var previousBorderedZoomLevel   : Int = -1
-    private var mapStateChangedFlag         : Bool = false
+    private var mapStateUpdatedOnCenter     : SIMD2<Int> = SIMD2(0, 0)
     
     private var pinchDeltaDistance          : Float = 0
     private var twoFingerDeltaPitch         : Float = 0
@@ -224,7 +224,7 @@ class Camera {
         forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
         cameraPosition = targetPosition + forward * cameraDistance
         
-        mapStateChangedFlag = updateCameraCenterTile()
+        let _ = updateCameraCenterTile()
         
         renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
         
@@ -236,9 +236,9 @@ class Camera {
     func updateMapState(view: MTKView) {
         // reassemble map if needed
         // if there are new visible tiles
-        if mapStateChangedFlag {
+        if mapStateUpdatedOnCenter != SIMD2<Int>(Int(centerTileX), Int(centerTileY)) {
             assembledMapUpdater?.update(view: view, useOnlyCached: false)
-            mapStateChangedFlag = false
+            mapStateUpdatedOnCenter = SIMD2<Int>(Int(centerTileX), Int(centerTileY))
         }
     }
     

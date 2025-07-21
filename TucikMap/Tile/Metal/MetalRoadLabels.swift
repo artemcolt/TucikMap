@@ -18,6 +18,9 @@ class MetalRoadLabels: Hashable {
     
     let tile: Tile
     let roadLabels: MapRoadLabelsAssembler.Result?
+    var containIds: [UInt] = []
+    
+    var timePoint: Float? = nil
     
     init(
         tile: Tile,
@@ -25,5 +28,7 @@ class MetalRoadLabels: Hashable {
     ) {
         self.tile = tile
         self.roadLabels = roadLabels
+        guard let roadLabels = roadLabels else { return }
+        self.containIds = roadLabels.mapLabelsCpuMeta.map { meta in meta.id }
     }
 }
