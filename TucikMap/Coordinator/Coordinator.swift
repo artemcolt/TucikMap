@@ -13,7 +13,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     var metalCommandQueue: MTLCommandQueue!
     let controlsDelegate: ControlsDelegate!
     var renderFrameControl: RenderFrameControl!
-    var renderFrameCount: RenderFrameCount!
+    var drawingFrameRequester: DrawingFrameRequester!
     
     var depthStencilStatePrePass: MTLDepthStencilState!
     var depthStencilStateColorPass: MTLDepthStencilState!
@@ -52,7 +52,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     init(_ parent: MetalView) {
         self.parent = parent
         self.controlsDelegate = ControlsDelegate()
-        self.renderFrameCount = RenderFrameCount()
+        self.drawingFrameRequester = DrawingFrameRequester()
         super.init()
         
         if let device = MTLCreateSystemDefaultDevice() {
@@ -92,14 +92,14 @@ class Coordinator: NSObject, MTKViewDelegate {
                 library: pipelines.library,
                 metalCommandQueue: metalCommandQueue,
                 mapZoomState: mapZoomState,
-                renderFrameCount: renderFrameCount,
+                drawingFrameRequester: drawingFrameRequester,
                 frameCounter: frameCounter
             )
             camera = Camera(
                 mapZoomState: mapZoomState,
                 device: device,
                 textTools: textTools,
-                renderFrameCount: renderFrameCount,
+                drawingFrameRequester: drawingFrameRequester,
                 frameCounter: frameCounter,
                 library: pipelines.library,
                 screenCollisionsDetector: screenCollisionsDetector
@@ -112,7 +112,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             )
             applyLabelsState = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector, assembledMap: camera.assembledMapUpdater.assembledMap)
             drawUI = DrawUI(device: device, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
-            self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: camera.mapCadDisplayLoop, renderFrameCount: renderFrameCount)
+            self.renderFrameControl = RenderFrameControl(mapCADisplayLoop: camera.mapCadDisplayLoop, drawingFrameRequester: drawingFrameRequester)
         }
     }
     
@@ -150,9 +150,15 @@ class Coordinator: NSObject, MTKViewDelegate {
         let assembledMap            = camera.assembledMapUpdater.assembledMap
         let assembledTiles          = assembledMap.tiles
         let mapPanning              = camera.mapPanning
+        let lastUniforms            = updateBufferedUniform.lastUniforms!
         let tileFrameProps          = TileFrameProps(mapZoomState: mapZoomState,
                                                      pan: mapPanning,
-                                                     uniforms: updateBufferedUniform.lastUniforms!)
+                                                     uniforms: lastUniforms)
+        
+        if (camera.mapCadDisplayLoop.checkEvaluateScreenData()) {
+            let _ = screenCollisionsDetector.evaluate(lastUniforms: lastUniforms, mapPanning: mapPanning)
+        }
+        
         
         // Применяем если есть актуальные данные меток для свежего кадра
         applyLabelsState.apply(currentFBIdx: currentFBIdx)

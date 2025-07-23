@@ -41,6 +41,7 @@ class ApplyLabelsState {
             var finalRoadLabels       : [DrawAssembledMap.FinalDrawRoadLabel] = []
             let tilesPrepare          = roadLabelsTB.tilesPrepare
             
+            //print("--------")
             for i in 0..<tilesPrepare.count {
                 let tileRoadLabels      = tilesPrepare[i]
                 let lineToStartAt       = tileRoadLabels.lineToStartAt
@@ -57,6 +58,7 @@ class ApplyLabelsState {
                 draw.startRoadAtBuffer[currentFBIdx].contents().copyMemory(from: startAt,
                                                                            byteCount: MemoryLayout<MapRoadLabelsAssembler.StartRoadAt>.stride * startAt.count)
                 
+                //print(labelIntersections)
                 draw.intersectionsTrippleBuffer[currentFBIdx].contents().copyMemory(from: labelIntersections,
                                                                                     byteCount: MemoryLayout<LabelIntersection>.stride * labelIntersections.count)
                 

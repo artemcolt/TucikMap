@@ -12,11 +12,11 @@ class RenderFrameControl {
     private var displayLink: CADisplayLink?
     private weak var mtkView: MTKView?
     private let mapCADisplayLoop: MapCADisplayLoop
-    private let renderFrameCount: RenderFrameCount
+    private let drawingFrameRequester: DrawingFrameRequester
     
-    init(mapCADisplayLoop: MapCADisplayLoop, renderFrameCount: RenderFrameCount) {
+    init(mapCADisplayLoop: MapCADisplayLoop, drawingFrameRequester: DrawingFrameRequester) {
         self.mapCADisplayLoop = mapCADisplayLoop
-        self.renderFrameCount = renderFrameCount
+        self.drawingFrameRequester = drawingFrameRequester
         self.displayLink = CADisplayLink(target: self, selector: #selector(displayLinkUpdate))
         self.displayLink?.isPaused = true // Start paused
         self.displayLink?.preferredFramesPerSecond = Settings.preferredFramesPerSecond // Match MTKView's preferredFramesPerSecond
@@ -26,7 +26,7 @@ class RenderFrameControl {
     func updateView(view: MTKView) {
         self.mtkView = view
         self.displayLink?.isPaused = false
-        renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
+        drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
     }
     
     deinit {
@@ -36,7 +36,7 @@ class RenderFrameControl {
     @objc func displayLinkUpdate() {
         mapCADisplayLoop.displayLoop()
         
-        if renderFrameCount.isRedrawNeeded() || Settings.forceRenderOnDisplayUpdate {
+        if drawingFrameRequester.isRedrawNeeded() || Settings.forceRenderOnDisplayUpdate {
             mtkView?.setNeedsDisplay()
         }
     }

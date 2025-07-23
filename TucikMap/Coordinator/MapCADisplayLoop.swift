@@ -9,45 +9,51 @@ class MapCADisplayLoop {
     private let camera: Camera
     private let frameCounter: FrameCounter
     private let assembledMapUpdater: AssembledMapUpdater
-    private let renderFrameCount: RenderFrameCount
-    private let screenCollisionDetector: ScreenCollisionsDetector
+    private let drawingFrameRequester: DrawingFrameRequester
     
-    private var recomputeIntersectionsFlag = true
+    private var forceUpdateStatesFlag      = true
+    
+    private var evaluateScreenDataFlag     = true
+    
     private var loopCount: UInt64 = 0
     private var computeIntersectionsEvery: UInt64 = Settings.refreshLabelsIntersectionsEveryNDisplayLoop
     
+    func checkEvaluateScreenData() -> Bool {
+        if evaluateScreenDataFlag {
+            evaluateScreenDataFlag = false
+            return true
+        }
+        return false
+    }
     
     init(camera: Camera,
          frameCounter: FrameCounter,
-         renderFrameCount: RenderFrameCount,
-         screenCollisionDetector: ScreenCollisionsDetector
+         drawingFrameRequester: DrawingFrameRequester,
     ) {
         self.camera = camera
         self.frameCounter = frameCounter
         self.assembledMapUpdater = camera.assembledMapUpdater
-        self.renderFrameCount = renderFrameCount
-        self.screenCollisionDetector = screenCollisionDetector
+        self.drawingFrameRequester = drawingFrameRequester
     }
     
-    func recomputeIntersections() {
-        recomputeIntersectionsFlag = true
+    func forceUpdateStates() {
+        forceUpdateStatesFlag = true
     }
     
     func displayLoop() {
         loopCount += 1
         
-        if (canComputeIntersectionsNow()) {
-            if let lastUnifroms = camera.updateBufferedUniform.lastUniforms {
-                recomputeIntersectionsFlag = screenCollisionDetector.evaluate(
-                    lastUniforms: lastUnifroms,
-                    mapPanning: camera.mapPanning,
-                )
-            }
+        if (computeScreenLabelsDeltaCondition() && forceUpdateStatesFlag) {
+            forceUpdateStatesFlag       = false
+            
+            evaluateScreenDataFlag      = true
+            
+            drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
         }
     }
     
-    private func canComputeIntersectionsNow() -> Bool {
-        if loopCount % computeIntersectionsEvery == 0 && recomputeIntersectionsFlag {
+    private func computeScreenLabelsDeltaCondition() -> Bool {
+        if loopCount % computeIntersectionsEvery == 0 {
             return true
         }
         return false

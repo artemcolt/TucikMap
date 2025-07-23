@@ -7,7 +7,7 @@
 
 import Foundation
 
-class RenderFrameCount {
+class DrawingFrameRequester {
     private var renderNextFramesCount = 0
     private var renderToTime: TimeInterval = 0
     

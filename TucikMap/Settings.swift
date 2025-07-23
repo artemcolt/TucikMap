@@ -87,14 +87,14 @@ class Settings {
     static let allowOnlyTiles           : [Tile] = [] // Tile(x: 19808, y: 10244, z: 15) Tile(x: 19808, y: 10244, z: 15), Tile(x: 39617, y: 20488, z: 16)
     
     static let useGoToAtStart = true
-    static let goToAtStartZ: Float = 16
+    static let goToAtStartZ: Float = 16.5
     static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(55.74958790780624, 37.62346867711091)
     
     static let maxRoadLabelsDivision = 1
     static let roadLabelScreenSpacing = Float(0)
     
     static let getOnlySpecificMapLabels: [String] = [] // "Cameroon", "Nigeria", "South Sudan", "Africa", "South Sudan", "Kitay-gorod"
-    static let renderOnlyRoadsArray: [String] = [] // "Sofiyskaya Embankment" "Kremlin Embankment" "Ilyinka St" "Raushskaya Embankment"
+    static let renderOnlyRoadsArray: [String] = [] // "Sofiyskaya Embankment" "Kremlin Embankment" "Ilyinka St" "Raushskaya Embankment" "Ilyinka St"
     static let renderRoadArrayFromTo: [Int] = [] // 0, 0
     
     static let drawRoadPointsDebug: Bool = false

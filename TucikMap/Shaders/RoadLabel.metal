@@ -38,7 +38,7 @@ struct MapLabelLineMeta {
 };
 
 struct MapLabelIntersection {
-    bool intersect;
+    bool hide;
     float createdTime;
 };
 
@@ -218,7 +218,7 @@ vertex VertexOut roadLabelsVertexShader(VertexIn in [[stage_in]],
     out.ignore = ignoreInstance;
     
     MapLabelIntersection intersection = intersections[lineIndex];
-    out.show = intersection.intersect == false;
+    out.show = intersection.hide == false;
     out.progress = (worldUniforms.elapsedTimeSeconds - intersection.createdTime) / animationDuration;
     return out;
 }

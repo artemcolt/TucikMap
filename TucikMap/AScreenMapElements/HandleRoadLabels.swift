@@ -14,7 +14,6 @@ class HandleRoadLabels {
     
     private var savedLabelIntersections: [UInt: LabelIntersection] = [:]
     var actualLabelsIds: Set<UInt> = []
-    private let modelMatrixBufferSize = Settings.geoLabelsModelMatrixBufferSize
     
     init(mapZoomState: MapZoomState, frameCounter: FrameCounter) {
         self.mapZoomState   = mapZoomState
@@ -53,7 +52,8 @@ class HandleRoadLabels {
     
     func forEvaluateCollisions(mapPanning: SIMD3<Double>,
                                lastUniforms: Uniforms,
-                               pipeline: inout ScreenCollisionsDetector.ForEvaluationResult
+                               pipeline: inout ScreenCollisionsDetector.ForEvaluationResult,
+                               modelMatrices: ModelMatrices
     ) {
         // Удаляет стухшие тайлы с дорожными метками
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
@@ -64,28 +64,25 @@ class HandleRoadLabels {
             }
         }
         self.roadLabelsByTiles = metalRoadLabels
-        //print("roadLabelsByTiles = ", roadLabelsByTiles.count)
         
-        // TODO странная проверка Нужно с HandleGeoLabels согласовать
-        if self.roadLabelsByTiles.count > modelMatrixBufferSize {
-            // если быстро зумить камеру туда/cюда то geoLabels будет расти в размере из-за того что анимация не успевает за изменениями
-            // в таком случае пропускаем изменения и отображаем старые данные до тех пор пока пользователь не успокоиться
-            //renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight) // продолжаем рендрить чтобы обновились данные в конце концов
-            pipeline.recallLater = true // recompute is needed again but later
-            return
-        }
+        var countI = 0
         
         // создать массив для рассчета экранных точек
         var forCompute: [ComputeScreenPositions.Vertex] = []
         for i in 0..<roadLabelsByTiles.count {
             let roadLabelsOfTile    = roadLabelsByTiles[i]
             guard let roadLabels    = roadLabelsOfTile.roadLabels else { continue }
+            
+            let matrixIndex         = modelMatrices.getMatrix(tile: roadLabelsOfTile.tile)
             for meta in roadLabels.mapLabelsCpuMeta {
-                let computeInput    = meta.localPositions.map { localPoint in ComputeScreenPositions.Vertex(location: localPoint,
-                                                                                                            matrixId: simd_short1(i)) }
+                countI += 1
+                let computeInput = meta.localPositions.map { localPoint in ComputeScreenPositions.Vertex(location: localPoint,
+                                                                                                         matrixId: simd_short1(matrixIndex)) }
                 forCompute.append(contentsOf: computeInput)
             }
         }
+        
+        //print("Road labels count = ", countI)
         
         let startRoadResultsIndex           = pipeline.inputComputeScreenVertices.count
         pipeline.startRoadResultsIndex      = startRoadResultsIndex
@@ -105,6 +102,7 @@ class HandleRoadLabels {
         
         var renderingCurrentRoadLabels  : [DrawTileRoadLabelsPrep] = []
         
+        //print("--------------------")
         for metalRoadLabels in metalRoadLabelsTiles {
             guard let roadLabels    = metalRoadLabels.roadLabels else { continue }
             let modelMatrix         = metalRoadLabels.tile.getModelMatrix(mapZoomState: mapZoomState, pan: mapPanning)
@@ -139,7 +137,7 @@ class HandleRoadLabels {
                 }
             
                 let factor                  = Float(0.5)
-                var factors: [Float]        = [factor]
+                let factors: [Float]        = [factor]
                 var textStartScreenShift    = Float(0); // начинаем текст через эту длина на экранной кривой
                 var worldPoint              = SIMD2<Float>(0, 0);
                 var previousScreenLen       = Float(0);
@@ -230,9 +228,9 @@ class HandleRoadLabels {
                 }
                 
                 
+                let labelIntersection: LabelIntersection
                 let isActualLabel = actualRoadLabelsIdsCaching.contains(labelId)
                 if isActualLabel == false {
-                    let labelIntersection: LabelIntersection
                     if let previousState = self.savedLabelIntersections[labelId] {
                         let isHideAlready = previousState.hide == true
                         let createdTime = isHideAlready ? previousState.createdTime : elapsedTime
@@ -240,24 +238,19 @@ class HandleRoadLabels {
                     } else {
                         labelIntersection = LabelIntersection(hide: true, createdTime: elapsedTime)
                     }
-                    
-                    labelIntersections[roadLabelIndex] = labelIntersection
-                    self.savedLabelIntersections[labelId] = labelIntersection
                 } else {
                     let hide = show == false
-                    let labelIntersection: LabelIntersection
                     if let previousState = self.savedLabelIntersections[labelId] {
                         let statusChanged = hide != previousState.hide
                         let createdTime = statusChanged ? elapsedTime : previousState.createdTime
                         labelIntersection = LabelIntersection(hide: hide, createdTime: createdTime)
                     } else {
-                        labelIntersection = LabelIntersection(hide: hide, createdTime: elapsedTime)
+                        labelIntersection = LabelIntersection(hide: hide, createdTime: hide == true ? 0 : elapsedTime)
                     }
-                    
-                    labelIntersections[roadLabelIndex] = labelIntersection
-                    self.savedLabelIntersections[labelId] = labelIntersection
                 }
-                
+                labelIntersections[roadLabelIndex] = labelIntersection
+                self.savedLabelIntersections[labelId] = labelIntersection
+                //print("hide = ", labelIntersection.hide)
                 
                 
                 // сдвигаемся в массиве результатов экранных координат чтобы обработать следующую дорожную улицу

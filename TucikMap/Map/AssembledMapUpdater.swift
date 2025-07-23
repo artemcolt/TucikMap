@@ -19,7 +19,7 @@ class AssembledMapUpdater {
     private var camera: Camera!
     private var savedView: MTKView!
     private var metalTiles: MetalTilesStorage!
-    private var renderFrameCount: RenderFrameCount!
+    private var drawingFrameRequester: DrawingFrameRequester!
     private var frameCounter: FrameCounter!
     
     var assembledMap: AssembledMap = AssembledMap(
@@ -34,13 +34,13 @@ class AssembledMapUpdater {
         device: MTLDevice,
         camera: Camera,
         textTools: TextTools,
-        renderFrameCount: RenderFrameCount,
+        drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
     ) {
         self.mapZoomState = mapZoomState
         self.textTools = textTools
         self.camera = camera
-        self.renderFrameCount = renderFrameCount
+        self.drawingFrameRequester = drawingFrameRequester
         self.frameCounter = frameCounter
         determineFeatureStyle = DetermineFeatureStyle()
         determineVisibleTiles = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
@@ -96,7 +96,6 @@ class AssembledMapUpdater {
         
         
         // tile geo labels
-        var allActualReady = true
         var actualGeoLabels: [MetalGeoLabels] = []
         var actualRoadLabels: [MetalRoadLabels] = []
         for i in 0..<visibleTiles.count {
@@ -111,18 +110,16 @@ class AssembledMapUpdater {
                 continue
             }
             
-            allActualReady = false
             break
         }
-        if allActualReady {
-            camera.screenCollisionsDetector.newState(roadLabelsByTiles: actualRoadLabels, geoLabels: actualGeoLabels, view: view)
-            camera.mapCadDisplayLoop.recomputeIntersections()
-        }
+        
+        camera.screenCollisionsDetector.newState(roadLabelsByTiles: actualRoadLabels, geoLabels: actualGeoLabels, view: view)
+        camera.mapCadDisplayLoop.forceUpdateStates()
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
-        renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
+        drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
     }
 }

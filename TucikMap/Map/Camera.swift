@@ -11,13 +11,13 @@ import MetalKit
 class Camera {
     let screenCollisionsDetector: ScreenCollisionsDetector
     private var mapZoomState: MapZoomState!
-    private var renderFrameCount: RenderFrameCount!
+    private var drawingFrameRequester: DrawingFrameRequester!
     var mapCadDisplayLoop: MapCADisplayLoop!
     
     
     // Camera properties
-    private(set) var cameraPosition         : SIMD3<Float> = SIMD3<Float>(0, 0, 0)
     let targetPosition                      : SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
+    private(set) var cameraPosition         : SIMD3<Float> = SIMD3<Float>(0, 0, 0)
     private(set) var mapPanning             : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
     private(set) var cameraDistance         : Float = Settings.nullZoomCameraDistance // Расстояние от камеры до цели
     private(set) var mapZoom                : Float = 0
@@ -50,25 +50,24 @@ class Camera {
         mapZoomState: MapZoomState,
         device: MTLDevice,
         textTools: TextTools,
-        renderFrameCount: RenderFrameCount,
+        drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
         library: MTLLibrary,
         screenCollisionsDetector: ScreenCollisionsDetector
     ) {
         self.screenCollisionsDetector   = screenCollisionsDetector
-        self.renderFrameCount           = renderFrameCount
+        self.drawingFrameRequester      = drawingFrameRequester
         self.mapZoomState               = mapZoomState
         self.updateBufferedUniform      = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
         self.assembledMapUpdater        = AssembledMapUpdater(mapZoomState: mapZoomState,
                                                               device: device,
                                                               camera: self,
                                                               textTools: textTools,
-                                                              renderFrameCount: renderFrameCount,
+                                                              drawingFrameRequester: drawingFrameRequester,
                                                               frameCounter: frameCounter)
         self.mapCadDisplayLoop          = MapCADisplayLoop(camera: self,
                                                            frameCounter: frameCounter,
-                                                           renderFrameCount: renderFrameCount,
-                                                           screenCollisionDetector: screenCollisionsDetector)
+                                                           drawingFrameRequester: drawingFrameRequester)
     }
     
     func getCenterLatLon() -> (lat: Double, lon: Double) {
@@ -167,7 +166,8 @@ class Camera {
     }
     
     @objc func applyMovementToCamera(view: MTKView) {
-        mapCadDisplayLoop.recomputeIntersections()
+        // так как камера перемещается нужно пересчитать метки на экране
+        mapCadDisplayLoop.forceUpdateStates()
         
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
@@ -226,7 +226,7 @@ class Camera {
         
         let _ = updateCameraCenterTile()
         
-        renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight)
+        drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
         
         if Settings.printCenterLatLon {
             print(getCenterLatLon())
