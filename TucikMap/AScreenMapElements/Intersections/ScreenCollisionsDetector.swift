@@ -15,7 +15,7 @@ struct LabelIntersection {
 
 struct GeoLabelsWithIntersections {
     let intersections: [Int: [LabelIntersection]]
-    let geoLabels: [MetalGeoLabels]
+    let geoLabels: [MetalTile.TextLabels]
     var bufferingCounter: Int = Settings.maxBuffersInFlight
 }
 
@@ -23,7 +23,7 @@ struct DrawTileRoadLabelsPrep {
     let lineToStartAt: [MapRoadLabelsAssembler.LineToStartAt]
     let startAt: [MapRoadLabelsAssembler.StartRoadAt]
     let labelIntersections: [LabelIntersection]
-    let metalRoadLabels: MetalRoadLabels
+    let metalRoadLabels: MetalTile.RoadLabels
     let maxInstances: Int
 }
 
@@ -37,8 +37,8 @@ class ScreenCollisionsDetector {
     struct ForEvaluationResult {
         var inputComputeScreenVertices: [ComputeScreenPositions.Vertex]
         var mapLabelLineCollisionsMeta: [MapLabelsAssembler.MapLabelCpuMeta]
-        var metalGeoLabels: [MetalGeoLabels]
-        var metalRoadLabels: [MetalRoadLabels]
+        var metalGeoLabels: [MetalTile.TextLabels]
+        var metalRoadLabels: [MetalTile.RoadLabels]
         var geoLabelsSize: Int
         var startRoadResultsIndex: Int
     }
@@ -97,9 +97,18 @@ class ScreenCollisionsDetector {
         handleRoadLabels = HandleRoadLabels(mapZoomState: mapZoomState, frameCounter: frameCounter)
     }
     
-    func newState(roadLabelsByTiles: [MetalRoadLabels], geoLabels: [MetalGeoLabels], view: MTKView) {
-        self.handleRoadLabels.setRoadLabels(roadLabels: roadLabelsByTiles)
-        self.handleGeoLabels.setGeoLabels(geoLabels: geoLabels)
+    func newState(actualTiles: [MetalTile], view: MTKView) {
+        var roadLabels: [MetalTile.RoadLabels] = []
+        var textLabels: [MetalTile.TextLabels] = []
+        roadLabels.reserveCapacity(actualTiles.count)
+        textLabels.reserveCapacity(actualTiles.count)
+        for tile in actualTiles {
+            roadLabels.append(tile.roads)
+            textLabels.append(tile.texts)
+        }
+        
+        self.handleRoadLabels.setRoadLabels(roadLabels: roadLabels)
+        self.handleGeoLabels.setGeoLabels(geoLabels: textLabels)
         viewportSize = SIMD2<Float>(Float(view.drawableSize.width), Float(view.drawableSize.height))
     }
     

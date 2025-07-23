@@ -101,4 +101,6 @@ class Settings {
     
     static let roadLabelTextSize: Float = 40
     static let geoLabelsModelMatrixBufferSize: Int = 40
+    
+    static let filterRoadLenLabel: Float = 0.33
 }

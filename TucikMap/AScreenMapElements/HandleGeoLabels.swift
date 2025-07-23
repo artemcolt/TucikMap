@@ -21,7 +21,7 @@ class HandleGeoLabels {
     
     // самые актуальные надписи карты
     // для них мы считаем коллизии
-    private var geoLabels: [MetalGeoLabels] = []
+    private var geoLabels: [MetalTile.TextLabels] = []
     private var geoLabelsTimePoints: [Float] = []
     var actualLabelsIds: Set<UInt> = []
     
@@ -144,7 +144,7 @@ class HandleGeoLabels {
         modelMatrices: ModelMatrices
     ) {
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
-        var metalGeoLabels: [MetalGeoLabels] = []
+        var metalGeoLabels: [MetalTile.TextLabels] = []
         // Удаляет стухшие тайлы с гео метками
         for geoLabel in self.geoLabels {
             if geoLabel.timePoint == nil || elapsedTime - geoLabel.timePoint! < Settings.labelsFadeAnimationTimeSeconds {
@@ -174,13 +174,14 @@ class HandleGeoLabels {
         pipeline.geoLabelsSize = inputComputeScreenVertices.count
     }
     
-    func setGeoLabels(geoLabels: [MetalGeoLabels]) {
+    func setGeoLabels(geoLabels: [MetalTile.TextLabels]) {
         guard geoLabels.isEmpty == false else { return }
         let elapsedTime = frameCounter.getElapsedTimeSeconds()
         
         let currentZ = geoLabels.first!.tile.z
-        var savePrevious: [MetalGeoLabels] = []
-        for label in self.geoLabels {
+        var savePrevious: [MetalTile.TextLabels] = []
+        for i in 0..<self.geoLabels.count {
+            var label = self.geoLabels[i]
             let isDifferentZ = label.tile.z != currentZ
             if isDifferentZ {
                 label.timePoint = elapsedTime
@@ -189,7 +190,10 @@ class HandleGeoLabels {
         }
         
         // ресетит тайлы, делает их снова актуальными
-        geoLabels.forEach { label in label.timePoint = nil }
+        var geoLabels = geoLabels
+        for i in 0..<geoLabels.count {
+            geoLabels[i].timePoint = nil
+        }
         self.actualLabelsIds = Set(geoLabels.flatMap { label in label.containIds })
         self.geoLabels = geoLabels + savePrevious
     }

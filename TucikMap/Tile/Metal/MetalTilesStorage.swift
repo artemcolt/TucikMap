@@ -95,7 +95,6 @@ class MetalTilesStorage {
                     font: textTools.robotoFont.boldFont
                 )
                 
-                
                 let textLabels = textTools.mapLabelsAssembler.assemble(
                     lines: parsedTile.textLabels.map { label in MapLabelsAssembler.TextLineData(
                         // это для GPU данные, для шейдера
@@ -109,28 +108,19 @@ class MetalTilesStorage {
                     font: textTools.robotoFont.boldFont
                 )
                 
-                let metalRoadLabels = MetalRoadLabels(
-                    tile: tile,
-                    roadLabels: roadLabels
-                )
-                
-                let metalGeoLabels = MetalGeoLabels(
-                    tile: tile,
-                    textLabels: textLabels
-                )
-                
                 let metalTile = MetalTile(
                     tile: tile,
                     tile2dBuffers: tile2dBuffers,
                     tile3dBuffers: tile3dBuffers,
+                    
+                    textLabels: textLabels,
+                    roadLabels: roadLabels
                 )
                 
                 await MainActor.run {
                     let key = tile.key()
                     self.memoryMetalTile.setTileData(
                         tile: metalTile,
-                        tileLabels: metalGeoLabels,
-                        roadLabels: metalRoadLabels,
                         forKey: key
                     )
                     self.onMetalingTileEnd(tile)
@@ -145,14 +135,6 @@ class MetalTilesStorage {
     
     func getMetalTile(tile: Tile) -> MetalTile? {
         return memoryMetalTile.getTile(forKey: tile.key())
-    }
-    
-    func getMetalGeoLabels(tile: Tile) -> MetalGeoLabels? {
-        return memoryMetalTile.getTileGeoLabels(forKey: tile.key())
-    }
-    
-    func getMetalRoadLabels(tile: Tile) -> MetalRoadLabels? {
-        return memoryMetalTile.getTileRoadLabels(forKey: tile.key())
     }
     
     func requestMetalTile(tile: Tile) {

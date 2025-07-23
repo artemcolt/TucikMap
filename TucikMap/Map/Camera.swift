@@ -166,14 +166,9 @@ class Camera {
     }
     
     @objc func applyMovementToCamera(view: MTKView) {
-        // так как камера перемещается нужно пересчитать метки на экране
-        mapCadDisplayLoop.forceUpdateStates()
-        
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
         mapZoom -= pinchDeltaDistance
-        mapZoom = max(0, min(mapZoom, Settings.zoomLevelMax))
-        cameraDistance = Settings.nullZoomCameraDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
         
         // two finger
         let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch, Settings.maxCameraPitch), Settings.minCameraPitch)
@@ -193,12 +188,6 @@ class Camera {
         cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
         cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning
         
-        let zoomFactor = Double(pow(2.0, floor(mapZoom)))
-        let visibleHeight = 2.0 * Double(cameraDistance) * Double(tan(Settings.fov / 2.0)) / zoomFactor
-        let targetPositionYMin = Double(-Settings.mapSize) / 2.0 + visibleHeight / 2.0
-        let targetPositionYMax = Double(Settings.mapSize) / 2.0  - visibleHeight / 2.0
-        
-        
         // Pan
         // Move target position in camera's local
         let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
@@ -207,17 +196,24 @@ class Camera {
         mapPanning.y = newMapPanning.y
         mapPanning.x = newMapPanning.x
         
-        // return to available range
+        updateMap(view: view, size: view.drawableSize)
+    }
+    
+    func updateMap(view: MTKView, size: CGSize) {
+        mapZoom = max(0, min(mapZoom, Settings.zoomLevelMax))
+        cameraDistance = Settings.nullZoomCameraDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
+        
+        // Вернуть в допустимую зону камеру
+        let zoomFactor = Double(pow(2.0, floor(mapZoom)))
+        let visibleHeight = 2.0 * Double(cameraDistance) * Double(tan(Settings.fov / 2.0)) / zoomFactor
+        let targetPositionYMin = Double(-Settings.mapSize) / 2.0 + visibleHeight / 2.0
+        let targetPositionYMax = Double(Settings.mapSize) / 2.0  - visibleHeight / 2.0
         if (mapPanning.y < targetPositionYMin) {
             mapPanning.y = targetPositionYMin
         } else if (mapPanning.y > targetPositionYMax) {
             mapPanning.y = targetPositionYMax
         }
         
-        updateMap(view: view, size: view.drawableSize)
-    }
-    
-    func updateMap(view: MTKView, size: CGSize) {
         mapZoomState.update(zoomLevelFloat: mapZoom)
         
         // Compute camera position based on distance and orientation
@@ -231,6 +227,9 @@ class Camera {
         if Settings.printCenterLatLon {
             print(getCenterLatLon())
         }
+        
+        // Так как камера перемещается нужно пересчитать метки на экране
+        mapCadDisplayLoop.forceUpdateStates()
     }
     
     func updateMapState(view: MTKView) {

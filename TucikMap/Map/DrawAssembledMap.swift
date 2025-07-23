@@ -10,7 +10,7 @@ import Foundation
 
 class DrawAssembledMap {
     struct FinalDrawRoadLabel {
-        let metalRoadLabels: MetalRoadLabels
+        let metalRoadLabels: MetalTile.RoadLabels
         let maxInstances: Int
     }
     
@@ -99,7 +99,7 @@ class DrawAssembledMap {
     func drawMapLabels(
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
-        geoLabels: [MetalGeoLabels],
+        geoLabels: [MetalTile.TextLabels],
         currentFBIndex: Int,
         tileFrameProps: TileFrameProps
     ) {

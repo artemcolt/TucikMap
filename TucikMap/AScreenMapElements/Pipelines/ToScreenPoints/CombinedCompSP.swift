@@ -25,14 +25,14 @@ class CombinedCompSP {
         // metalGeoLabels - страны, города, континенты, моря
         // actualLabelsIds - метки которые на жанной стадии должны быть отображены
         // есть еще не актуальные, это те которые использовались до этого, они нужны временно чтобы например анимация до конца отработала
-        let metalGeoLabels                  : [MetalGeoLabels]
+        let metalGeoLabels                  : [MetalTile.TextLabels]
         let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
         let actualLabelsIds                 : Set<UInt>
         let geoLabelsSize                   : Int
         
         // startRoadResultsIndex - данные о дорогах начинаются с этого индекса в output
         let startRoadResultsIndex           : Int
-        let roadLabels                      : [MetalRoadLabels]
+        let roadLabels                      : [MetalTile.RoadLabels]
         let actualRoadLabelsIds             : Set<UInt>
     }
     
@@ -43,13 +43,13 @@ class CombinedCompSP {
         let uniforms                        : Uniforms
         let mapPanning                      : SIMD3<Double>
         
-        let metalGeoLabels                  : [MetalGeoLabels]
+        let metalGeoLabels                  : [MetalTile.TextLabels]
         let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
         let actualLabelsIds                 : Set<UInt>
         let geoLabelsSize                   : Int
         
         let startRoadResultsIndex           : Int
-        let metalRoadLabelsTiles            : [MetalRoadLabels]
+        let metalRoadLabelsTiles            : [MetalTile.RoadLabels]
         let actualRoadLabelsIds             : Set<UInt>
     }
     

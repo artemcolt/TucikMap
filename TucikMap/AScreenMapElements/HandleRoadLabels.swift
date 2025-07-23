@@ -7,10 +7,11 @@
 
 import MetalKit
 
+
 class HandleRoadLabels {
     private let mapZoomState        : MapZoomState
     private let frameCounter        : FrameCounter
-    private var roadLabelsByTiles   : [MetalRoadLabels] = []
+    private var roadLabelsByTiles   : [MetalTile.RoadLabels] = []
     
     private var savedLabelIntersections: [UInt: LabelIntersection] = [:]
     var actualLabelsIds: Set<UInt> = []
@@ -30,13 +31,14 @@ class HandleRoadLabels {
         return currentRenderingRoads
     }
     
-    func setRoadLabels(roadLabels: [MetalRoadLabels]) {
+    func setRoadLabels(roadLabels: [MetalTile.RoadLabels]) {
         guard roadLabels.isEmpty == false else { return }
         let elapsedTime = frameCounter.getElapsedTimeSeconds()
         
         let currentZ = roadLabels.first!.tile.z
-        var savePrevious: [MetalRoadLabels] = []
-        for label in self.roadLabelsByTiles {
+        var savePrevious: [MetalTile.RoadLabels] = []
+        for i in 0..<roadLabelsByTiles.count {
+            var label = roadLabelsByTiles[i]
             let isDifferentZ = label.tile.z != currentZ
             if isDifferentZ {
                 label.timePoint = elapsedTime
@@ -45,7 +47,10 @@ class HandleRoadLabels {
         }
         
         // ресетит тайлы, делает их снова актуальными
-        roadLabels.forEach { label in label.timePoint = nil }
+        var roadLabels = roadLabels
+        for i in 0..<roadLabels.count {
+            roadLabels[i].timePoint = nil
+        }
         self.actualLabelsIds = Set(roadLabels.flatMap { label in label.containIds })
         self.roadLabelsByTiles = roadLabels + savePrevious
     }
@@ -57,7 +62,7 @@ class HandleRoadLabels {
     ) {
         // Удаляет стухшие тайлы с дорожными метками
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
-        var metalRoadLabels: [MetalRoadLabels] = []
+        var metalRoadLabels: [MetalTile.RoadLabels] = []
         for roadLabel in self.roadLabelsByTiles {
             if roadLabel.timePoint == nil || elapsedTime - roadLabel.timePoint! < Settings.labelsFadeAnimationTimeSeconds {
                 metalRoadLabels.append(roadLabel)
@@ -82,7 +87,7 @@ class HandleRoadLabels {
             }
         }
         
-        //print("Road labels count = ", countI)
+        print("Road labels count = ", countI)
         
         let startRoadResultsIndex           = pipeline.inputComputeScreenVertices.count
         pipeline.startRoadResultsIndex      = startRoadResultsIndex

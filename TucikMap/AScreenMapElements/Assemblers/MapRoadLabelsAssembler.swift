@@ -202,9 +202,8 @@ class MapRoadLabelsAssembler {
                                                              length: MemoryLayout<LabelIntersection>.stride * lines.count)!
             intersectionsTrippleBuffer.append(intersectionsBuffer)
             
-            let startAtLimit = lines.count * 2 // берем с запасом небольшим потому что еще может быть на одной дороге несколько факторов для названия улиц
-            let startRoadAtBuffer = metalDevice.makeBuffer(bytes: Array(repeating: StartRoadAt(startAt: 0), count: startAtLimit),
-                                                           length: MemoryLayout<StartRoadAt>.stride * startAtLimit)!
+            let startRoadAtBuffer = metalDevice.makeBuffer(bytes: Array(repeating: StartRoadAt(startAt: 0), count: lines.count),
+                                                           length: MemoryLayout<StartRoadAt>.stride * lines.count)!
             startRoadAtTrippleBuffer.append(startRoadAtBuffer)
             
             let lineToStartFloatsBuffer = metalDevice.makeBuffer(bytes: Array(repeating: LineToStartAt(index: 0, count: 0), count: lines.count),

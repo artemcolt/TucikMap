@@ -129,24 +129,24 @@ class TileMvtParser {
         return parsed
     }
     
-    private func tryParseRoadLine(geometry: GeoJsonGeometry, name: String) async -> ParsedRoadLabel? {
+    private func tryParseRoadLine(geometry: GeoJsonGeometry, name: String, tileCoords: Tile) async -> ParsedRoadLabel? {
         if geometry.type != .lineString {return nil}
         guard let line = geometry as? LineString else {return nil}
-        return await parseRoad(coordinates: line.coordinates, name: name)
+        return await parseRoad(coordinates: line.coordinates, name: name, tileCoords: tileCoords)
     }
     
-    private func tryParseRoadMultiLine(geometry: GeoJsonGeometry, name: String) async -> [ParsedRoadLabel]? {
+    private func tryParseRoadMultiLine(geometry: GeoJsonGeometry, name: String, tileCoords: Tile) async -> [ParsedRoadLabel]? {
         if geometry.type != .multiLineString {return nil}
         guard let multiLine = geometry as? MultiLineString else {return nil}
         var parsed: [ParsedRoadLabel] = []
         for line in multiLine.coordinates {
-            let parsedRoad = await parseRoad(coordinates: line, name: name)
+            guard let parsedRoad = await parseRoad(coordinates: line, name: name, tileCoords: tileCoords) else { continue }
             parsed.append(parsedRoad)
         }
         return parsed
     }
     
-    private func parseRoad(coordinates: [Coordinate3D], name: String) async -> ParsedRoadLabel {
+    private func parseRoad(coordinates: [Coordinate3D], name: String, tileCoords: Tile) async -> ParsedRoadLabel? {
         var points: [SIMD2<Float>] = []
         points.reserveCapacity(coordinates.count)
         for coordinate in coordinates {
@@ -160,6 +160,12 @@ class TileMvtParser {
             let nextPosition = points[i+1];
             let length = length(nextPosition - currentPosition);
             worldPathLen += length;
+        }
+        
+        // Тут пытаюсь проверять в целом длину дороги и если она прям очень маленькая то нету смысла ее парсить
+        // все равно на нее ничего не поместиться
+        if worldPathLen < Settings.filterRoadLenLabel {
+            return nil
         }
         
         return ParsedRoadLabel(name: name, localPoints: points, pathLen: worldPathLen, id: await giveMeId.getIdForRoadLabel())
@@ -284,10 +290,10 @@ class TileMvtParser {
                         (Settings.renderRoadArrayFromTo[0] <= parsedCountTest && parsedCountTest <= Settings.renderRoadArrayFromTo[1])
                     if testCondition {
                         if fromToTestCond {
-                            if let parsed = await tryParseRoadLine(geometry: geometry, name: name ?? "no street name") {
+                            if let parsed = await tryParseRoadLine(geometry: geometry, name: name ?? "no street name", tileCoords: tileCoords) {
                                 roadLabels.append(parsed)
                             }
-                            if let parsed = await tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name") {
+                            if let parsed = await tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name", tileCoords: tileCoords) {
                                 roadLabels.append(contentsOf: parsed)
                             }
                         }

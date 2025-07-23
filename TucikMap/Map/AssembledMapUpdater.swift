@@ -96,25 +96,11 @@ class AssembledMapUpdater {
         
         
         // tile geo labels
-        var actualGeoLabels: [MetalGeoLabels] = []
-        var actualRoadLabels: [MetalRoadLabels] = []
-        for i in 0..<visibleTiles.count {
-            let tile = visibleTiles[i]
-            
-            // get actual road labels
-            // get actual geo labels
-            if let metalGeoLabels = metalTiles.getMetalGeoLabels(tile: tile),
-               let metalRoadLabels = metalTiles.getMetalRoadLabels(tile: tile) {
-                actualGeoLabels.append(metalGeoLabels)
-                actualRoadLabels.append(metalRoadLabels)
-                continue
-            }
-            
-            break
+        let allReady = actual.count == Settings.visibleTilesCount
+        if allReady {
+            camera.screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
+            camera.mapCadDisplayLoop.forceUpdateStates()
         }
-        
-        camera.screenCollisionsDetector.newState(roadLabelsByTiles: actualRoadLabels, geoLabels: actualGeoLabels, view: view)
-        camera.mapCadDisplayLoop.forceUpdateStates()
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
