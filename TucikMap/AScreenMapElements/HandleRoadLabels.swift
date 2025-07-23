@@ -70,9 +70,9 @@ class HandleRoadLabels {
         }
         self.roadLabelsByTiles = metalRoadLabels
         
-        var countI = 0
         
         // создать массив для рассчета экранных точек
+        var roadLabelsCount = 0
         var forCompute: [ComputeScreenPositions.Vertex] = []
         for i in 0..<roadLabelsByTiles.count {
             let roadLabelsOfTile    = roadLabelsByTiles[i]
@@ -80,14 +80,16 @@ class HandleRoadLabels {
             
             let matrixIndex         = modelMatrices.getMatrix(tile: roadLabelsOfTile.tile)
             for meta in roadLabels.mapLabelsCpuMeta {
-                countI += 1
+                roadLabelsCount += 1
                 let computeInput = meta.localPositions.map { localPoint in ComputeScreenPositions.Vertex(location: localPoint,
                                                                                                          matrixId: simd_short1(matrixIndex)) }
                 forCompute.append(contentsOf: computeInput)
             }
         }
         
-        print("Road labels count = ", countI)
+        if Settings.printRoadLabelsCount {
+            print("Road labels count = ", roadLabelsCount)
+        }
         
         let startRoadResultsIndex           = pipeline.inputComputeScreenVertices.count
         pipeline.startRoadResultsIndex      = startRoadResultsIndex

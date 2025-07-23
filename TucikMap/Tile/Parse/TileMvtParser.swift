@@ -155,7 +155,7 @@ class TileMvtParser {
         }
         
         var worldPathLen = Float(0);
-        for i in 0..<points.count-1 {
+        for i in 0..<points.count - 1 {
             let currentPosition = points[i];
             let nextPosition = points[i+1];
             let length = length(nextPosition - currentPosition);
