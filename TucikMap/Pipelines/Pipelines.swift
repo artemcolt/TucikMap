@@ -15,6 +15,8 @@ class Pipelines {
     private(set) var basePipeline: BasePipeline!
     private(set) var labelsPipeline: LabelsPipeline!
     private(set) var roadLabelPipeline: RoadLabelPipeline!
+    private(set) var globePipeline: GlobePipeline!
+    private(set) var texturePipeline: TexturePipeline!
  
     init(metalDevice: MTLDevice) {
         // Create the render pipeline
@@ -26,5 +28,7 @@ class Pipelines {
         basePipeline = BasePipeline(metalDevice: metalDevice, library: library)
         labelsPipeline = LabelsPipeline(metalDevice: metalDevice, library: library)
         roadLabelPipeline = RoadLabelPipeline(metalDevice: metalDevice, library: library)
+        globePipeline = GlobePipeline(metalDevice: metalDevice, library: library)
+        texturePipeline = TexturePipeline(metalDevice: metalDevice, library: library)
     }
 }

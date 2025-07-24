@@ -150,10 +150,7 @@ class HandleRoadLabels {
                 var previousScreenLen       = Float(0);
                 var worldTextCenter         = worldPathLen * factor;
                 var textCenterScreenPoint   = SIMD2<Float>(0, 0);
-                
-                
-                var startTextLocationIndex = Int(0)
-                var inSegmentScreenLen = Float(0)
+                var inSegmentScreenLen      = Float(0)
                 
                 // Вычисляем положение начала текста на экранной кривой по мировому центру текста
                 for i in 0..<count-1 {
@@ -169,7 +166,6 @@ class HandleRoadLabels {
 
                     // Проверяем нашли ли мы сегмент в котором расположен центр текста либо это уже последний сегмент
                     if worldTextCenter - len < 0 || i == count-2 {
-                        startTextLocationIndex  = i
                         let inSegmentWorldLen   = worldTextCenter;
                         let direction           = normalize(next - current);
                         worldPoint              = current + direction * inSegmentWorldLen; // точка центра текста в мировых координатах

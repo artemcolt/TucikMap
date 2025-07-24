@@ -31,7 +31,6 @@ struct Style {
     float4 color;
 };
 
-
 struct TileUniform {
     int tileX;
     int tileY;

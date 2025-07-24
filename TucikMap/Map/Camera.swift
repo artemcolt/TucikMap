@@ -9,10 +9,10 @@ import SwiftUI
 import MetalKit
 
 class Camera {
-    let screenCollisionsDetector: ScreenCollisionsDetector
+    private let screenCollisionsDetector: ScreenCollisionsDetector
     private var mapZoomState: MapZoomState!
     private var drawingFrameRequester: DrawingFrameRequester!
-    var mapCadDisplayLoop: MapCADisplayLoop!
+    private var mapCadDisplayLoop: MapCADisplayLoop!
     
     
     // Camera properties
@@ -23,8 +23,6 @@ class Camera {
     private(set) var mapZoom                : Float = 0
     private(set) var cameraQuaternion       : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1) // Кватернион ориентации камеры
     private(set) var cameraYawQuaternion    : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
-    private(set) var updateBufferedUniform  : UpdateBufferedUniform!
-    private(set) var assembledMapUpdater    : AssembledMapUpdater!
     private(set) var forward                : SIMD3<Float> = SIMD3<Float>(0, 0, 1)
     
     private(set) var cameraPitch            : Float = 0
@@ -35,7 +33,7 @@ class Camera {
     private var previousCenterTileX         : Int = -1
     private var previousCenterTileY         : Int = -1
     private var previousBorderedZoomLevel   : Int = -1
-    private var mapStateUpdatedOnCenter     : SIMD2<Int> = SIMD2(0, 0)
+    private var mapStateUpdatedOnCenter     : SIMD2<Int> = SIMD2(-1, -1)
     
     private var pinchDeltaDistance          : Float = 0
     private var twoFingerDeltaPitch         : Float = 0
@@ -53,21 +51,13 @@ class Camera {
         drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
         library: MTLLibrary,
-        screenCollisionsDetector: ScreenCollisionsDetector
+        screenCollisionsDetector: ScreenCollisionsDetector,
+        mapCadDisplayLoop: MapCADisplayLoop
     ) {
         self.screenCollisionsDetector   = screenCollisionsDetector
         self.drawingFrameRequester      = drawingFrameRequester
         self.mapZoomState               = mapZoomState
-        self.updateBufferedUniform      = UpdateBufferedUniform(device: device, mapZoomState: mapZoomState, camera: self, frameCounter: frameCounter)
-        self.assembledMapUpdater        = AssembledMapUpdater(mapZoomState: mapZoomState,
-                                                              device: device,
-                                                              camera: self,
-                                                              textTools: textTools,
-                                                              drawingFrameRequester: drawingFrameRequester,
-                                                              frameCounter: frameCounter)
-        self.mapCadDisplayLoop          = MapCADisplayLoop(camera: self,
-                                                           frameCounter: frameCounter,
-                                                           drawingFrameRequester: drawingFrameRequester)
+        self.mapCadDisplayLoop          = mapCadDisplayLoop
     }
     
     func getCenterLatLon() -> (lat: Double, lon: Double) {
@@ -232,13 +222,12 @@ class Camera {
         mapCadDisplayLoop.forceUpdateStates()
     }
     
-    func updateMapState(view: MTKView) {
-        // reassemble map if needed
-        // if there are new visible tiles
+    func isMapStateUpdated() -> Bool {
         if mapStateUpdatedOnCenter != SIMD2<Int>(Int(centerTileX), Int(centerTileY)) {
-            assembledMapUpdater?.update(view: view, useOnlyCached: false)
             mapStateUpdatedOnCenter = SIMD2<Int>(Int(centerTileX), Int(centerTileY))
+            return true
         }
+        return false
     }
     
     private func updateCameraCenterTile() -> Bool {

@@ -20,6 +20,7 @@ class DrawAssembledMap {
     let mapZoomState: MapZoomState
     let sampler: MTLSamplerState
     var screenUniforms: ScreenUniforms
+    let drawTile = DrawTile()
     
     init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera, mapZoomState: MapZoomState) {
         self.metalDevice = metalDevice
@@ -41,26 +42,16 @@ class DrawAssembledMap {
         tileFrameProps: TileFrameProps
     ) {
         guard tiles.isEmpty == false else { return }
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+        drawTile.setUniforms(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
         
         for tile in tiles {
             let tileProps       = tileFrameProps.get(tile: tile.tile)
             guard tileProps.contains else { continue }
                     
-            var modelMatrix     = tileProps.model
+            let modelMatrix     = tileProps.model
             let tile2dBuffers   = tile.tile2dBuffers
             
-            renderEncoder.setVertexBuffer(tile2dBuffers.verticesBuffer, offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(tile2dBuffers.stylesBuffer, offset: 0, index: 2)
-            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<float4x4>.stride, index: 3)
-            
-            renderEncoder.drawIndexedPrimitives(
-                type: .triangle,
-                indexCount: tile2dBuffers.indicesCount,
-                indexType: .uint32,
-                indexBuffer: tile2dBuffers.indicesBuffer,
-                indexBufferOffset: 0
-            )
+            drawTile.draw(renderEncoder: renderEncoder, tile2dBuffers: tile2dBuffers, modelMatrix: modelMatrix)
         }
     }
     

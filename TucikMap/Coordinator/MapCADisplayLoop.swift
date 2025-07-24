@@ -6,9 +6,7 @@
 //
 
 class MapCADisplayLoop {
-    private let camera: Camera
     private let frameCounter: FrameCounter
-    private let assembledMapUpdater: AssembledMapUpdater
     private let drawingFrameRequester: DrawingFrameRequester
     
     private var forceUpdateStatesFlag      = true
@@ -26,13 +24,10 @@ class MapCADisplayLoop {
         return false
     }
     
-    init(camera: Camera,
-         frameCounter: FrameCounter,
+    init(frameCounter: FrameCounter,
          drawingFrameRequester: DrawingFrameRequester,
     ) {
-        self.camera = camera
         self.frameCounter = frameCounter
-        self.assembledMapUpdater = camera.assembledMapUpdater
         self.drawingFrameRequester = drawingFrameRequester
     }
     

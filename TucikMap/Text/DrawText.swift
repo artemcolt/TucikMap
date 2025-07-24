@@ -45,14 +45,14 @@ class DrawText {
         uniforms: MTLBuffer,
         drawTextData: DrawTextDataBytes
     ) {
-        let atlasTexture = drawTextData.atlas
-        let vertices = drawTextData.vertices
-        let glyphProps = drawTextData.glyphProps
-        let verticesCount = drawTextData.verticesCount
+        let atlasTexture    = drawTextData.atlas
+        let vertices        = drawTextData.vertices
+        let glyphProps      = drawTextData.glyphProps
+        let verticesCount   = drawTextData.verticesCount
         
-        renderEncoder.setVertexBuffer(uniforms, offset: 0, index: 1)
-        renderEncoder.setVertexBytes(vertices, length: MemoryLayout<TextVertex>.size * vertices.count, index: 0)
-        renderEncoder.setVertexBytes(glyphProps, length: MemoryLayout<GlyphGpuProp>.size * glyphProps.count, index: 2)
+        renderEncoder.setVertexBuffer(uniforms,     offset: 0, index: 1)
+        renderEncoder.setVertexBytes(vertices,      length: MemoryLayout<TextVertex>.stride * vertices.count,      index: 0)
+        renderEncoder.setVertexBytes(glyphProps,    length: MemoryLayout<GlyphGpuProp>.stride * glyphProps.count,  index: 2)
 
         renderEncoder.setFragmentTexture(atlasTexture, index: 0)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)

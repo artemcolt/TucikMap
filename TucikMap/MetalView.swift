@@ -20,8 +20,8 @@ struct MetalView: UIViewRepresentable {
         mtkView.enableSetNeedsDisplay = true
         mtkView.preferredFramesPerSecond = Settings.preferredFramesPerSecond
         
-        let camera = context.coordinator.camera!
-        let delegate = context.coordinator.controlsDelegate
+        let camera = context.coordinator.flatMode.camera!
+        let delegate = context.coordinator.flatMode.controlsDelegate
         
         // Add gesture recognizers
         let singleFingerPan = UIPanGestureRecognizer(target: camera, action: #selector(camera.handlePan(_:)))

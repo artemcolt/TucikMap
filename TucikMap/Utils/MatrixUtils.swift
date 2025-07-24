@@ -107,4 +107,22 @@ struct MatrixUtils {
             SIMD4<Float>(-dot(s, eye), -dot(u, eye), dot(f, eye), 1)
         )
     }
+    
+    static func matrix_scale(_ sx: Float, _ sy: Float, _ sz: Float) -> matrix_float4x4 {
+        return matrix_float4x4(
+            [sx, 0, 0, 0],
+            [0, sy, 0, 0],
+            [0, 0, sz, 0],
+            [0, 0, 0, 1]
+        )
+    }
+
+    static func matrix_translate(_ tx: Float, _ ty: Float, _ tz: Float) -> matrix_float4x4 {
+        return matrix_float4x4(
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [tx, ty, tz, 1]
+        )
+    }
 }

@@ -14,7 +14,6 @@ class UpdateBufferedUniform {
     private(set) var uniformBuffers: [MTLBuffer] = []
     
     private var currentBufferIndex = -1
-    private(set) var semaphore: DispatchSemaphore!
     private(set) var lastUniforms: Uniforms?
     private(set) var lastViewportSize: SIMD2<Float>!
     
@@ -26,8 +25,6 @@ class UpdateBufferedUniform {
     private let halfPi = Float.pi / 2
     
     init(device: MTLDevice, mapZoomState: MapZoomState, camera: Camera, frameCounter: FrameCounter) {
-        // Initialize semaphore for triple buffering
-        self.semaphore = DispatchSemaphore(value: Settings.maxBuffersInFlight)
         self.device = device
         self.mapZoomState = mapZoomState
         self.camera = camera

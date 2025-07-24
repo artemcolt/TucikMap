@@ -18,9 +18,11 @@ class AssembledMapUpdater {
     private var textTools: TextTools!
     private var camera: Camera!
     private var savedView: MTKView!
-    private var metalTiles: MetalTilesStorage!
+    private var metalTilesStorage: MetalTilesStorage!
     private var drawingFrameRequester: DrawingFrameRequester!
     private var frameCounter: FrameCounter!
+    private var screenCollisionsDetector: ScreenCollisionsDetector!
+    private var mapCadDisplayLoop: MapCADisplayLoop
     
     var assembledMap: AssembledMap = AssembledMap(
         tiles: [],
@@ -36,21 +38,22 @@ class AssembledMapUpdater {
         textTools: TextTools,
         drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
+        metalTilesStorage: MetalTilesStorage,
+        screenCollisionsDetector: ScreenCollisionsDetector,
+        mapCadDisplayLoop: MapCADisplayLoop
     ) {
-        self.mapZoomState = mapZoomState
-        self.textTools = textTools
-        self.camera = camera
-        self.drawingFrameRequester = drawingFrameRequester
-        self.frameCounter = frameCounter
-        determineFeatureStyle = DetermineFeatureStyle()
-        determineVisibleTiles = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
-        tileTitleAssembler = TileTitlesAssembler(textAssembler: textTools.textAssembler)
-        metalTiles = MetalTilesStorage(
-            determineStyle: determineFeatureStyle,
-            metalDevice: device,
-            textTools: textTools,
-            onMetalingTileEnd: onMetalingTileEnd
-        )
+        self.mapZoomState               = mapZoomState
+        self.textTools                  = textTools
+        self.camera                     = camera
+        self.drawingFrameRequester      = drawingFrameRequester
+        self.frameCounter               = frameCounter
+        self.metalTilesStorage          = metalTilesStorage
+        self.screenCollisionsDetector   = screenCollisionsDetector
+        self.mapCadDisplayLoop          = mapCadDisplayLoop
+        determineVisibleTiles           = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
+        tileTitleAssembler              = TileTitlesAssembler(textAssembler: textTools.textAssembler)
+        
+        metalTilesStorage.addHandler(handler: onMetalingTileEnd)
     }
     
     private func onMetalingTileEnd(tile: Tile) {
@@ -62,7 +65,6 @@ class AssembledMapUpdater {
         visibleTilesResult = determineVisibleTiles.determine()
         let visibleTiles = visibleTilesResult.visibleTiles
         guard visibleTiles.isEmpty == false else { return }
-        metalTiles.setupTilesFilter(filterTiles: visibleTiles)
         
         var replacements = Set<MetalTile>()
         var actual = Set<MetalTile>()
@@ -71,7 +73,7 @@ class AssembledMapUpdater {
             let tile = visibleTiles[i]
             
             // current visible tile is ready
-            if let metalTile = metalTiles.getMetalTile(tile: tile) {
+            if let metalTile = metalTilesStorage.getMetalTile(tile: tile) {
                 actual.insert(metalTile)
                 continue
             }
@@ -86,7 +88,7 @@ class AssembledMapUpdater {
             // don't try to fetch unavailbale tiles
             if useOnlyCached { continue }
             
-            metalTiles.requestMetalTile(tile: tile)
+            metalTilesStorage.requestMetalTile(tile: tile)
         }
         let replsArray = replacements.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
@@ -95,11 +97,10 @@ class AssembledMapUpdater {
         self.assembledMap.tiles = fullMetalTilesArray
         
         
-        // tile geo labels
-        let allReady = actual.count == Settings.visibleTilesCount
+        let allReady = actual.count == visibleTiles.count
         if allReady {
-            camera.screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
-            camera.mapCadDisplayLoop.forceUpdateStates()
+            screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
+            mapCadDisplayLoop.forceUpdateStates()
         }
         
         if (Settings.debugAssemblingMap) {
