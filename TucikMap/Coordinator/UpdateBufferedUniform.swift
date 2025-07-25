@@ -21,13 +21,13 @@ class UpdateBufferedUniform {
     private let maxBuffersInFlight = Settings.maxBuffersInFlight
     private let device: MTLDevice
     private let mapZoomState: MapZoomState
-    private let camera: Camera
+    private let cameraStorage: CameraStorage
     private let halfPi = Float.pi / 2
     
-    init(device: MTLDevice, mapZoomState: MapZoomState, camera: Camera, frameCounter: FrameCounter) {
+    init(device: MTLDevice, mapZoomState: MapZoomState, cameraStorage: CameraStorage, frameCounter: FrameCounter) {
         self.device = device
         self.mapZoomState = mapZoomState
-        self.camera = camera
+        self.cameraStorage = cameraStorage
         self.frameCounter = frameCounter
         createUniformBuffers()
     }
@@ -41,45 +41,36 @@ class UpdateBufferedUniform {
     }
     
     func updateUniforms(viewportSize: CGSize) {
-        currentBufferIndex = (currentBufferIndex + 1) % maxBuffersInFlight
-        let aspect = Float(viewportSize.width / viewportSize.height)
+        let camera              = cameraStorage.currentView
+        currentBufferIndex      = (currentBufferIndex + 1) % maxBuffersInFlight
+        let aspect              = Float(viewportSize.width / viewportSize.height)
 
-        let pitchAngle: Float = camera.cameraPitch
-        let pitchNormalized = pitchAngle / halfPi
-        let nearFactor = sqrt(pitchNormalized)
-        let farFactor = pitchAngle * Settings.farPlaneIncreaseFactor
-
-        let delta: Float = 1.0
-        let near: Float = camera.cameraDistance - delta - nearFactor * camera.cameraDistance
-        var far: Float = camera.cameraDistance + delta + farFactor  * camera.cameraDistance
-        far += 5
+        let nearAndFar          = camera.nearAndFar()
+        let near                = nearAndFar.x
+        let far                 = nearAndFar.y
         //print("near: \(near), far: \(far), camDist: \(camera.cameraDistance)")
         
         // Create perspective projection matrix
-        let projectionMatrix = MatrixUtils.perspectiveMatrix(
-            fovRadians: Float.pi / 3.0,
-            aspect: aspect,
-            near: max(0.05, near),
-            far: far
-        )
+        let projectionMatrix    = MatrixUtils.perspectiveMatrix(fovRadians: Float.pi / 3.0,
+                                                                aspect: aspect,
+                                                                near: max(0.05, near),
+                                                                far: far)
         
         // Create view matrix using look-at
-        let up = camera.cameraQuaternion.act(SIMD3<Float>(0, 1, 0)) // Rotate up vector
-        let viewMatrix = MatrixUtils.lookAt(
-            eye: camera.cameraPosition,
-            center: camera.targetPosition,
-            up: up
-        )
+        let postion             = camera.cameraPosition
+        let target              = camera.targetPosition
+        let up                  = camera.cameraQuaternion.act(SIMD3<Float>(0, 1, 0)) // Rotate up vector
+        let viewMatrix          = MatrixUtils.lookAt(eye: postion,
+                                                     center: target,
+                                                     up: up)
         
-        lastViewportSize = SIMD2<Float>(Float(viewportSize.width), Float(viewportSize.height))
+        lastViewportSize        = SIMD2<Float>(Float(viewportSize.width), Float(viewportSize.height))
         
         // Update uniforms
-        lastUniforms = Uniforms(
-            projectionMatrix: projectionMatrix,
-            viewMatrix: viewMatrix,
-            viewportSize: SIMD2<Float>(Float(viewportSize.width), Float(viewportSize.height)),
-            elapsedTimeSeconds: frameCounter.getElapsedTimeSeconds()
-        )
+        lastUniforms            = Uniforms(projectionMatrix: projectionMatrix,
+                                           viewMatrix: viewMatrix,
+                                           viewportSize: SIMD2<Float>(Float(viewportSize.width), Float(viewportSize.height)),
+                                           elapsedTimeSeconds: frameCounter.getElapsedTimeSeconds())
         
         let buffer = uniformBuffers[currentBufferIndex]
         memcpy(buffer.contents(), &lastUniforms, MemoryLayout<Uniforms>.size)

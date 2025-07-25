@@ -12,38 +12,59 @@ class GlobeGeometry {
     func createPlane(segments: Int) -> [GlobePipeline.Vertex] {
         var vertices: [GlobePipeline.Vertex] = []
         
-        // Ensure segments is at least 1
+        let size = Float(0.5)
+        let startFrom = -size / 2
+        
+        // Ensure segments is at least 1 to avoid invalid grid
         let segments = max(1, segments)
         
-        // Calculate step size for a square from -1 to 1
-        let step = 2.0 / Float(segments)
+        // Calculate step size for positions and texture coordinates
+        let step = 1.0 / Float(segments)
         
-        // Generate vertices for a grid of triangles
-        for i in 0..<segments {
-            for j in 0..<segments {
-                // Calculate base coordinates for the quad
-                let x0 = -1.0 + Float(j) * step
-                let x1 = x0 + step
-                let y0 = -1.0 + Float(i) * step
-                let y1 = y0 + step
+        // Generate vertices for the grid
+        for i in 0...segments { // строки
+            for j in 0...segments { // колонки
+                // Position: Map i, j to a plane centered at (0, 0) with size 2x2 (from -1 to 1)
+                let x = startFrom + size * Float(j) * step
+                let y = startFrom + size * Float(i) * step
                 
-                let tx0 = (x0 + 1.0) / 2.0
-                let tx1 = (x1 + 1.0) / 2.0
-                let ty0 = (1.0 - y0) / 2.0
-                let ty1 = (1.0 - y1) / 2.0
+                // Texture coordinates: Map i, j to [0, 1] range
+                let u = Float(j) * step
+                let v = Float(i) * step
                 
-                // First triangle (bottom-left)
-                vertices.append(GlobePipeline.Vertex(texCoord: SIMD2<Float>(tx0, ty0)))
-                vertices.append(GlobePipeline.Vertex(texCoord: SIMD2<Float>(tx1, ty0)))
-                vertices.append(GlobePipeline.Vertex(texCoord: SIMD2<Float>(tx0, ty1)))
-                
-                // Second triangle (top-right)
-                vertices.append(GlobePipeline.Vertex(texCoord: SIMD2<Float>(tx1, ty0)))
-                vertices.append(GlobePipeline.Vertex(texCoord: SIMD2<Float>(tx1, ty1)))
-                vertices.append(GlobePipeline.Vertex(texCoord: SIMD2<Float>(tx0, ty1)))
+                // Create vertex (assuming GlobePipeline.Vertex has position and texCoord)
+                let vertex = GlobePipeline.Vertex(
+                    position: SIMD2<Float>(x, y),
+                    planeCoord: SIMD2<Float>(u, v)
+                )
+                vertices.append(vertex)
             }
         }
         
-        return vertices
+        // Generate indices for triangles
+        var triangleVertices: [GlobePipeline.Vertex] = []
+        let width = segments + 1 // Number of vertices per row
+        
+        for i in 0..<segments {
+            for j in 0..<segments {
+                // Indices for the two triangles forming a quad
+                let v0 = i * width + j
+                let v1 = v0 + 1
+                let v2 = (i + 1) * width + j
+                let v3 = v2 + 1
+                
+                // First triangle: v0, v2, v1
+                triangleVertices.append(vertices[v0])
+                triangleVertices.append(vertices[v2])
+                triangleVertices.append(vertices[v1])
+                
+                // Second triangle: v1, v2, v3
+                triangleVertices.append(vertices[v1])
+                triangleVertices.append(vertices[v2])
+                triangleVertices.append(vertices[v3])
+            }
+        }
+        
+        return triangleVertices
     }
 }

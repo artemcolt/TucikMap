@@ -14,15 +14,14 @@ class DrawAssembledMap {
         let maxInstances: Int
     }
     
-    let mapSize = Settings.mapSize
     let metalDevice: MTLDevice
-    let camera: Camera
+    let camera: CameraFlatView
     let mapZoomState: MapZoomState
     let sampler: MTLSamplerState
     var screenUniforms: ScreenUniforms
     let drawTile = DrawTile()
     
-    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: Camera, mapZoomState: MapZoomState) {
+    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: CameraFlatView, mapZoomState: MapZoomState) {
         self.metalDevice = metalDevice
         self.mapZoomState = mapZoomState
         self.camera = camera

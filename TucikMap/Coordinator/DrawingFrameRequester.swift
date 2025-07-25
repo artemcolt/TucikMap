@@ -19,6 +19,10 @@ class DrawingFrameRequester {
         renderToTime = Date().timeIntervalSince1970 + n
     }
     
+    func renderNextStep() {
+        renderNextNFrames(Settings.maxBuffersInFlight)
+    }
+    
     func isRedrawNeeded() -> Bool {
         if renderNextFramesCount > 0 || Date().timeIntervalSince1970 <= renderToTime {
             renderNextFramesCount -= 1

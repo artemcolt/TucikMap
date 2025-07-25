@@ -9,10 +9,8 @@ import SwiftUI
 import MetalKit
 
 class FlatMode {
-    let controlsDelegate                : ControlsDelegate!
     private var metalDevice             : MTLDevice!
     private var metalCommandQueue       : MTLCommandQueue!
-    private var renderFrameControl      : RenderFrameControl!
     private var updateBufferedUniform   : UpdateBufferedUniform!
     private var assembledMapUpdater     : AssembledMapUpdater!
     private var mapCadDisplayLoop       : MapCADisplayLoop
@@ -20,31 +18,21 @@ class FlatMode {
     var depthStencilStatePrePass        : MTLDepthStencilState!
     var depthStencilStateColorPass      : MTLDepthStencilState!
     
-    
     // Helpers
-    var drawTestCube: DrawTestCube!
-    var drawAxis: DrawAxis!
-    var drawGrid: DrawGrid!
-    var drawPoint: DrawPoint!
+    var drawPoint: DrawPoint
     
     // Tile
     var drawAssembledMap: DrawAssembledMap!
     
-    
     // Map
-    var mapZoomState: MapZoomState!
-    var camera: Camera!
+    var camera: CameraFlatView!
     var applyLabelsState: ApplyLabelsState!
-    var globeTexturing: GlobeTexturing!
-    var globeBuffer: MTLBuffer!
+    var mapZoomState: MapZoomState
     
     // UI
-    var drawUI: DrawUI!
-    var screenUniforms: ScreenUniforms!
     var screenCollisionsDetector: ScreenCollisionsDetector!
+    var pipelines: Pipelines
     
-    // Pipelines
-    var pipelines: Pipelines!
     
     init(metalDevice: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
@@ -52,11 +40,21 @@ class FlatMode {
          drawingFrameRequester: DrawingFrameRequester,
          textTools: TextTools,
          metalTilesStorage: MetalTilesStorage,
-         mapCadDisplayLoop: MapCADisplayLoop) {
+         mapCadDisplayLoop: MapCADisplayLoop,
+         screenUniforms: ScreenUniforms,
+         cameraStorage: CameraStorage,
+         pipelines: Pipelines,
+         mapZoomState: MapZoomState,
+         updateBufferedUniform: UpdateBufferedUniform,
+         mapModeStorage: MapModeStorage,
+         drawPoint: DrawPoint) {
+        self.drawPoint              = drawPoint
+        self.pipelines              = pipelines
         self.metalDevice            = metalDevice
         self.metalCommandQueue      = metalCommandQueue
-        self.controlsDelegate       = ControlsDelegate()
         self.mapCadDisplayLoop      = mapCadDisplayLoop
+        self.mapZoomState           = mapZoomState
+        self.updateBufferedUniform  = updateBufferedUniform
         
         let depthPrePassDescriptor  = MTLDepthStencilDescriptor()
         depthPrePassDescriptor.depthCompareFunction = .less
@@ -77,45 +75,20 @@ class FlatMode {
         depthColorPassDescriptor.frontFaceStencil = stencilDescriptor
         depthStencilStateColorPass = metalDevice.makeDepthStencilState(descriptor: depthColorPassDescriptor)!
         
-//        frameCounter = FrameCounter()
-        mapZoomState = MapZoomState()
-        pipelines = Pipelines(metalDevice: metalDevice)
-        drawTestCube = DrawTestCube(metalDevice: metalDevice)
-        drawAxis = DrawAxis(metalDevice: metalDevice, mapState: mapZoomState)
-        drawGrid = DrawGrid(metalDevice: metalDevice, mapZoomState: mapZoomState)
-        drawPoint = DrawPoint(metalDevice: metalDevice)
-        screenUniforms = ScreenUniforms(metalDevice: metalDevice)
-        screenCollisionsDetector = ScreenCollisionsDetector(
-            metalDevice: metalDevice,
-            library: pipelines.library,
-            metalCommandQueue: metalCommandQueue,
-            mapZoomState: mapZoomState,
-            drawingFrameRequester: drawingFrameRequester,
-            frameCounter: frameCounter
-        )
-        camera = Camera(
-            mapZoomState: mapZoomState,
-            device: metalDevice,
-            textTools: textTools,
-            drawingFrameRequester: drawingFrameRequester,
-            frameCounter: frameCounter,
-            library: pipelines.library,
-            screenCollisionsDetector: screenCollisionsDetector,
-            mapCadDisplayLoop: mapCadDisplayLoop
-        )
-        drawAssembledMap = DrawAssembledMap(
-            metalDevice: metalDevice,
-            screenUniforms: screenUniforms,
-            camera: camera,
-            mapZoomState: mapZoomState
-        )
-        drawUI = DrawUI(device: metalDevice, textTools: textTools, mapZoomState: mapZoomState, screenUniforms: screenUniforms)
-        globeTexturing = GlobeTexturing(metalDevide: metalDevice,
-                                        metalCommandQueue: metalCommandQueue,
-                                        pipelines: pipelines,
-                                        drawAssembledMap: drawAssembledMap)
-        renderFrameControl          = RenderFrameControl(mapCADisplayLoop: mapCadDisplayLoop, drawingFrameRequester: drawingFrameRequester)
-        updateBufferedUniform       = UpdateBufferedUniform(device: metalDevice, mapZoomState: mapZoomState, camera: camera, frameCounter: frameCounter)
+        screenCollisionsDetector    = ScreenCollisionsDetector(metalDevice: metalDevice,
+                                                               library: pipelines.library,
+                                                               metalCommandQueue: metalCommandQueue,
+                                                               mapZoomState: mapZoomState,
+                                                               drawingFrameRequester: drawingFrameRequester,
+                                                               frameCounter: frameCounter)
+        
+        camera                      = cameraStorage.createFlatView()
+        
+        drawAssembledMap            = DrawAssembledMap(metalDevice: metalDevice,
+                                                       screenUniforms: screenUniforms,
+                                                       camera: camera,
+                                                       mapZoomState: mapZoomState)
+        
         assembledMapUpdater         = AssembledMapUpdater(mapZoomState: mapZoomState,
                                                           device: metalDevice,
                                                           camera: camera,
@@ -124,20 +97,13 @@ class FlatMode {
                                                           frameCounter: frameCounter,
                                                           metalTilesStorage: metalTilesStorage,
                                                           screenCollisionsDetector: screenCollisionsDetector,
-                                                          mapCadDisplayLoop: mapCadDisplayLoop)
-        applyLabelsState = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector, assembledMap: assembledMapUpdater.assembledMap)
+                                                          mapCadDisplayLoop: mapCadDisplayLoop,
+                                                          mapModeStorage: mapModeStorage)
         
-        let vertices = GlobeGeometry().createPlane(segments: 10)
-        globeBuffer = metalDevice.makeBuffer(bytes: vertices, length: MemoryLayout<GlobePipeline.Vertex>.stride * vertices.count)!
+        applyLabelsState            = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector, assembledMap: assembledMapUpdater.assembledMap)
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        self.renderFrameControl.updateView(view: view)
-        
-        // Handle viewport size changes - update all uniform buffers
-        screenUniforms.update(size: size)
-        camera.updateMap(view: view, size: size)
-        
         if Settings.useGoToAtStart {
             let goToLocationAtStart = Settings.goToLocationAtStart
             let zoom = Settings.goToAtStartZ
@@ -148,15 +114,11 @@ class FlatMode {
         //camera.moveToPanningPoint(point: panningPoint, zoom: 14, view: view, size: size)
     }
     
-    var testReady = false
-    
     // Three-step rendering process
     func draw(in view: MTKView,
               renderPassDescriptor: MTLRenderPassDescriptor,
               commandBuffer: MTLCommandBuffer) {
         
-        let updateBufferedUniform = updateBufferedUniform!
-        updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         if camera.isMapStateUpdated() {
             assembledMapUpdater?.update(view: view, useOnlyCached: false)
         }
@@ -261,15 +223,6 @@ class FlatMode {
             tileFrameProps: tileFrameProps
         )
         
-        pipelines.basePipeline.selectPipeline(renderEncoder: basicRenderEncoder)
-        drawPoint.draw(
-            renderEncoder: basicRenderEncoder,
-            uniformsBuffer: uniformsBuffer,
-            pointSize: Settings.cameraCenterPointSize,
-            position: camera.targetPosition,
-            color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
-        )
-        
 //        let testPoints = screenCollisionsDetector.testPoints
 //        for point in testPoints {
 //            let color = SIMD4<Float>(0.0, 1.0, 0.0, 1.0)
@@ -289,26 +242,6 @@ class FlatMode {
                            basicRenderEncoder: basicRenderEncoder,
                            uniformsBuffer: uniformsBuffer)
         }
-        
-        pipelines.textPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
-        drawUI.drawZoomUiText(renderCommandEncoder: basicRenderEncoder, size: view.drawableSize)
-        
-        
-//        if testReady == false {
-//            if let tile = metalTilesStorage.getMetalTile(tile: Tile(x: 0, y: 0, z: 0)) {
-//                globeTexturing.render(currentFBIndex: 0, metalTiles: [tile])
-//                testReady = true
-//            }
-//        }
-//        
-//        pipelines.globePipeline.selectPipeline(renderEncoder: basicRenderEncoder)
-//        // Определяем вершины для квадрата (два треугольника, без индексов)
-//        let texture = globeTexturing.getTexture(frameBufferIndex: 0)
-//        basicRenderEncoder.setVertexBuffer(globeBuffer,     offset: 0, index: 0)
-//        basicRenderEncoder.setVertexBuffer(uniformsBuffer,  offset: 0, index: 1)
-//        basicRenderEncoder.setFragmentTexture(texture, index: 0)
-//        basicRenderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
-        
         
         basicRenderEncoder.endEncoding()
     }

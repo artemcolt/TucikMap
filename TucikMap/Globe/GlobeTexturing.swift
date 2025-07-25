@@ -11,12 +11,10 @@ class GlobeTexturing {
     private let metalDevide         : MTLDevice
     private let metalCommandQueue   : MTLCommandQueue
     private let pipelines           : Pipelines
-    private let drawAssembledMap    : DrawAssembledMap
     private let drawTile            : DrawTile = DrawTile()
     
     private let uniformsBuffer      : MTLBuffer
-    private let width               : Int = 1024
-    private let height              : Int = 1024
+    private let textureSize         : Int = 2048
     
     private var texturesBuffered    : [MTLTexture] = []
     
@@ -24,11 +22,10 @@ class GlobeTexturing {
         return texturesBuffered[frameBufferIndex]
     }
     
-    init(metalDevide: MTLDevice, metalCommandQueue: MTLCommandQueue, pipelines: Pipelines, drawAssembledMap: DrawAssembledMap) {
+    init(metalDevide: MTLDevice, metalCommandQueue: MTLCommandQueue, pipelines: Pipelines) {
         self.metalDevide        = metalDevide
         self.metalCommandQueue  = metalCommandQueue
         self.pipelines          = pipelines
-        self.drawAssembledMap   = drawAssembledMap
         
         let projectionMatrix    = MatrixUtils.orthographicMatrix(left: -1, right: 1, bottom: -1, top: 1, near: -1, far: 1)
         var uniforms            = Uniforms(projectionMatrix: projectionMatrix,
@@ -39,8 +36,8 @@ class GlobeTexturing {
         uniformsBuffer          = metalDevide.makeBuffer(bytes: &uniforms, length: MemoryLayout<Uniforms>.stride)!
         
         let textureDescriptor   = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm,
-                                                                         width: width,
-                                                                         height: height,
+                                                                         width: textureSize,
+                                                                         height: textureSize,
                                                                          mipmapped: false)
         textureDescriptor.usage = [.renderTarget, .shaderRead]
         

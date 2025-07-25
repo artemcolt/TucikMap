@@ -20,8 +20,8 @@ struct MetalView: UIViewRepresentable {
         mtkView.enableSetNeedsDisplay = true
         mtkView.preferredFramesPerSecond = Settings.preferredFramesPerSecond
         
-        let camera = context.coordinator.flatMode.camera!
-        let delegate = context.coordinator.flatMode.controlsDelegate
+        let camera = context.coordinator.cameraStorage
+        let delegate = context.coordinator.cameraStorage.controlsDelegate
         
         // Add gesture recognizers
         let singleFingerPan = UIPanGestureRecognizer(target: camera, action: #selector(camera.handlePan(_:)))
@@ -45,6 +45,10 @@ struct MetalView: UIViewRepresentable {
         pinchGesture.delegate = delegate
         mtkView.addGestureRecognizer(pinchGesture)
         
+        let doubleTapGesture = UITapGestureRecognizer(target: camera, action: #selector(camera.handleDoubleTap(_:)))
+        doubleTapGesture.numberOfTapsRequired = 2 // Устанавливаем количество касаний для двойного клика
+        doubleTapGesture.delegate = delegate
+        mtkView.addGestureRecognizer(doubleTapGesture)
         
         return mtkView
     }

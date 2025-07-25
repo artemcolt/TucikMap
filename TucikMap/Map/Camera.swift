@@ -2,111 +2,59 @@
 //  Camera.swift
 //  TucikMap
 //
-//  Created by Artem on 5/30/25.
+//  Created by Artem on 7/24/25.
 //
 
-import SwiftUI
 import MetalKit
 
 class Camera {
-    private let screenCollisionsDetector: ScreenCollisionsDetector
-    private var mapZoomState: MapZoomState!
-    private var drawingFrameRequester: DrawingFrameRequester!
-    private var mapCadDisplayLoop: MapCADisplayLoop!
-    
-    
-    // Camera properties
-    let targetPosition                      : SIMD3<Float> = SIMD3<Float>(0, 0, 0) // Точка, вокруг которой вращается камера
-    private(set) var cameraPosition         : SIMD3<Float> = SIMD3<Float>(0, 0, 0)
-    private(set) var mapPanning             : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
-    private(set) var cameraDistance         : Float = Settings.nullZoomCameraDistance // Расстояние от камеры до цели
-    private(set) var mapZoom                : Float = 0
-    private(set) var cameraQuaternion       : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1) // Кватернион ориентации камеры
-    private(set) var cameraYawQuaternion    : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
-    private(set) var forward                : SIMD3<Float> = SIMD3<Float>(0, 0, 1)
-    
-    private(set) var cameraPitch            : Float = 0
-    private(set) var centerTileX            : Float = 0
-    private(set) var centerTileY            : Float = 0
-    private(set) var rotationYaw            : Float = 0
-    
-    private var previousCenterTileX         : Int = -1
-    private var previousCenterTileY         : Int = -1
-    private var previousBorderedZoomLevel   : Int = -1
-    private var mapStateUpdatedOnCenter     : SIMD2<Int> = SIMD2(-1, -1)
-    
-    private var pinchDeltaDistance          : Float = 0
-    private var twoFingerDeltaPitch         : Float = 0
-    private var panDeltaX                   : Float = 0
-    private var panDeltaY                   : Float = 0
-    private var rotationDeltaYaw            : Float = 0
-    
-    private var lastTime                    : TimeInterval = 0
-    
-    
-    init(
-        mapZoomState: MapZoomState,
-        device: MTLDevice,
-        textTools: TextTools,
-        drawingFrameRequester: DrawingFrameRequester,
-        frameCounter: FrameCounter,
-        library: MTLLibrary,
-        screenCollisionsDetector: ScreenCollisionsDetector,
-        mapCadDisplayLoop: MapCADisplayLoop
-    ) {
-        self.screenCollisionsDetector   = screenCollisionsDetector
-        self.drawingFrameRequester      = drawingFrameRequester
-        self.mapZoomState               = mapZoomState
-        self.mapCadDisplayLoop          = mapCadDisplayLoop
+    var cameraContext       : CameraContext
+    var mapModeStorage      : MapModeStorage
+    var mapPanning          : SIMD3<Double> {
+        get { return cameraContext.mapPanning }
+        set { cameraContext.mapPanning = newValue }
     }
     
-    func getCenterLatLon() -> (lat: Double, lon: Double) {
-        let mapSize = Double(Settings.mapSize)
+    var mapZoom                     : Float = 0
+    var cameraYawQuaternion         : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
+    var forward                     : SIMD3<Float> = SIMD3<Float>(0, 0, 1)
+    
+    var cameraDistance              : Float = 0
+    var cameraPitch                 : Float = 0
+    var cameraPosition              : SIMD3<Float> = SIMD3<Float>()
+    var targetPosition              : SIMD3<Float> = SIMD3<Float>()
+    var cameraQuaternion            : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
+    var rotationYaw                 : Float = 0
+    
+    var pinchDeltaDistance          : Float = 0
+    var twoFingerDeltaPitch         : Float = 0
+    var panDeltaX                   : Float = 0
+    var panDeltaY                   : Float = 0
+    var rotationDeltaYaw            : Float = 0
+    
+    let mapZoomState                : MapZoomState
+    let drawingFrameRequester       : DrawingFrameRequester
+    let mapCadDisplayLoop           : MapCADisplayLoop
+
+    init(mapZoomState: MapZoomState,
+         drawingFrameRequester: DrawingFrameRequester,
+         mapCadDisplayLoop: MapCADisplayLoop,
+         cameraContext: CameraContext,
+         mapModeStorage: MapModeStorage) {
         
-        // Step 1: Reverse the map offset to get Mercator coordinates x and y
-        let x = mapSize / 2 - mapPanning.x
-        let y = mapSize / 2 - mapPanning.y
-        
-        // Step 2: Convert Mercator x to longitude
-        let lon = (x / mapSize * 360.0) - 180.0
-        
-        // Step 3: Convert Mercator y to latitude
-        let latRad = 2.0 * (atan(exp(.pi * (1.0 - 2.0 * y / mapSize))) - .pi / 4)
-        let lat = -latRad * 180.0 / .pi
-        
-        return (lat: lat, lon: lon)
+        self.mapModeStorage = mapModeStorage
+        self.mapZoomState = mapZoomState
+        self.drawingFrameRequester = drawingFrameRequester
+        self.mapCadDisplayLoop = mapCadDisplayLoop
+        self.cameraContext = cameraContext
     }
     
-    func moveTo(lat: Double, lon: Double, zoom: Float, view: MTKView, size: CGSize) {
-        self.mapZoom = zoom
-        
-        let lat = -lat
-        let mapSize = Double(Settings.mapSize)
-        
-        // Шаг 1: Преобразование lat, lon в координаты Меркатора
-        let _ = lon * .pi / 180
-        let latRad = lat * .pi / 180
-        
-        let x = (lon + 180) / 360 * mapSize
-        let y = (1 - log(tan(.pi / 4 + latRad / 2)) / .pi) / 2 * mapSize
-        
-        // Шаг 3: Расчет смещения карты
-        let newX = mapSize / 2 - x
-        let newY = mapSize / 2 - y
-        mapPanning = SIMD3<Double>(newX, newY, 0)
-        
-        // Шаг 4: Обновление карты
-        updateMap(view: view, size: size)
-    }
-    
-    func moveToPanningPoint(point: MapPanningTilePoint, zoom: Float, view: MTKView, size: CGSize) {
-        self.mapZoom = zoom
-        mapPanning = SIMD3<Double>(point.x, point.y, 0)
-        updateMap(view: view, size: size)
+    func nearAndFar() -> SIMD2<Float> {
+        return SIMD2<Float>(0, 0)
     }
     
     // Handle single-finger pan gesture for target translation
-    @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
+    func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
         
         let translation = gesture.translation(in: view)
@@ -120,7 +68,7 @@ class Camera {
     }
     
     // Handle two-finger rotation gesture for yaw
-    @objc func handleRotation(_ gesture: UIRotationGestureRecognizer) {
+    func handleRotation(_ gesture: UIRotationGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
         
         let rotation = Float(gesture.rotation)
@@ -132,7 +80,7 @@ class Camera {
     }
     
     // Handle two-finger pan gesture for pitch and zoom
-    @objc func handleTwoFingerPan(_ gesture: UIPanGestureRecognizer) {
+    func handleTwoFingerPan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
         
         let translation = gesture.translation(in: view)
@@ -144,7 +92,7 @@ class Camera {
     }
     
     // Handle pinch gesture for camera distance (zoom)
-    @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+    func handlePinch(_ gesture: UIPinchGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
         
         let scale = Float(gesture.scale)
@@ -155,7 +103,14 @@ class Camera {
         applyMovementToCamera(view: view)
     }
     
-    @objc func applyMovementToCamera(view: MTKView) {
+    func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
+        guard let view = gesture.view as? MTKView else { return }
+        mapModeStorage.switchState()
+    }
+    
+    func updateMap(view: MTKView, size: CGSize) { }
+    
+    private func applyMovementToCamera(view: MTKView) {
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
         mapZoom -= pinchDeltaDistance
@@ -186,73 +141,8 @@ class Camera {
         mapPanning.y = newMapPanning.y
         mapPanning.x = newMapPanning.x
         
+        print(mapPanning)
+            
         updateMap(view: view, size: view.drawableSize)
-    }
-    
-    func updateMap(view: MTKView, size: CGSize) {
-        mapZoom = max(0, min(mapZoom, Settings.zoomLevelMax))
-        cameraDistance = Settings.nullZoomCameraDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
-        
-        // Вернуть в допустимую зону камеру
-        let zoomFactor = Double(pow(2.0, floor(mapZoom)))
-        let visibleHeight = 2.0 * Double(cameraDistance) * Double(tan(Settings.fov / 2.0)) / zoomFactor
-        let targetPositionYMin = Double(-Settings.mapSize) / 2.0 + visibleHeight / 2.0
-        let targetPositionYMax = Double(Settings.mapSize) / 2.0  - visibleHeight / 2.0
-        if (mapPanning.y < targetPositionYMin) {
-            mapPanning.y = targetPositionYMin
-        } else if (mapPanning.y > targetPositionYMax) {
-            mapPanning.y = targetPositionYMax
-        }
-        
-        mapZoomState.update(zoomLevelFloat: mapZoom)
-        
-        // Compute camera position based on distance and orientation
-        forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
-        cameraPosition = targetPosition + forward * cameraDistance
-        
-        let _ = updateCameraCenterTile()
-        
-        drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
-        
-        if Settings.printCenterLatLon {
-            print(getCenterLatLon())
-        }
-        
-        // Так как камера перемещается нужно пересчитать метки на экране
-        mapCadDisplayLoop.forceUpdateStates()
-    }
-    
-    func isMapStateUpdated() -> Bool {
-        if mapStateUpdatedOnCenter != SIMD2<Int>(Int(centerTileX), Int(centerTileY)) {
-            mapStateUpdatedOnCenter = SIMD2<Int>(Int(centerTileX), Int(centerTileY))
-            return true
-        }
-        return false
-    }
-    
-    private func updateCameraCenterTile() -> Bool {
-        let tileSize = mapZoomState.tileSize
-        let borderedZoomLevel = mapZoomState.zoomLevel
-        let worldTilesHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
-        
-        // Определяем центр карты в координатах тайлов
-        centerTileX = (-Float(mapPanning.x) + worldTilesHalf) / tileSize
-        centerTileY = (Float(mapPanning.y) + worldTilesHalf) / tileSize
-        
-        //print("centerTileX \(centerTileX) centerTileY \(centerTileY)")
-        
-        let changed = Int(centerTileX) != previousCenterTileX || Int(centerTileY) != previousCenterTileY
-                                                              || borderedZoomLevel != previousBorderedZoomLevel
-        previousCenterTileX = Int(centerTileX)
-        previousCenterTileY = Int(centerTileY)
-        previousBorderedZoomLevel = borderedZoomLevel
-        return changed
-    }
-    
-    private func getDeltaTime() -> Float {
-        let currentTime = CACurrentMediaTime()
-        let deltaTime = lastTime == 0 ? 1.0 / 60.0 : min(currentTime - lastTime, 0.1) // Ограничение скачков
-        lastTime = currentTime
-        return Float(deltaTime)
     }
 }

@@ -10,17 +10,16 @@ import MetalKit
 class DrawUI {
     private let screenUniforms: ScreenUniforms
     private let textTools: TextTools
-    private let mapZoomState: MapZoomState
     
-    init(device: MTLDevice, textTools: TextTools, mapZoomState: MapZoomState, screenUniforms: ScreenUniforms) {
+    init(device: MTLDevice, textTools: TextTools, screenUniforms: ScreenUniforms) {
         self.screenUniforms = screenUniforms
         self.textTools = textTools
-        self.mapZoomState = mapZoomState
     }
     
     func drawZoomUiText(
         renderCommandEncoder: MTLRenderCommandEncoder,
-        size: CGSize
+        size: CGSize,
+        mapZoomState: MapZoomState
     ) {
         let zoomLevelFloat = mapZoomState.zoomLevelFloat
         let formattedString = String(format: "z:%.3f", zoomLevelFloat)

@@ -13,16 +13,15 @@ class AssembledMapUpdater {
     private var mapZoomState: MapZoomState!
     private var determineVisibleTiles: DetermineVisibleTiles!
     private var determineFeatureStyle: DetermineFeatureStyle!
-    private var tileTitleAssembler: TileTitlesAssembler!
     private var visibleTilesResult: DetVisTilesResult!
     private var textTools: TextTools!
-    private var camera: Camera!
     private var savedView: MTKView!
     private var metalTilesStorage: MetalTilesStorage!
     private var drawingFrameRequester: DrawingFrameRequester!
     private var frameCounter: FrameCounter!
     private var screenCollisionsDetector: ScreenCollisionsDetector!
     private var mapCadDisplayLoop: MapCADisplayLoop
+    private var mapModeStorage: MapModeStorage
     
     var assembledMap: AssembledMap = AssembledMap(
         tiles: [],
@@ -34,30 +33,32 @@ class AssembledMapUpdater {
     init(
         mapZoomState: MapZoomState,
         device: MTLDevice,
-        camera: Camera,
+        camera: CameraFlatView,
         textTools: TextTools,
         drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
         metalTilesStorage: MetalTilesStorage,
         screenCollisionsDetector: ScreenCollisionsDetector,
-        mapCadDisplayLoop: MapCADisplayLoop
+        mapCadDisplayLoop: MapCADisplayLoop,
+        mapModeStorage: MapModeStorage
     ) {
         self.mapZoomState               = mapZoomState
         self.textTools                  = textTools
-        self.camera                     = camera
         self.drawingFrameRequester      = drawingFrameRequester
         self.frameCounter               = frameCounter
         self.metalTilesStorage          = metalTilesStorage
         self.screenCollisionsDetector   = screenCollisionsDetector
         self.mapCadDisplayLoop          = mapCadDisplayLoop
+        self.mapModeStorage             = mapModeStorage
         determineVisibleTiles           = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
-        tileTitleAssembler              = TileTitlesAssembler(textAssembler: textTools.textAssembler)
         
         metalTilesStorage.addHandler(handler: onMetalingTileEnd)
     }
     
     private func onMetalingTileEnd(tile: Tile) {
-        self.update(view: savedView, useOnlyCached: true)
+        if mapModeStorage.mapMode == .flat {
+            self.update(view: savedView, useOnlyCached: true)
+        }
     }
     
     func update(view: MTKView, useOnlyCached: Bool) {

@@ -15,7 +15,6 @@ import MetalKit
 class TileMvtParser {
     let giveMeId: GiveMeId = GiveMeId()
     let determineFeatureStyle: DetermineFeatureStyle
-    let mapSize = Settings.mapSize
     
     // Parse
     let parsePolygon: ParsePolygon = ParsePolygon()

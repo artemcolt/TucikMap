@@ -12,11 +12,10 @@ class DetermineVisibleTiles {
     // Настройки количества видимых тайлов по горизонтали и вертикали
     let visibleTilesX: Int = Settings.visibleTilesX
     let visibleTilesY: Int = Settings.visibleTilesY
-    let mapSize = Settings.mapSize
     private let mapZoomState: MapZoomState
-    private let camera: Camera
+    private let camera: CameraFlatView
     
-    init(mapZoomState: MapZoomState, camera: Camera) {
+    init(mapZoomState: MapZoomState, camera: CameraFlatView) {
         self.mapZoomState = mapZoomState
         self.camera = camera
     }
