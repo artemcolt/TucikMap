@@ -12,11 +12,24 @@ class GlobeTexturing {
     private let metalCommandQueue   : MTLCommandQueue
     private let pipelines           : Pipelines
     private let drawTile            : DrawTile = DrawTile()
-    
+    private var metalTiles          : [MetalTile] = []
+    private var updateFrameCounter  : Int = 0
     private let uniformsBuffer      : MTLBuffer
     private let textureSize         : Int = 2048
-    
     private var texturesBuffered    : [MTLTexture] = []
+    
+    func updateTexture(currentFBIndex: Int, commandBuffer: MTLCommandBuffer) {
+        if updateFrameCounter > 0 {
+            render(currentFBIndex: currentFBIndex, metalTiles: metalTiles, commandBuffer: commandBuffer)
+            updateFrameCounter -= 1
+        }
+    }
+    
+    func setTiles(tiles: [MetalTile]) {
+        if tiles.isEmpty { return }
+        metalTiles = tiles
+        updateFrameCounter = Settings.maxBuffersInFlight
+    }
     
     func getTexture(frameBufferIndex: Int) -> MTLTexture {
         return texturesBuffered[frameBufferIndex]
@@ -48,8 +61,9 @@ class GlobeTexturing {
         }
     }
     
-    func render(currentFBIndex: Int, metalTiles: [MetalTile]) {
-        guard let commandBuffer     = metalCommandQueue.makeCommandBuffer() else { return }
+    func render(currentFBIndex: Int,
+                metalTiles: [MetalTile],
+                commandBuffer: MTLCommandBuffer) {
         let texture                 = texturesBuffered[currentFBIndex]
         let renderPassDescriptor    = MTLRenderPassDescriptor()
         
@@ -85,6 +99,5 @@ class GlobeTexturing {
         }
         
         commandEncoder.endEncoding()
-        commandBuffer.commit()
     }
 }

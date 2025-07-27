@@ -13,9 +13,9 @@ class DetermineVisibleTiles {
     let visibleTilesX: Int = Settings.visibleTilesX
     let visibleTilesY: Int = Settings.visibleTilesY
     private let mapZoomState: MapZoomState
-    private let camera: CameraFlatView
+    private let camera: Camera
     
-    init(mapZoomState: MapZoomState, camera: CameraFlatView) {
+    init(mapZoomState: MapZoomState, camera: Camera) {
         self.mapZoomState = mapZoomState
         self.camera = camera
     }
@@ -69,6 +69,10 @@ class DetermineVisibleTiles {
                     }
                 }
             }
+        }
+        
+        if Settings.printVisibleTiles {
+            print(visibleTiles)
         }
         
         return DetVisTilesResult(visibleTiles: visibleTiles)

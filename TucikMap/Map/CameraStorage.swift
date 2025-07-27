@@ -51,26 +51,18 @@ class CameraStorage {
         self.drawingFrameRequester  = drawingFrameRequester
         self.mapCadDisplayLoop      = mapCadDisplayLoop
         self.cameraContext          = CameraContext()
-    }
-    
-    func createFlatView() -> CameraFlatView {
+        
         _flatView = CameraFlatView(mapZoomState: mapZoomState,
                                    drawingFrameRequester: drawingFrameRequester,
                                    mapCadDisplayLoop: mapCadDisplayLoop,
                                    cameraContext: cameraContext,
                                    mapModeStorage: mapModeStorage)
         
-        return _flatView!
-    }
-    
-    func createGlobeView() -> CameraGlobeView {
         _globeView = CameraGlobeView(mapZoomState: mapZoomState,
                                      drawingFrameRequester: drawingFrameRequester,
                                      mapCadDisplayLoop: mapCadDisplayLoop,
                                      cameraContext: cameraContext,
                                      mapModeStorage: mapModeStorage)
-        
-        return _globeView!
     }
     
     // Handle single-finger pan gesture for target translation

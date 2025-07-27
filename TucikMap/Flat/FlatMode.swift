@@ -9,11 +9,12 @@ import SwiftUI
 import MetalKit
 
 class FlatMode {
-    private var metalDevice             : MTLDevice!
-    private var metalCommandQueue       : MTLCommandQueue!
-    private var updateBufferedUniform   : UpdateBufferedUniform!
-    private var assembledMapUpdater     : AssembledMapUpdater!
-    private var mapCadDisplayLoop       : MapCADisplayLoop
+    private var metalDevice                 : MTLDevice!
+    private var metalCommandQueue           : MTLCommandQueue!
+    private var updateBufferedUniform       : UpdateBufferedUniform!
+    private var mapUpdaterFlat              : MapUpdaterFlat
+    private var mapCadDisplayLoop           : MapCADisplayLoop
+    private var screenCollisionsDetector    : ScreenCollisionsDetector
     
     var depthStencilStatePrePass        : MTLDepthStencilState!
     var depthStencilStateColorPass      : MTLDepthStencilState!
@@ -30,7 +31,6 @@ class FlatMode {
     var mapZoomState: MapZoomState
     
     // UI
-    var screenCollisionsDetector: ScreenCollisionsDetector!
     var pipelines: Pipelines
     
     
@@ -47,14 +47,19 @@ class FlatMode {
          mapZoomState: MapZoomState,
          updateBufferedUniform: UpdateBufferedUniform,
          mapModeStorage: MapModeStorage,
-         drawPoint: DrawPoint) {
-        self.drawPoint              = drawPoint
-        self.pipelines              = pipelines
-        self.metalDevice            = metalDevice
-        self.metalCommandQueue      = metalCommandQueue
-        self.mapCadDisplayLoop      = mapCadDisplayLoop
-        self.mapZoomState           = mapZoomState
-        self.updateBufferedUniform  = updateBufferedUniform
+         drawPoint: DrawPoint,
+         screenCollisionsDetector: ScreenCollisionsDetector,
+         mapUpdaterFlat: MapUpdaterFlat) {
+        
+        self.drawPoint                  = drawPoint
+        self.pipelines                  = pipelines
+        self.metalDevice                = metalDevice
+        self.metalCommandQueue          = metalCommandQueue
+        self.mapCadDisplayLoop          = mapCadDisplayLoop
+        self.mapZoomState               = mapZoomState
+        self.updateBufferedUniform      = updateBufferedUniform
+        self.mapUpdaterFlat             = mapUpdaterFlat
+        self.screenCollisionsDetector   = screenCollisionsDetector
         
         let depthPrePassDescriptor  = MTLDepthStencilDescriptor()
         depthPrePassDescriptor.depthCompareFunction = .less
@@ -75,32 +80,15 @@ class FlatMode {
         depthColorPassDescriptor.frontFaceStencil = stencilDescriptor
         depthStencilStateColorPass = metalDevice.makeDepthStencilState(descriptor: depthColorPassDescriptor)!
         
-        screenCollisionsDetector    = ScreenCollisionsDetector(metalDevice: metalDevice,
-                                                               library: pipelines.library,
-                                                               metalCommandQueue: metalCommandQueue,
-                                                               mapZoomState: mapZoomState,
-                                                               drawingFrameRequester: drawingFrameRequester,
-                                                               frameCounter: frameCounter)
-        
-        camera                      = cameraStorage.createFlatView()
+        camera                      = cameraStorage.flatView
         
         drawAssembledMap            = DrawAssembledMap(metalDevice: metalDevice,
                                                        screenUniforms: screenUniforms,
                                                        camera: camera,
                                                        mapZoomState: mapZoomState)
         
-        assembledMapUpdater         = AssembledMapUpdater(mapZoomState: mapZoomState,
-                                                          device: metalDevice,
-                                                          camera: camera,
-                                                          textTools: textTools,
-                                                          drawingFrameRequester: drawingFrameRequester,
-                                                          frameCounter: frameCounter,
-                                                          metalTilesStorage: metalTilesStorage,
-                                                          screenCollisionsDetector: screenCollisionsDetector,
-                                                          mapCadDisplayLoop: mapCadDisplayLoop,
-                                                          mapModeStorage: mapModeStorage)
-        
-        applyLabelsState            = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector, assembledMap: assembledMapUpdater.assembledMap)
+        applyLabelsState            = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector,
+                                                       assembledMap: mapUpdaterFlat.assembledMap)
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -119,13 +107,9 @@ class FlatMode {
               renderPassDescriptor: MTLRenderPassDescriptor,
               commandBuffer: MTLCommandBuffer) {
         
-        if camera.isMapStateUpdated() {
-            assembledMapUpdater?.update(view: view, useOnlyCached: false)
-        }
-        
         let currentFBIdx            = updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer          = updateBufferedUniform.getCurrentFrameBuffer()
-        let assembledMap            = assembledMapUpdater.assembledMap
+        let assembledMap            = mapUpdaterFlat.assembledMap
         let assembledTiles          = assembledMap.tiles
         let mapPanning              = camera.mapPanning
         let lastUniforms            = updateBufferedUniform.lastUniforms!

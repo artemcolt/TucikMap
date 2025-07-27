@@ -28,6 +28,7 @@ struct VertexOut {
 struct GlobeParams {
     float globeRotation;
     float uShift;
+    float globeRadius;
 };
 
 // Функция для создания матрицы трансляции
@@ -84,7 +85,7 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     float y = (2.0 * planeCoord.y - 1.0) * PI;
     float phi = 2.0 * atan(exp(y)) - PI / 2.0;
 
-    float radius = 0.2;
+    float radius = globeParams.globeRadius;
     float4 spherePos;
     spherePos.x = radius * cos(phi) * cos(theta);
     spherePos.y = radius * sin(phi);

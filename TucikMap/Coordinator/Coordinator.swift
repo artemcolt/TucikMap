@@ -31,6 +31,9 @@ class Coordinator: NSObject, MTKViewDelegate {
     private var pipelines                   : Pipelines!
     private var updateBufferedUniform       : UpdateBufferedUniform
     private let mapModeStorage              : MapModeStorage
+    private let mapUpdaterStorage           : MapUpdaterStorage
+    private let screenCollisionsDetector    : ScreenCollisionsDetector
+    private let globeTexturing              : GlobeTexturing
     
     var flatMode: FlatMode
     var globeMode: GlobeMode
@@ -70,6 +73,28 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                         cameraStorage: cameraStorage,
                                                         frameCounter: frameCounter)
         
+        screenCollisionsDetector = ScreenCollisionsDetector(metalDevice: metalDevice,
+                                                            library: pipelines.library,
+                                                            metalCommandQueue: metalCommandQueue,
+                                                            mapZoomState: mapZoomState,
+                                                            drawingFrameRequester: drawingFrameRequester,
+                                                            frameCounter: frameCounter)
+        
+        globeTexturing          = GlobeTexturing(metalDevide: metalDevice, metalCommandQueue: metalCommandQueue, pipelines: pipelines)
+        
+        mapUpdaterStorage       = MapUpdaterStorage(mapModeStorage: mapModeStorage,
+                                                    mapZoomState: mapZoomState,
+                                                    metalDevice: metalDevice,
+                                                    camera: cameraStorage,
+                                                    textTools: textTools,
+                                                    drawingFrameRequester: drawingFrameRequester,
+                                                    frameCounter: frameCounter,
+                                                    metalTilesStorage: metalTilesStorage,
+                                                    mapCadDisplayLoop: mapCadDisplayLoop,
+                                                    screenCollisionsDetector: screenCollisionsDetector,
+                                                    updateBufferedUniform: updateBufferedUniform,
+                                                    globeTexturing: globeTexturing)
+        
         flatMode                = FlatMode(metalDevice: metalDevice,
                                            metalCommandQueue: metalCommandQueue,
                                            frameCounter: frameCounter,
@@ -83,17 +108,19 @@ class Coordinator: NSObject, MTKViewDelegate {
                                            mapZoomState: mapZoomState,
                                            updateBufferedUniform: updateBufferedUniform,
                                            mapModeStorage: mapModeStorage,
-                                           drawPoint: drawPoint)
+                                           drawPoint: drawPoint,
+                                           screenCollisionsDetector: screenCollisionsDetector,
+                                           mapUpdaterFlat: mapUpdaterStorage.flat)
         
         globeMode               = GlobeMode(metalDevice: metalDevice,
-                                            metalCommandQueue: metalCommandQueue,
                                             pipelines: pipelines,
                                             metalTilesStorage: metalTilesStorage,
                                             cameraStorage: cameraStorage,
                                             mapZoomState: mapZoomState,
                                             drawingFrameRequester: drawingFrameRequester,
                                             mapCadDisplayLoop: mapCadDisplayLoop,
-                                            updateBufferedUniform: updateBufferedUniform)
+                                            updateBufferedUniform: updateBufferedUniform,
+                                            globeTexturing: globeTexturing)
         super.init()
     }
     
@@ -124,6 +151,10 @@ class Coordinator: NSObject, MTKViewDelegate {
         updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
         let uniformsBuffer = updateBufferedUniform.getCurrentFrameBuffer()
+        
+        if cameraStorage.currentView.isMapStateUpdated() {
+            mapUpdaterStorage.currentView.update(view: view, useOnlyCached: false)
+        }
         
         switch mapModeStorage.mapMode {
         case .flat:

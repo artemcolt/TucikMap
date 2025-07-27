@@ -21,17 +21,16 @@ class GlobeMode {
     private var samplerState            : MTLSamplerState
     
     init(metalDevice: MTLDevice,
-         metalCommandQueue: MTLCommandQueue,
          pipelines: Pipelines,
          metalTilesStorage: MetalTilesStorage,
          cameraStorage: CameraStorage,
          mapZoomState: MapZoomState,
          drawingFrameRequester: DrawingFrameRequester,
          mapCadDisplayLoop: MapCADisplayLoop,
-         updateBufferedUniform: UpdateBufferedUniform) {
-        globeTexturing  = GlobeTexturing(metalDevide: metalDevice,
-                                        metalCommandQueue: metalCommandQueue,
-                                        pipelines: pipelines)
+         updateBufferedUniform: UpdateBufferedUniform,
+         globeTexturing: GlobeTexturing) {
+        
+        self.globeTexturing = globeTexturing
         
         let vertices = GlobeGeometry().createPlane(segments: 40)
         globeBuffer = metalDevice.makeBuffer(bytes: vertices, length: MemoryLayout<GlobePipeline.Vertex>.stride * vertices.count)!
@@ -41,9 +40,7 @@ class GlobeMode {
         self.metalTilesStorage = metalTilesStorage
         self.pipelines = pipelines
         
-        camera = cameraStorage.createGlobeView()
-        
-        metalTilesStorage.requestMetalTile(tile: Tile(x: 0, y: 0, z: 0))
+        camera = cameraStorage.globeView
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
         depthStencilDescriptor.depthCompareFunction = .less
@@ -56,28 +53,29 @@ class GlobeMode {
         samplerDescriptor.sAddressMode = .repeat
         samplerDescriptor.tAddressMode = .clampToEdge
         samplerState = metalDevice.makeSamplerState(descriptor: samplerDescriptor)!
+        
+        
+        metalTilesStorage.requestMetalTile(tile: Tile(x: 0, y: 0, z: 0))
     }
     
-    var testReady = false
     func draw(in view: MTKView,
               renderPassDescriptor: MTLRenderPassDescriptor,
               commandBuffer: MTLCommandBuffer) {
         
-        let uniformsBuffer = updateBufferedUniform.getCurrentFrameBuffer()
-        var globeParams    = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
-                                                       uShift: Float(camera.mapPanning.x))
-        
-        if testReady == false {
-            if let tile = metalTilesStorage.getMetalTile(tile: Tile(x: 0, y: 0, z: 0)) {
-                globeTexturing.render(currentFBIndex: 0, metalTiles: [tile])
-                testReady = true
-            }
-        }
+        let currentFbIndex = updateBufferedUniform.getCurrentFrameBufferIndex()
+        let uniformsBuffer  = updateBufferedUniform.getCurrentFrameBuffer()
+        var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
+                                                       uShift: camera.uShift,
+                                                       globeRadius: camera.globeRadius)
 
-        let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        globeTexturing.updateTexture(currentFBIndex: currentFbIndex,
+                                     commandBuffer: commandBuffer)
+        
+        let renderEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        let texture         = globeTexturing.getTexture(frameBufferIndex: currentFbIndex)
+        renderEncoder.setCullMode(.front)
         pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
         renderEncoder.setDepthStencilState(depthStencilState)
-        let texture = globeTexturing.getTexture(frameBufferIndex: 0)
         renderEncoder.setVertexBuffer(globeBuffer,     offset: 0, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer,  offset: 0, index: 1)
         renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)

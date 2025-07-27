@@ -9,56 +9,52 @@ import MetalKit
 import GISTools
 
 
-class AssembledMapUpdater {
-    private var mapZoomState: MapZoomState!
-    private var determineVisibleTiles: DetermineVisibleTiles!
-    private var determineFeatureStyle: DetermineFeatureStyle!
-    private var visibleTilesResult: DetVisTilesResult!
-    private var textTools: TextTools!
-    private var savedView: MTKView!
-    private var metalTilesStorage: MetalTilesStorage!
-    private var drawingFrameRequester: DrawingFrameRequester!
-    private var frameCounter: FrameCounter!
-    private var screenCollisionsDetector: ScreenCollisionsDetector!
-    private var mapCadDisplayLoop: MapCADisplayLoop
-    private var mapModeStorage: MapModeStorage
+class MapUpdater {
+    private var mapZoomState            : MapZoomState!
+    private var determineVisibleTiles   : DetermineVisibleTiles!
+    private var determineFeatureStyle   : DetermineFeatureStyle!
+    private var visibleTilesResult      : DetVisTilesResult!
+    private var textTools               : TextTools!
+    private var metalTilesStorage       : MetalTilesStorage!
+    private var drawingFrameRequester   : DrawingFrameRequester!
+    private var frameCounter            : FrameCounter!
+    private var mapUpdaterContext       : MapUpdaterContext
+    var updateBufferedUniform           : UpdateBufferedUniform
+    var mapCadDisplayLoop               : MapCADisplayLoop
+    var metalDevice                     : MTLDevice
+    var savedView                       : MTKView!
+    var mapModeStorage                  : MapModeStorage
     
     var assembledMap: AssembledMap = AssembledMap(
         tiles: [],
         tileGeoLabels: [],
         roadLabels: []
     )
-    var assembledTileTitles: DrawTextData?
     
     init(
         mapZoomState: MapZoomState,
         device: MTLDevice,
-        camera: CameraFlatView,
+        camera: Camera,
         textTools: TextTools,
         drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
         metalTilesStorage: MetalTilesStorage,
-        screenCollisionsDetector: ScreenCollisionsDetector,
         mapCadDisplayLoop: MapCADisplayLoop,
-        mapModeStorage: MapModeStorage
+        mapModeStorage: MapModeStorage,
+        mapUpdaterContext: MapUpdaterContext,
+        updateBufferedUniform: UpdateBufferedUniform,
     ) {
+        self.metalDevice                = device
         self.mapZoomState               = mapZoomState
         self.textTools                  = textTools
         self.drawingFrameRequester      = drawingFrameRequester
         self.frameCounter               = frameCounter
         self.metalTilesStorage          = metalTilesStorage
-        self.screenCollisionsDetector   = screenCollisionsDetector
         self.mapCadDisplayLoop          = mapCadDisplayLoop
         self.mapModeStorage             = mapModeStorage
+        self.mapUpdaterContext          = mapUpdaterContext
+        self.updateBufferedUniform      = updateBufferedUniform
         determineVisibleTiles           = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
-        
-        metalTilesStorage.addHandler(handler: onMetalingTileEnd)
-    }
-    
-    private func onMetalingTileEnd(tile: Tile) {
-        if mapModeStorage.mapMode == .flat {
-            self.update(view: savedView, useOnlyCached: true)
-        }
     }
     
     func update(view: MTKView, useOnlyCached: Bool) {
@@ -97,17 +93,18 @@ class AssembledMapUpdater {
         let fullMetalTilesArray = replsArray + actual
         self.assembledMap.tiles = fullMetalTilesArray
         
-        
-        let allReady = actual.count == visibleTiles.count
-        if allReady {
-            screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
-            mapCadDisplayLoop.forceUpdateStates()
-        }
+        updateActions(view: view,
+                      actual: actual,
+                      visibleTiles: visibleTiles)
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
         drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
+    }
+    
+    func updateActions(view: MTKView, actual: Set<MetalTile>, visibleTiles: [Tile]) {
+        
     }
 }

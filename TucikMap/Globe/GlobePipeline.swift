@@ -16,6 +16,7 @@ class GlobePipeline {
     struct GlobeParams {
         let globeRotation   : Float
         let uShift          : Float
+        let globeRadius     : Float
     }
     
     let pipelineState: MTLRenderPipelineState

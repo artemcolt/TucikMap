@@ -21,6 +21,7 @@ class Settings {
     static let nullZoomCameraDistance: Float = mapSize / (2 * tan(fov / 2))
     static let minCameraDistance: Float = nullZoomCameraDistance / pow(2, 18)
     static let farPlaneIncreaseFactor: Float = 2.0
+    static let nullZoomGlobeRadius: Float = 0.2
     
     static let maxTileZoom: Int = 16
     static let visibleTilesCount: Int = 9
@@ -82,7 +83,7 @@ class Settings {
     static let shiftCollisionLocation   : Float = 5_000
     
     static let printCenterLatLon        : Bool = false
-    static let printCenterTile          : Bool = false
+    static let printCenterTile          : Bool = true
     static let showOnlyTiles            : [Tile] = [] // Tile(x: 39617, y: 20488, z: 16)
     static let allowOnlyTiles           : [Tile] = [] // Tile(x: 19808, y: 10244, z: 15) Tile(x: 19808, y: 10244, z: 15), Tile(x: 39617, y: 20488, z: 16)
     
@@ -104,4 +105,5 @@ class Settings {
     
     static let printRoadLabelsCount: Bool = false
     static let filterRoadLenLabel: Float = 0.3
+    static let printVisibleTiles: Bool = false
 }

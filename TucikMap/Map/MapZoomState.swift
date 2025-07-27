@@ -17,11 +17,12 @@ class MapZoomState {
     private(set) var tileSize: Float = 0
     private(set) var maxTileCoord: Int = 0
     private(set) var tilesCount: Int = 0
+    private(set) var powZoomLevel: Float = 0
     
     func update(zoomLevelFloat: Float) {
         self.zoomLevelFloat = zoomLevelFloat
         zoomLevel = Int(floor(zoomLevelFloat))
-        let powZoomLevel = pow(2.0, Float(zoomLevel))
+        powZoomLevel = pow(2.0, Float(zoomLevel))
         
         tileSize = baseTileSize / powZoomLevel
         tilesCount = Int(powZoomLevel)
