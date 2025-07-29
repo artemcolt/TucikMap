@@ -89,6 +89,7 @@ class DetermineFeatureStyle {
             "road_minor": SIMD4<Float>(0.7, 0.7, 0.7, 1.0),       // Light gray
             "fallback": SIMD4<Float>(0.5, 0.5, 0.5, 0.5),          // Neutral gray
             "background": SIMD4<Float>(1.0, 1.0, 1.0, 1.0),
+            "border": SIMD4<Float>(0.0, 0.0, 0.0, 1.0),
             
             "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.7),         // Warm beige
         ]
@@ -193,6 +194,12 @@ class DetermineFeatureStyle {
                 key: 210, // Topmost layer
                 color: colors["building"]!,
                 parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 0) // Filled polygon
+            )
+        case "border":
+            return FeatureStyle(
+                key: 211,
+                color: colors["border"]!,
+                parseGeometryStyleData: ParseGeometryStyleData(lineWidth: 0)
             )
 
         default:

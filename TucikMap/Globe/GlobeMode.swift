@@ -9,14 +9,25 @@ import MetalKit
 import SwiftUI
 
 class GlobeMode {
+    struct GlobePlane {
+        let verticesBuffer          : MTLBuffer
+        let indicesBuffer           : MTLBuffer
+        var indicesCount            : Int
+        var globeWidthFactor        : Float
+        var globeHeightFactor       : Float
+    }
+    
+    private var planesBuffered          : [GlobePlane] = []
+    
+    private var metalDevice             : MTLDevice
     private var globeTexturing          : GlobeTexturing
-    private var globeBuffer             : MTLBuffer
     private var metalTilesStorage       : MetalTilesStorage
     private var pipelines               : Pipelines
     private var camera                  : CameraGlobeView!
     private let updateBufferedUniform   : UpdateBufferedUniform
+    private let mapZoomState            : MapZoomState
+    private let globeGeometry           : GlobeGeometry
     
-    private var globeVerticesCount      : Int
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
     
@@ -30,17 +41,14 @@ class GlobeMode {
          updateBufferedUniform: UpdateBufferedUniform,
          globeTexturing: GlobeTexturing) {
         
-        self.globeTexturing = globeTexturing
-        
-        let vertices = GlobeGeometry().createPlane(segments: 40)
-        globeBuffer = metalDevice.makeBuffer(bytes: vertices, length: MemoryLayout<GlobePipeline.Vertex>.stride * vertices.count)!
-        globeVerticesCount = vertices.count
-        
-        self.updateBufferedUniform = updateBufferedUniform
-        self.metalTilesStorage = metalTilesStorage
-        self.pipelines = pipelines
-        
-        camera = cameraStorage.globeView
+        self.globeGeometry          = GlobeGeometry()
+        self.mapZoomState           = mapZoomState
+        self.metalDevice            = metalDevice
+        self.globeTexturing         = globeTexturing
+        self.camera                 = cameraStorage.globeView
+        self.updateBufferedUniform  = updateBufferedUniform
+        self.metalTilesStorage      = metalTilesStorage
+        self.pipelines              = pipelines
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
         depthStencilDescriptor.depthCompareFunction = .less
@@ -54,34 +62,100 @@ class GlobeMode {
         samplerDescriptor.tAddressMode = .clampToEdge
         samplerState = metalDevice.makeSamplerState(descriptor: samplerDescriptor)!
         
+        for _ in 0..<Settings.maxBuffersInFlight {
+            let verticesBuffer = metalDevice.makeBuffer(length: MemoryLayout<GlobePipeline.Vertex>.stride * 5_000)!
+            let indicesBuffer  = metalDevice.makeBuffer(length: MemoryLayout<UInt32>.stride * 40_000)!
+            planesBuffered.append(GlobePlane(
+                verticesBuffer: verticesBuffer,
+                indicesBuffer: indicesBuffer,
+                indicesCount: 0,
+                globeWidthFactor: 0,
+                globeHeightFactor: 0))
+        }
         
-        metalTilesStorage.requestMetalTile(tile: Tile(x: 0, y: 0, z: 0))
+    }
+    
+    func changePlane(bufferIndex: Int, segments: Int, areaRange: AreaRange) {
+        let newPlane = globeGeometry.createPlane(segments: segments, areaRange: areaRange)
+        planesBuffered[bufferIndex].verticesBuffer.contents().copyMemory(from: newPlane.vertices,
+                                                      byteCount: MemoryLayout<GlobePipeline.Vertex>.stride * newPlane.vertices.count)
+        planesBuffered[bufferIndex].indicesBuffer.contents().copyMemory(from: newPlane.indices,
+                                                     byteCount: MemoryLayout<UInt32>.stride * newPlane.indices.count)
+        planesBuffered[bufferIndex].indicesCount = newPlane.indices.count
+    }
+    
+    func webMercatorYCoordinate(latitudeRadians: Float) -> Float {
+        // Clamp latitude to the valid range for Web Mercator to avoid infinity or invalid values
+        // The max latitude in radians for y=1 is approximately 1.484 (85.051 degrees)
+        let maxLat = 2 * (atan(exp(Float.pi)) - Float.pi / 4)
+        let clampedLat = max(min(latitudeRadians, maxLat), -maxLat)
+        
+        // Web Mercator y formula normalized to [-1, 1]
+        let y = log(tan(Float.pi / 4 + clampedLat / 2))
+        
+        return y / Float.pi
+    }
+    
+    func webMercatorDistortion(latitude: Float) -> Float {
+        return 1 / cos(latitude)
     }
     
     func draw(in view: MTKView,
               renderPassDescriptor: MTLRenderPassDescriptor,
               commandBuffer: MTLCommandBuffer) {
         
-        let currentFbIndex = updateBufferedUniform.getCurrentFrameBufferIndex()
+        let currentFbIndex  = updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer  = updateBufferedUniform.getCurrentFrameBuffer()
+        let lastAreaRange   = globeTexturing.lastTextureAreaRange()
+        let z               = lastAreaRange.z
+        
+        let tilesCount = mapZoomState.tilesCount
+        let panX = Float(camera.mapPanning.x)
+        
+        let uTileSize = Float(1.0 / 3)
+        let halfTilesCount = Float(tilesCount) / 2.0
+        
+        
+        var uShiftMap = panX
+        if z > 1 {
+            let uShift = (panX * 2.0) * halfTilesCount * uTileSize
+            uShiftMap = uTileSize - uTileSize / 2 + uShift.truncatingRemainder(dividingBy: uTileSize)
+            if uShift > 0 {
+                uShiftMap -= uTileSize
+            }
+        }
+        
+        //print("uShiftMap = ", uShiftMap)
+        //print("minX = \(minX) maxX = \(maxX)")
+        
+        changePlane(bufferIndex: currentFbIndex, segments: 40, areaRange: lastAreaRange)
         var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
-                                                       uShift: camera.uShift,
-                                                       globeRadius: camera.globeRadius)
+                                                        uShift: uShiftMap,
+                                                        globeRadius: camera.globeRadius)
 
         globeTexturing.updateTexture(currentFBIndex: currentFbIndex,
                                      commandBuffer: commandBuffer)
         
-        let renderEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        let buffered        = planesBuffered[currentFbIndex]
         let texture         = globeTexturing.getTexture(frameBufferIndex: currentFbIndex)
+        let verticesBuffer  = buffered.verticesBuffer
+        let indicesBuffer   = buffered.indicesBuffer
+        let indicesCount    = buffered.indicesCount
+        
+        let renderEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
         renderEncoder.setCullMode(.front)
         pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
         renderEncoder.setDepthStencilState(depthStencilState)
-        renderEncoder.setVertexBuffer(globeBuffer,     offset: 0, index: 0)
+        renderEncoder.setVertexBuffer(verticesBuffer,     offset: 0, index: 0)
         renderEncoder.setVertexBuffer(uniformsBuffer,  offset: 0, index: 1)
         renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)
         renderEncoder.setFragmentTexture(texture, index: 0)
         renderEncoder.setFragmentSamplerState(samplerState, index: 0)
-        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: globeVerticesCount)
+        renderEncoder.drawIndexedPrimitives(type: .triangle,
+                                            indexCount: indicesCount,
+                                            indexType: .uint32,
+                                            indexBuffer: indicesBuffer,
+                                            indexBufferOffset: 0)
         renderEncoder.endEncoding()
     }
     

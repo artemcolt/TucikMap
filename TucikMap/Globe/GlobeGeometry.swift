@@ -9,62 +9,59 @@ import Foundation
 import simd
 
 class GlobeGeometry {
-    func createPlane(segments: Int) -> [GlobePipeline.Vertex] {
+    struct PlaneData {
+        let vertices: [GlobePipeline.Vertex]
+        let indices: [UInt32]
+    }
+    
+    func createPlane(segments: Int, areaRange: AreaRange) -> PlaneData {
+        let maxY = Float(areaRange.maxY)
+        let minY = Float(areaRange.minY)
+        let z = Int(areaRange.z)
+        
+        let tilesNum = pow(2.0, Float(z))
+        let initialY = -(minY / tilesNum) * 2 + 1
+        let finalY = -((maxY + 1) / tilesNum) * 2 + 1
+        
+        let ySize = abs(finalY - initialY)
+        let yStep = ySize / Float(segments)
+        
+        let minX = Float(areaRange.minX)
+        let maxX = Float(areaRange.maxX)
+        
+        let initialX = (minX / tilesNum) * 2 - 1
+        let finalX = ((maxX + 1) / tilesNum) * 2 - 1
+        let xSize = abs(finalX - initialX)
+        let xStep = xSize / Float(segments)
+        let xHalfSize = xSize / 2
+        
         var vertices: [GlobePipeline.Vertex] = []
-        
-        let size = Float(0.5)
-        let startFrom = -size / 2
-        
-        // Ensure segments is at least 1 to avoid invalid grid
-        let segments = max(1, segments)
-        
-        // Calculate step size for positions and texture coordinates
-        let step = 1.0 / Float(segments)
-        
-        // Generate vertices for the grid
-        for i in 0...segments { // строки
-            for j in 0...segments { // колонки
-                // Position: Map i, j to a plane centered at (0, 0) with size 2x2 (from -1 to 1)
-                let x = startFrom + size * Float(j) * step
-                let y = startFrom + size * Float(i) * step
+        for j in 0...segments {
+            let yCoord = finalY + yStep * Float(j)
+            for i in 0...segments {
+                let u = Float(i) / Float(segments)
+                let v = Float(j) / Float(segments)
                 
-                // Texture coordinates: Map i, j to [0, 1] range
-                let u = Float(j) * step
-                let v = Float(i) * step
+                let xCoord = -xHalfSize + Float(i) * xStep
                 
-                // Create vertex (assuming GlobePipeline.Vertex has position and texCoord)
-                let vertex = GlobePipeline.Vertex(
-                    position: SIMD2<Float>(x, y),
-                    planeCoord: SIMD2<Float>(u, v)
-                )
-                vertices.append(vertex)
+                vertices.append(GlobePipeline.Vertex(texcoord: SIMD2<Float>(1 - u, 1 - v),
+                                                     yCoord: yCoord,
+                                                     xCoord: xCoord))
             }
         }
         
-        // Generate indices for triangles
-        var triangleVertices: [GlobePipeline.Vertex] = []
-        let width = segments + 1 // Number of vertices per row
-        
-        for i in 0..<segments {
-            for j in 0..<segments {
-                // Indices for the two triangles forming a quad
-                let v0 = i * width + j
-                let v1 = v0 + 1
-                let v2 = (i + 1) * width + j
-                let v3 = v2 + 1
-                
-                // First triangle: v0, v2, v1
-                triangleVertices.append(vertices[v0])
-                triangleVertices.append(vertices[v2])
-                triangleVertices.append(vertices[v1])
-                
-                // Second triangle: v1, v2, v3
-                triangleVertices.append(vertices[v1])
-                triangleVertices.append(vertices[v2])
-                triangleVertices.append(vertices[v3])
+        var indices: [UInt32] = []
+        let width = segments + 1
+        for j in 0..<segments {
+            for i in 0..<segments {
+                let bl = UInt32(j * width + i)
+                let br = bl + 1
+                let tl = UInt32((j + 1) * width + i)
+                let tr = tl + 1
+                indices.append(contentsOf: [bl, tl, br, br, tl, tr])
             }
         }
         
-        return triangleVertices
+        return PlaneData(vertices: vertices, indices: indices)
     }
 }

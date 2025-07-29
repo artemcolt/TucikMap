@@ -28,7 +28,7 @@ class MapUpdater {
     var assembledMap: AssembledMap = AssembledMap(
         tiles: [],
         tileGeoLabels: [],
-        roadLabels: []
+        roadLabels: [],
     )
     
     init(
@@ -90,12 +90,12 @@ class MapUpdater {
         let replsArray = replacements.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
-        let fullMetalTilesArray = replsArray + actual
-        self.assembledMap.tiles = fullMetalTilesArray
+        let fullMetalTilesArray     = replsArray + actual
+        self.assembledMap.tiles     = fullMetalTilesArray
         
         updateActions(view: view,
                       actual: actual,
-                      visibleTiles: visibleTiles)
+                      visibleTilesResult: visibleTilesResult)
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
@@ -104,7 +104,7 @@ class MapUpdater {
         drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
     }
     
-    func updateActions(view: MTKView, actual: Set<MetalTile>, visibleTiles: [Tile]) {
+    func updateActions(view: MTKView, actual: Set<MetalTile>, visibleTilesResult: DetVisTilesResult) {
         
     }
 }

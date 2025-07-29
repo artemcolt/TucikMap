@@ -9,14 +9,15 @@ import MetalKit
 
 class GlobePipeline {
     struct Vertex {
-        let position: SIMD2<Float>
-        let planeCoord: SIMD2<Float>
+        let texcoord: SIMD2<Float>
+        let yCoord: Float
+        let xCoord: Float
     }
     
     struct GlobeParams {
-        let globeRotation   : Float
-        let uShift          : Float
-        let globeRadius     : Float
+        let globeRotation       : Float
+        let uShift              : Float
+        let globeRadius         : Float
     }
     
     let pipelineState: MTLRenderPipelineState
@@ -29,9 +30,12 @@ class GlobePipeline {
         vertexDescriptor.attributes[0].format = .float2
         vertexDescriptor.attributes[0].offset = 0
         vertexDescriptor.attributes[0].bufferIndex = 0
-        vertexDescriptor.attributes[1].format = .float2
+        vertexDescriptor.attributes[1].format = .float
         vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.size
         vertexDescriptor.attributes[1].bufferIndex = 0
+        vertexDescriptor.attributes[2].format = .float
+        vertexDescriptor.attributes[2].offset = MemoryLayout<SIMD2<Float>>.size + MemoryLayout<Float>.size
+        vertexDescriptor.attributes[2].bufferIndex = 0
         vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
         vertexDescriptor.layouts[0].stepFunction = .perVertex
         

@@ -218,6 +218,72 @@ class TileMvtParser {
         styles[style.key] = style
     }
     
+    private func addBorders(polygonByStyle: inout [UInt8: [ParsedPolygon]], styles: inout [UInt8: FeatureStyle]) {
+        let style = determineFeatureStyle.makeStyle(data: DetFeatureStyleData(
+            layerName: "border",
+            properties: [:],
+            tile: Tile(x: 0, y: 0, z: 0))
+        )
+        
+        let thickness: Float = 0.01
+        let inner: Float = 1.0 - thickness
+
+        let topPolygon = ParsedPolygon(
+            vertices: [
+                SIMD2<Float>(-1, inner),
+                SIMD2<Float>(1, inner),
+                SIMD2<Float>(1, 1),
+                SIMD2<Float>(-1, 1)
+            ],
+            indices: [
+                0, 1, 2,
+                0, 2, 3
+            ]
+        )
+
+        let bottomPolygon = ParsedPolygon(
+            vertices: [
+                SIMD2<Float>(-1, -1),
+                SIMD2<Float>(1, -1),
+                SIMD2<Float>(1, -inner),
+                SIMD2<Float>(-1, -inner)
+            ],
+            indices: [
+                0, 1, 2,
+                0, 2, 3
+            ]
+        )
+
+        let leftPolygon = ParsedPolygon(
+            vertices: [
+                SIMD2<Float>(-1, -inner),
+                SIMD2<Float>(-inner, -inner),
+                SIMD2<Float>(-inner, inner),
+                SIMD2<Float>(-1, inner)
+            ],
+            indices: [
+                0, 1, 2,
+                0, 2, 3
+            ]
+        )
+
+        let rightPolygon = ParsedPolygon(
+            vertices: [
+                SIMD2<Float>(inner, -inner),
+                SIMD2<Float>(1, -inner),
+                SIMD2<Float>(1, inner),
+                SIMD2<Float>(inner, inner)
+            ],
+            indices: [
+                0, 1, 2,
+                0, 2, 3
+            ]
+        )
+
+        polygonByStyle[style.key] = [topPolygon, bottomPolygon, leftPolygon, rightPolygon]
+        styles[style.key] = style
+    }
+    
     var parsedCountTest = 0
     func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) async -> ReadingStageResult {
         var polygon3dByStyle: [UInt8: [Parsed3dPolygon]] = [:]
@@ -322,6 +388,10 @@ class TileMvtParser {
         }
         
         addBackground(polygonByStyle: &polygonByStyle, styles: &styles)
+        
+        if Settings.addTestBorders {
+            addBorders(polygonByStyle: &polygonByStyle, styles: &styles)
+        }
         
         textLabels.sort(by: { label1, label2 in
             return label1.sortRank < label2.sortRank

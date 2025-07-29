@@ -12,9 +12,10 @@ class AssembledMap {
     var tileGeoLabels: [MetalTile.TextLabels]
     var roadLabels: [DrawAssembledMap.FinalDrawRoadLabel]
     
+    
     init(tiles: [MetalTile],
          tileGeoLabels: [MetalTile.TextLabels],
-         roadLabels: [DrawAssembledMap.FinalDrawRoadLabel]
+         roadLabels: [DrawAssembledMap.FinalDrawRoadLabel],
     ) {
         self.tileGeoLabels = tileGeoLabels
         self.roadLabels = roadLabels

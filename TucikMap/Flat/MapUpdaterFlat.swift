@@ -47,8 +47,8 @@ class MapUpdaterFlat : MapUpdater {
         }
     }
     
-    override func updateActions(view: MTKView, actual: Set<MetalTile>, visibleTiles: [Tile]) {
-        let allReady = actual.count == visibleTiles.count
+    override func updateActions(view: MTKView, actual: Set<MetalTile>, visibleTilesResult: DetVisTilesResult) {
+        let allReady = actual.count == visibleTilesResult.visibleTiles.count
         if allReady {
             screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
             mapCadDisplayLoop.forceUpdateStates()

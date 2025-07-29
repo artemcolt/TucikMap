@@ -10,7 +10,6 @@ import SwiftUI
 
 class CameraGlobeView : Camera {
     private(set) var globeRotation: Float   = 0
-    private(set) var uShift: Float          = 0
     private(set) var globeRadius: Float     = 0
     
     override func nearAndFar() -> SIMD2<Float> {
@@ -39,7 +38,6 @@ class CameraGlobeView : Camera {
         let mercY       = -panY / mapSize * 2.0 * Double.pi
         let latitude    = 2.0 * atan(exp(mercY)) - Double.pi / 2
         globeRotation   = Float(latitude)
-        uShift          = Float(mapPanning.x)
         globeRadius     = Settings.nullZoomGlobeRadius * mapZoomState.powZoomLevel
         
         super.updateMap(view: view, size: size)

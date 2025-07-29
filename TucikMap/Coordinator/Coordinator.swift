@@ -130,6 +130,13 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         flatMode.mtkView(view, drawableSizeWillChange: size)
         globeMode.mtkView(view, drawableSizeWillChange: size)
+        
+        if Settings.useGoToAtStart {
+            let camera = cameraStorage.currentView
+            let goToLocationAtStart = Settings.goToLocationAtStart
+            let zoom = Settings.goToAtStartZ
+            camera.moveTo(lat: goToLocationAtStart.x, lon: goToLocationAtStart.y, zoom: zoom, view: view, size: size)
+        }
     }
     
     func draw(in view: MTKView) {

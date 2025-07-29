@@ -87,8 +87,8 @@ class Settings {
     static let showOnlyTiles            : [Tile] = [] // Tile(x: 39617, y: 20488, z: 16)
     static let allowOnlyTiles           : [Tile] = [] // Tile(x: 19808, y: 10244, z: 15) Tile(x: 19808, y: 10244, z: 15), Tile(x: 39617, y: 20488, z: 16)
     
-    static let useGoToAtStart = false
-    static let goToAtStartZ: Float = 0.5
+    static let useGoToAtStart = true
+    static let goToAtStartZ: Float = 2.0
     static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(0, 0) // 55.74958790780624, 37.62346867711091
     
     static let maxRoadLabelsDivision = 1
@@ -106,4 +106,7 @@ class Settings {
     static let printRoadLabelsCount: Bool = false
     static let filterRoadLenLabel: Float = 0.3
     static let printVisibleTiles: Bool = false
+    static let printVisibleAreaRange: Bool = true
+    
+    static let addTestBorders = true
 }
