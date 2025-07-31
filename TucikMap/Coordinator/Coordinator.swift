@@ -121,7 +121,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             mapCadDisplayLoop: mapCadDisplayLoop,
                                             updateBufferedUniform: updateBufferedUniform,
                                             globeTexturing: globeTexturing,
-                                            screenUniforms: screenUniforms)
+                                            screenUniforms: screenUniforms,
+                                            mapUpdater: mapUpdaterStorage.globe)
         super.init()
     }
     

@@ -84,10 +84,11 @@ class Settings {
     
     static let printCenterLatLon        : Bool = false
     static let printCenterTile          : Bool = false
-    static let showOnlyTiles            : [Tile] = [ Tile(x: 0, y: 0, z: 0) ] // Tile(x: 39617, y: 20488, z: 16) Tile(x: 0, y: 0, z: 0)
+    // Tile(x: 39617, y: 20488, z: 16)
+    static let showOnlyTiles            : [Tile] = [ ]
     static let allowOnlyTiles           : [Tile] = [] // Tile(x: 19808, y: 10244, z: 15) Tile(x: 19808, y: 10244, z: 15), Tile(x: 39617, y: 20488, z: 16)
     
-    static let useGoToAtStart = true
+    static let useGoToAtStart = false
     static let goToAtStartZ: Float = 3.0
     static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(0, 0) // 55.74958790780624, 37.62346867711091
     
@@ -110,4 +111,5 @@ class Settings {
     
     static let addTestBorders = true
     static let drawHelpGridOnTexture = true
+    static let drawGlobeTexture = true
 }

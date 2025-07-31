@@ -48,8 +48,6 @@ class MapUpdaterGlobe : MapUpdater {
     override func updateActions(view: MTKView,
                                 actual: Set<MetalTile>,
                                 visibleTilesResult: DetVisTilesResult) {
-        let areaRange = visibleTilesResult.areaRange
-        let renderingBlock = GlobeTexturing.RenderingBlock(tiles: Array(actual), areaRange: areaRange)
-        globeTexturing.setRenderingBlock(renderingBlock: renderingBlock)
+        
     }
 }

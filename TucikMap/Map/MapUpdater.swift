@@ -13,7 +13,6 @@ class MapUpdater {
     private var mapZoomState            : MapZoomState!
     private var determineVisibleTiles   : DetermineVisibleTiles!
     private var determineFeatureStyle   : DetermineFeatureStyle!
-    private var visibleTilesResult      : DetVisTilesResult!
     private var textTools               : TextTools!
     private var metalTilesStorage       : MetalTilesStorage!
     private var drawingFrameRequester   : DrawingFrameRequester!
@@ -25,11 +24,9 @@ class MapUpdater {
     var savedView                       : MTKView!
     var mapModeStorage                  : MapModeStorage
     
-    var assembledMap: AssembledMap = AssembledMap(
-        tiles: [],
-        tileGeoLabels: [],
-        roadLabels: [],
-    )
+    var assembledMap: AssembledMap {
+        get { mapUpdaterContext.assembledMap }
+    }
     
     init(
         mapZoomState: MapZoomState,
@@ -59,8 +56,9 @@ class MapUpdater {
     
     func update(view: MTKView, useOnlyCached: Bool) {
         savedView = view
-        visibleTilesResult = determineVisibleTiles.determine()
+        let visibleTilesResult = determineVisibleTiles.determine()
         let visibleTiles = visibleTilesResult.visibleTiles
+        let areaRange = visibleTilesResult.areaRange
         guard visibleTiles.isEmpty == false else { return }
         
         var replacements = Set<MetalTile>()
@@ -91,7 +89,7 @@ class MapUpdater {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
         let fullMetalTilesArray     = replsArray + actual
-        self.assembledMap.tiles     = fullMetalTilesArray
+        self.assembledMap.setNewState(tiles: fullMetalTilesArray, areaRange: areaRange)
         
         updateActions(view: view,
                       actual: actual,

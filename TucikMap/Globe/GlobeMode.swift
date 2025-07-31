@@ -15,6 +15,10 @@ class GlobeMode {
         var indicesCount            : Int
         var globeWidthFactor        : Float
         var globeHeightFactor       : Float
+        
+        func isEmpty() -> Bool {
+            return indicesCount == 0
+        }
     }
     
     private var planesBuffered          : [GlobePlane] = []
@@ -29,9 +33,16 @@ class GlobeMode {
     private let globeGeometry           : GlobeGeometry
     private let screenUniforms          : ScreenUniforms
     private let drawTexture             : DrawTexture
+    private let mapUpdater              : MapUpdaterGlobe
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
+    
+    private var areaStateId             : UInt = 0
+    private var tilesStateId            : UInt = 0
+    private var generatePlaneCount      : Int = 0
+    private var generateTextureCount    : Int = 0
+    
     
     init(metalDevice: MTLDevice,
          pipelines: Pipelines,
@@ -42,7 +53,8 @@ class GlobeMode {
          mapCadDisplayLoop: MapCADisplayLoop,
          updateBufferedUniform: UpdateBufferedUniform,
          globeTexturing: GlobeTexturing,
-         screenUniforms: ScreenUniforms) {
+         screenUniforms: ScreenUniforms,
+         mapUpdater: MapUpdaterGlobe) {
         
         self.drawTexture            = DrawTexture(screenUniforms: screenUniforms)
         self.screenUniforms         = screenUniforms
@@ -54,6 +66,7 @@ class GlobeMode {
         self.updateBufferedUniform  = updateBufferedUniform
         self.metalTilesStorage      = metalTilesStorage
         self.pipelines              = pipelines
+        self.mapUpdater             = mapUpdater
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
         depthStencilDescriptor.depthCompareFunction = .less
@@ -108,14 +121,15 @@ class GlobeMode {
               renderPassDescriptor: MTLRenderPassDescriptor,
               commandBuffer: MTLCommandBuffer) {
         
+        let assembledMap    = mapUpdater.assembledMap
+        let areaRange       = assembledMap.areaRange
+        let metalTiles      = assembledMap.tiles
         let currentFbIndex  = updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer  = updateBufferedUniform.getCurrentFrameBuffer()
-        let lastAreaRange   = globeTexturing.lastTextureAreaRange()
-        let z               = lastAreaRange.z
+        let z               = areaRange.z
         
         let tilesCount = mapZoomState.tilesCount
         let panX = Float(camera.mapPanning.x)
-        
         
         
         var uShiftMap = panX
@@ -129,16 +143,33 @@ class GlobeMode {
             }
         }
         
-        //print("uShiftMap = ", uShiftMap)
-        //print("minX = \(minX) maxX = \(maxX)")
+        if assembledMap.isAreaStateChanged(compareId: areaStateId) {
+            generatePlaneCount = Settings.maxBuffersInFlight
+            areaStateId = assembledMap.setAreaId
+        }
         
-        changePlane(bufferIndex: currentFbIndex, segments: 40, areaRange: lastAreaRange)
+        if assembledMap.isTilesStateChanged(compareId: tilesStateId) {
+            generateTextureCount = Settings.maxBuffersInFlight
+            tilesStateId = assembledMap.setTilesId
+        }
+        
+        if generatePlaneCount > 0 {
+            changePlane(bufferIndex: currentFbIndex, segments: 40, areaRange: areaRange)
+            generatePlaneCount -= 1
+        }
+        
+        if generateTextureCount > 0 {
+            globeTexturing.render(currentFBIndex: currentFbIndex,
+                                  commandBuffer: commandBuffer,
+                                  metalTiles: metalTiles,
+                                  areaRange: areaRange)
+            generateTextureCount -= 1
+        }
+        
         var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
                                                         uShift: uShiftMap,
                                                         globeRadius: camera.globeRadius)
 
-        globeTexturing.updateTexture(currentFBIndex: currentFbIndex,
-                                     commandBuffer: commandBuffer)
         
         let buffered        = planesBuffered[currentFbIndex]
         let texture         = globeTexturing.getTexture(frameBufferIndex: currentFbIndex)
@@ -146,33 +177,37 @@ class GlobeMode {
         let indicesBuffer   = buffered.indicesBuffer
         let indicesCount    = buffered.indicesCount
         
-        let renderEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
-        renderEncoder.setCullMode(.front)
-        pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
-        renderEncoder.setDepthStencilState(depthStencilState)
-        renderEncoder.setVertexBuffer(verticesBuffer,     offset: 0, index: 0)
-        renderEncoder.setVertexBuffer(uniformsBuffer,  offset: 0, index: 1)
-        renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)
-        renderEncoder.setFragmentTexture(texture, index: 0)
-        renderEncoder.setFragmentSamplerState(samplerState, index: 0)
-        renderEncoder.drawIndexedPrimitives(type: .triangle,
-                                            indexCount: indicesCount,
-                                            indexType: .uint32,
-                                            indexBuffer: indicesBuffer,
-                                            indexBufferOffset: 0)
-        renderEncoder.endEncoding()
+        if buffered.isEmpty() == false {
+            let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+            renderEncoder.setCullMode(.front)
+            pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
+            renderEncoder.setDepthStencilState(depthStencilState)
+            renderEncoder.setVertexBuffer(verticesBuffer,     offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(uniformsBuffer,  offset: 0, index: 1)
+            renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)
+            renderEncoder.setFragmentTexture(texture, index: 0)
+            renderEncoder.setFragmentSamplerState(samplerState, index: 0)
+            renderEncoder.drawIndexedPrimitives(type: .triangle,
+                                                indexCount: indicesCount,
+                                                indexType: .uint32,
+                                                indexBuffer: indicesBuffer,
+                                                indexBufferOffset: 0)
+            renderEncoder.endEncoding()
+        }
         
         
-        // draw texture
-        renderPassDescriptor.colorAttachments[0].loadAction = .load
-        renderPassDescriptor.depthAttachment = nil
-        renderPassDescriptor.stencilAttachment = nil
-        let textureEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
-        pipelines.texturePipeline.selectPipeline(renderEncoder: textureEncoder)
-        drawTexture.draw(textureEncoder: textureEncoder, texture: texture, sideWidth: 500)
-        pipelines.basePipeline.selectPipeline(renderEncoder: textureEncoder)
-        drawTexture.drawBorders(textureEncoder: textureEncoder, sideWidth: 500)
-        textureEncoder.endEncoding()
+        if Settings.drawGlobeTexture {
+            // draw texture
+            renderPassDescriptor.colorAttachments[0].loadAction = .load
+            renderPassDescriptor.depthAttachment = nil
+            renderPassDescriptor.stencilAttachment = nil
+            let textureEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+            pipelines.texturePipeline.selectPipeline(renderEncoder: textureEncoder)
+            drawTexture.draw(textureEncoder: textureEncoder, texture: texture, sideWidth: 500)
+            pipelines.basePipeline.selectPipeline(renderEncoder: textureEncoder)
+            drawTexture.drawBorders(textureEncoder: textureEncoder, sideWidth: 500)
+            textureEncoder.endEncoding()
+        }
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {

@@ -8,39 +8,13 @@
 import MetalKit
 
 class GlobeTexturing {
-    struct RenderingBlock {
-        let tiles: [MetalTile]
-        let areaRange: AreaRange
-    }
-    
     private let metalDevide         : MTLDevice
     private let metalCommandQueue   : MTLCommandQueue
     private let pipelines           : Pipelines
     private let drawTile            : DrawTile = DrawTile()
-    private var renderingBlock      : RenderingBlock = RenderingBlock(tiles: [], areaRange: AreaRange(minX: 0, minY: 0, maxX: 0, maxY: 0, z: 0))
-    private var updateFrameCounter  : Int = 0
     private let uniformsBuffer      : MTLBuffer
     private let textureSize         : Int = 4096
     private var texturesBuffered    : [MTLTexture] = []
-    
-    func lastTextureAreaRange() -> AreaRange {
-        return renderingBlock.areaRange
-    }
-    
-    func updateTexture(currentFBIndex: Int, commandBuffer: MTLCommandBuffer) {
-        if updateFrameCounter > 0 {
-            render(currentFBIndex: currentFBIndex,
-                   metalTiles: renderingBlock.tiles,
-                   commandBuffer: commandBuffer)
-            updateFrameCounter -= 1
-        }
-    }
-    
-    func setRenderingBlock(renderingBlock: RenderingBlock) {
-        if renderingBlock.tiles.isEmpty { return }
-        self.renderingBlock = renderingBlock
-        self.updateFrameCounter = Settings.maxBuffersInFlight
-    }
     
     func getTexture(frameBufferIndex: Int) -> MTLTexture {
         return texturesBuffered[frameBufferIndex]
@@ -73,9 +47,10 @@ class GlobeTexturing {
     }
     
     func render(currentFBIndex: Int,
+                commandBuffer: MTLCommandBuffer,
                 metalTiles: [MetalTile],
-                commandBuffer: MTLCommandBuffer) {
-        let areaRange   = renderingBlock.areaRange
+                areaRange: AreaRange) {
+        
         let minTileX    = Float(areaRange.minX)
         let maxTileX    = Float(areaRange.maxX)
         let minTileY    = Float(areaRange.minY)
@@ -85,11 +60,14 @@ class GlobeTexturing {
         let visXCenter  = minTileX + (maxTileX - minTileX) / 2
         let visYCenter  = minTileY + (maxTileY - minTileY) / 2
         
-        let tilesNum    = pow(2, currentZ)
-        //let centerTile  = tilesNum / 2
-        
         let normalTileSize = Float(2.0)
-        var windowTileFraction = Float(1.0 / 3.0)
+        var windowSize = Float(3.0)
+        switch currentZ {
+            case 0: windowSize = 1
+            case 1: windowSize = 2
+            default: windowSize = 3
+        }
+        let windowTileFraction = Float(1) / windowSize
         
         let texture                 = texturesBuffered[currentFBIndex]
         let renderPassDescriptor    = MTLRenderPassDescriptor()
@@ -105,13 +83,11 @@ class GlobeTexturing {
         
         for metalTile in metalTiles {
             let tile = metalTile.tile
-            let x = Float(tile.x)
-            let y = Float(tile.y)
             let z = Float(tile.z)
             
             let relTile = tile.atDifferentZ(targetZ: Int(currentZ))
-            let relX = Float(relTile.x)
-            let relY = Float(relTile.y)
+            let relX = relTile.x
+            let relY = relTile.y
             
             let zDiff = currentZ - z
             let factor = pow(2, Float(zDiff))
@@ -133,10 +109,6 @@ class GlobeTexturing {
             
             relativeTileDeltaX -= difXFromCenter
             relativeTileDeltaY += difYFromCenter
-            
-            
-            print("centerTileX = ", centerTileX, " centerTileY = ", centerTileY)
-            
             
             let xShift = relativeTileDeltaX * worldTileSize
             let yShift = relativeTileDeltaY * worldTileSize

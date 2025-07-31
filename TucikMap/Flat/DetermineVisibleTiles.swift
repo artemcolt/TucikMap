@@ -20,6 +20,38 @@ class DetermineVisibleTiles {
         self.camera = camera
     }
     
+    func determine() -> DetVisTilesResult {
+        
+        var visibleTiles: [Tile] = determineRealArea()
+        
+        if Settings.printVisibleTiles {
+            print(visibleTiles)
+        }
+        
+        let minX = visibleTiles.min(by: { $0.x < $1.x })!.x
+        let minY = visibleTiles.min(by: { $0.y < $1.y })!.y
+        let maxX = visibleTiles.min(by: { $0.x > $1.x })!.x
+        let maxY = visibleTiles.min(by: { $0.y > $1.y })!.y
+        
+        let zoomLevel = mapZoomState.zoomLevel
+        let areaRange = AreaRange(minX: simd_int1(minX),
+                                  minY: simd_int1(minY),
+                                  maxX: simd_int1(maxX),
+                                  maxY: simd_int1(maxY),
+                                  z: simd_int1(zoomLevel))
+        
+        if Settings.showOnlyTiles.count > 0 {
+            visibleTiles = fixedTiles()
+        }
+        
+        if Settings.printVisibleAreaRange {
+            print("z: \(zoomLevel) x:\(minX)-\(maxX) y:\(minY)-\(maxY)")
+        }
+        
+        return DetVisTilesResult(visibleTiles: visibleTiles,
+                                 areaRange: areaRange)
+    }
+    
     private func determineRealArea() -> [Tile]  {
         var visibleTiles: [Tile] = []
         var zoomLevel = mapZoomState.zoomLevel
@@ -87,37 +119,5 @@ class DetermineVisibleTiles {
             }
         }
         return visibleTiles
-    }
-    
-    func determine() -> DetVisTilesResult {
-        
-        var visibleTiles: [Tile] = determineRealArea()
-        
-        if Settings.printVisibleTiles {
-            print(visibleTiles)
-        }
-        
-        let minX = visibleTiles.min(by: { $0.x < $1.x })!.x
-        let minY = visibleTiles.min(by: { $0.y < $1.y })!.y
-        let maxX = visibleTiles.min(by: { $0.x > $1.x })!.x
-        let maxY = visibleTiles.min(by: { $0.y > $1.y })!.y
-        
-        let zoomLevel = mapZoomState.zoomLevel
-        let areaRange = AreaRange(minX: simd_int1(minX),
-                                  minY: simd_int1(minY),
-                                  maxX: simd_int1(maxX),
-                                  maxY: simd_int1(maxY),
-                                  z: simd_int1(zoomLevel))
-        
-        if Settings.showOnlyTiles.count > 0 {
-            visibleTiles = fixedTiles()
-        }
-        
-        if Settings.printVisibleAreaRange {
-            print("z: \(zoomLevel) x:\(minX)-\(maxX) y:\(minY)-\(maxY)")
-        }
-        
-        return DetVisTilesResult(visibleTiles: visibleTiles,
-                                 areaRange: areaRange)
     }
 }

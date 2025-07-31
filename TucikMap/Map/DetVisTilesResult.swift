@@ -13,6 +13,14 @@ struct AreaRange {
     let maxX: simd_int1
     let maxY: simd_int1
     let z: simd_int1
+    
+    static func == (lhs: AreaRange, rhs: AreaRange) -> Bool {
+        return lhs.minX == rhs.minX &&
+               lhs.minY == rhs.minY &&
+               lhs.maxX == rhs.maxX &&
+               lhs.maxY == rhs.maxY &&
+               lhs.z == rhs.z
+    }
 }
 
 struct DetVisTilesResult {

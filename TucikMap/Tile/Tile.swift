@@ -134,15 +134,17 @@ struct Tile: Hashable {
         return MapMathUtils.getTileModelMatrix(tile: self, mapZoomState: mapZoomState, pan: pan)
     }
     
-    func atDifferentZ(targetZ: Int) -> Tile {
+    func atDifferentZ(targetZ: Int) -> (x: Float, y: Float) {
         if targetZ == z {
-            return self
+            return (x: Float(x), y: Float(y))
         } else if targetZ > z {
             let delta = targetZ - z
-            return Tile(x: x << delta, y: y << delta, z: targetZ)
+            let factor = pow(2.0, Float(delta))
+            return (x: Float(x) * factor, y: Float(y) * factor)
         } else {
             let delta = z - targetZ
-            return Tile(x: x >> delta, y: y >> delta, z: targetZ)
+            let factor = pow(2.0, Float(delta))
+            return (x: Float(x) / factor, y: Float(y) / factor)
         }
     }
 }
