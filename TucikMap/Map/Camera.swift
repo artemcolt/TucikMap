@@ -41,7 +41,7 @@ class Camera {
     var centerTileY                 : Float = 0
     var previousCenterTileX         : Int = -1
     var previousCenterTileY         : Int = -1
-    var mapStateUpdatedOnCenter     : SIMD2<Int> = SIMD2(-1, -1)
+    var mapStateUpdatedOnCenter     : SIMD3<Int> = SIMD3(-1, -1, -1)
     
     let mapZoomState                : MapZoomState
     let drawingFrameRequester       : DrawingFrameRequester
@@ -213,8 +213,8 @@ class Camera {
     }
     
     func isMapStateUpdated() -> Bool {
-        if mapStateUpdatedOnCenter != SIMD2<Int>(Int(centerTileX), Int(centerTileY)) {
-            mapStateUpdatedOnCenter = SIMD2<Int>(Int(centerTileX), Int(centerTileY))
+        if mapStateUpdatedOnCenter != SIMD3<Int>(Int(centerTileX), Int(centerTileY), Int(mapZoomState.zoomLevel)) {
+            mapStateUpdatedOnCenter = SIMD3<Int>(Int(centerTileX), Int(centerTileY), Int(mapZoomState.zoomLevel))
             return true
         }
         return false
