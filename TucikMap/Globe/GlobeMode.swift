@@ -27,6 +27,8 @@ class GlobeMode {
     private let updateBufferedUniform   : UpdateBufferedUniform
     private let mapZoomState            : MapZoomState
     private let globeGeometry           : GlobeGeometry
+    private let screenUniforms          : ScreenUniforms
+    private let drawTexture             : DrawTexture
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
@@ -39,8 +41,11 @@ class GlobeMode {
          drawingFrameRequester: DrawingFrameRequester,
          mapCadDisplayLoop: MapCADisplayLoop,
          updateBufferedUniform: UpdateBufferedUniform,
-         globeTexturing: GlobeTexturing) {
+         globeTexturing: GlobeTexturing,
+         screenUniforms: ScreenUniforms) {
         
+        self.drawTexture            = DrawTexture(screenUniforms: screenUniforms)
+        self.screenUniforms         = screenUniforms
         self.globeGeometry          = GlobeGeometry()
         self.mapZoomState           = mapZoomState
         self.metalDevice            = metalDevice
@@ -72,7 +77,6 @@ class GlobeMode {
                 globeWidthFactor: 0,
                 globeHeightFactor: 0))
         }
-        
     }
     
     func changePlane(bufferIndex: Int, segments: Int, areaRange: AreaRange) {
@@ -112,12 +116,12 @@ class GlobeMode {
         let tilesCount = mapZoomState.tilesCount
         let panX = Float(camera.mapPanning.x)
         
-        let uTileSize = Float(1.0 / 3)
-        let halfTilesCount = Float(tilesCount) / 2.0
         
         
         var uShiftMap = panX
         if z > 1 {
+            let uTileSize = Float(1.0 / 3)
+            let halfTilesCount = Float(tilesCount) / 2.0
             let uShift = (panX * 2.0) * halfTilesCount * uTileSize
             uShiftMap = uTileSize - uTileSize / 2 + uShift.truncatingRemainder(dividingBy: uTileSize)
             if uShift > 0 {
@@ -157,6 +161,18 @@ class GlobeMode {
                                             indexBuffer: indicesBuffer,
                                             indexBufferOffset: 0)
         renderEncoder.endEncoding()
+        
+        
+        // draw texture
+        renderPassDescriptor.colorAttachments[0].loadAction = .load
+        renderPassDescriptor.depthAttachment = nil
+        renderPassDescriptor.stencilAttachment = nil
+        let textureEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        pipelines.texturePipeline.selectPipeline(renderEncoder: textureEncoder)
+        drawTexture.draw(textureEncoder: textureEncoder, texture: texture, sideWidth: 500)
+        pipelines.basePipeline.selectPipeline(renderEncoder: textureEncoder)
+        drawTexture.drawBorders(textureEncoder: textureEncoder, sideWidth: 500)
+        textureEncoder.endEncoding()
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {

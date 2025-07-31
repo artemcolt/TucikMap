@@ -120,7 +120,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             drawingFrameRequester: drawingFrameRequester,
                                             mapCadDisplayLoop: mapCadDisplayLoop,
                                             updateBufferedUniform: updateBufferedUniform,
-                                            globeTexturing: globeTexturing)
+                                            globeTexturing: globeTexturing,
+                                            screenUniforms: screenUniforms)
         super.init()
     }
     

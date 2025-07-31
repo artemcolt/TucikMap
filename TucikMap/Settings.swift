@@ -21,7 +21,7 @@ class Settings {
     static let nullZoomCameraDistance: Float = mapSize / (2 * tan(fov / 2))
     static let minCameraDistance: Float = nullZoomCameraDistance / pow(2, 18)
     static let farPlaneIncreaseFactor: Float = 2.0
-    static let nullZoomGlobeRadius: Float = 0.2
+    static let nullZoomGlobeRadius: Float = 0.3
     
     static let maxTileZoom: Int = 16
     static let visibleTilesCount: Int = 9
@@ -83,12 +83,12 @@ class Settings {
     static let shiftCollisionLocation   : Float = 5_000
     
     static let printCenterLatLon        : Bool = false
-    static let printCenterTile          : Bool = true
-    static let showOnlyTiles            : [Tile] = [] // Tile(x: 39617, y: 20488, z: 16)
+    static let printCenterTile          : Bool = false
+    static let showOnlyTiles            : [Tile] = [ Tile(x: 0, y: 0, z: 0) ] // Tile(x: 39617, y: 20488, z: 16) Tile(x: 0, y: 0, z: 0)
     static let allowOnlyTiles           : [Tile] = [] // Tile(x: 19808, y: 10244, z: 15) Tile(x: 19808, y: 10244, z: 15), Tile(x: 39617, y: 20488, z: 16)
     
     static let useGoToAtStart = true
-    static let goToAtStartZ: Float = 2.0
+    static let goToAtStartZ: Float = 3.0
     static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(0, 0) // 55.74958790780624, 37.62346867711091
     
     static let maxRoadLabelsDivision = 1
@@ -106,7 +106,8 @@ class Settings {
     static let printRoadLabelsCount: Bool = false
     static let filterRoadLenLabel: Float = 0.3
     static let printVisibleTiles: Bool = false
-    static let printVisibleAreaRange: Bool = true
+    static let printVisibleAreaRange: Bool = false
     
     static let addTestBorders = true
+    static let drawHelpGridOnTexture = true
 }

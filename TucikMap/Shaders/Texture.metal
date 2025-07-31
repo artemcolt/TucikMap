@@ -26,7 +26,7 @@ struct VertexOut {
 };
 
 vertex VertexOut vertexShaderTexture(Vertex vertexIn [[stage_in]],
-                                   constant Uniforms& uniforms [[buffer(1)]]) {
+                                     constant Uniforms& uniforms [[buffer(1)]]) {
     
     float4 worldPosition = float4(vertexIn.position, 0.0, 1.0);
     float4 viewPosition = uniforms.viewMatrix * worldPosition;

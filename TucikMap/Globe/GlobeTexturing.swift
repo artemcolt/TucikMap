@@ -75,6 +75,22 @@ class GlobeTexturing {
     func render(currentFBIndex: Int,
                 metalTiles: [MetalTile],
                 commandBuffer: MTLCommandBuffer) {
+        let areaRange   = renderingBlock.areaRange
+        let minTileX    = Float(areaRange.minX)
+        let maxTileX    = Float(areaRange.maxX)
+        let minTileY    = Float(areaRange.minY)
+        let maxTileY    = Float(areaRange.maxY)
+        let currentZ    = Float(areaRange.z)
+        
+        let visXCenter  = minTileX + (maxTileX - minTileX) / 2
+        let visYCenter  = minTileY + (maxTileY - minTileY) / 2
+        
+        let tilesNum    = pow(2, currentZ)
+        //let centerTile  = tilesNum / 2
+        
+        let normalTileSize = Float(2.0)
+        var windowTileFraction = Float(1.0 / 3.0)
+        
         let texture                 = texturesBuffered[currentFBIndex]
         let renderPassDescriptor    = MTLRenderPassDescriptor()
         
@@ -87,47 +103,47 @@ class GlobeTexturing {
         pipelines.polygonPipeline.selectPipeline(renderEncoder: commandEncoder)
         drawTile.setUniforms(renderEncoder: commandEncoder, uniformsBuffer: uniformsBuffer)
         
-        let areaRange   = renderingBlock.areaRange
-        let minTileX    = areaRange.minX
-        let maxTileX    = areaRange.maxX
-        let minTileY    = areaRange.minY
-        let maxTileY    = areaRange.maxY
-        let currentZ    = areaRange.z
-
-        let numVisTiles = Float(1 << currentZ)
-        let u_min = Float(minTileX) / numVisTiles
-        let u_max = Float(maxTileX + 1) / numVisTiles
-        let clamped_u_min = max(u_min, 0.0)
-        let clamped_u_max = min(u_max, 1.0)
-        let delta_u = clamped_u_max - clamped_u_min
-
-        let v_min = Float(minTileY) / numVisTiles
-        let v_max = Float(maxTileY + 1) / numVisTiles
-        let clamped_v_min = max(v_min, 0.0)
-        let clamped_v_max = min(v_max, 1.0)
-        let delta_v = clamped_v_max - clamped_v_min
-
-        // Assuming delta_u == delta_v since the visible area is always square
-        let delta = delta_u  // or delta_v, as they should be equal
-
         for metalTile in metalTiles {
             let tile = metalTile.tile
-            let x = tile.x
-            let y = tile.y
-            let z = tile.z
+            let x = Float(tile.x)
+            let y = Float(tile.y)
+            let z = Float(tile.z)
             
-            let numTiles = Float(1 << z)  // Equivalent to pow(2, Float(z))
-            let tileFraction = 1.0 / numTiles
-            let uCenter = (Float(x) + 0.5) * tileFraction
-            let vCenter = (Float(y) + 0.5) * tileFraction
+            let relTile = tile.atDifferentZ(targetZ: Int(currentZ))
+            let relX = Float(relTile.x)
+            let relY = Float(relTile.y)
             
-            let normalized_u = (uCenter - clamped_u_min) / delta_u
-            let centerX = -1.0 + 2.0 * normalized_u
+            let zDiff = currentZ - z
+            let factor = pow(2, Float(zDiff))
+            let worldTileSize = Float(normalTileSize * windowTileFraction)
             
-            let normalized_v = (vCenter - clamped_v_min) / delta_v
-            let centerY = 1.0 - 2.0 * normalized_v
             
-            let scale = tileFraction / delta
+            let centerTileX = relX + factor / 2
+            let centerTileY = relY + factor / 2
+            
+            let difXFromCenter = visXCenter - centerTileX
+            let difYFromCenter = visYCenter - centerTileY
+            
+            var relativeTileDeltaX = Float(0)
+            var relativeTileDeltaY = Float(0)
+            
+            // при сетке из трех нужно отцентрировать
+            relativeTileDeltaX -= 0.5
+            relativeTileDeltaY += 0.5
+            
+            relativeTileDeltaX -= difXFromCenter
+            relativeTileDeltaY += difYFromCenter
+            
+            
+            print("centerTileX = ", centerTileX, " centerTileY = ", centerTileY)
+            
+            
+            let xShift = relativeTileDeltaX * worldTileSize
+            let yShift = relativeTileDeltaY * worldTileSize
+            
+            let scale = windowTileFraction * factor
+            let centerX = Float(xShift)
+            let centerY = Float(yShift)
             
             let scaleMatrix = MatrixUtils.matrix_scale(scale, scale, 1.0)
             let translateMatrix = MatrixUtils.matrix_translate(centerX, centerY, 0.0)
@@ -138,6 +154,116 @@ class GlobeTexturing {
                           modelMatrix: modelMatrix)
         }
         
+        if Settings.drawHelpGridOnTexture {
+            pipelines.basePipeline.selectPipeline(renderEncoder: commandEncoder)
+            if currentZ > 1 {
+                drawHelpGrid3(commandEncoder: commandEncoder)
+            }
+            if currentZ == 1 {
+                drawHelpGrid2(commandEncoder: commandEncoder)
+            }
+        }
+        
         commandEncoder.endEncoding()
+    }
+    
+    private func drawHelpGrid3(commandEncoder: MTLRenderCommandEncoder) {
+        var positions: [SIMD3<Float>] = []
+        let segments = 3
+        let thickness: Float = 0.004  // Adjustable thickness
+
+        let step = 2.0 / Float(segments)
+        var linePositions: [Float] = []
+        for i in 0...segments {
+            linePositions.append(-1.0 + Float(i) * step)
+        }
+
+        // Horizontal lines
+        for y in linePositions {
+            let half = thickness / 2
+            let bl = SIMD3<Float>(-1, y - half, 0)
+            let br = SIMD3<Float>(1, y - half, 0)
+            let tl = SIMD3<Float>(-1, y + half, 0)
+            let tr = SIMD3<Float>(1, y + half, 0)
+            
+            positions.append(bl)
+            positions.append(br)
+            positions.append(tl)
+            positions.append(tl)
+            positions.append(br)
+            positions.append(tr)
+        }
+
+        // Vertical lines
+        for x in linePositions {
+            let half = thickness / 2
+            let bl = SIMD3<Float>(x - half, -1, 0)
+            let br = SIMD3<Float>(x + half, -1, 0)
+            let tl = SIMD3<Float>(x - half, 1, 0)
+            let tr = SIMD3<Float>(x + half, 1, 0)
+            
+            positions.append(bl)
+            positions.append(br)
+            positions.append(tl)
+            positions.append(tl)
+            positions.append(br)
+            positions.append(tr)
+        }
+        
+        let colors = positions.map { pos in SIMD4<Float>(1.0, 0.0, 0.0, 1.0) }
+        commandEncoder.setVertexBytes(positions, length: MemoryLayout<SIMD3<Float>>.stride * positions.count, index: 0)
+        commandEncoder.setVertexBytes(colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 1)
+        commandEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)
+        commandEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: positions.count)
+    }
+    
+    private func drawHelpGrid2(commandEncoder: MTLRenderCommandEncoder) {
+        var positions: [SIMD3<Float>] = []
+        let segments = 2
+        let thickness: Float = 0.004  // Adjustable thickness
+
+        let step = 2.0 / Float(segments)
+        var linePositions: [Float] = []
+        for i in 0...segments {
+            linePositions.append(-1.0 + Float(i) * step)
+        }
+
+        // Horizontal lines
+        for y in linePositions {
+            let half = thickness / 2
+            let bl = SIMD3<Float>(-1, y - half, 0)
+            let br = SIMD3<Float>(1, y - half, 0)
+            let tl = SIMD3<Float>(-1, y + half, 0)
+            let tr = SIMD3<Float>(1, y + half, 0)
+            
+            positions.append(bl)
+            positions.append(br)
+            positions.append(tl)
+            positions.append(tl)
+            positions.append(br)
+            positions.append(tr)
+        }
+
+        // Vertical lines
+        for x in linePositions {
+            let half = thickness / 2
+            let bl = SIMD3<Float>(x - half, -1, 0)
+            let br = SIMD3<Float>(x + half, -1, 0)
+            let tl = SIMD3<Float>(x - half, 1, 0)
+            let tr = SIMD3<Float>(x + half, 1, 0)
+            
+            positions.append(bl)
+            positions.append(br)
+            positions.append(tl)
+            positions.append(tl)
+            positions.append(br)
+            positions.append(tr)
+        }
+        
+        let colors = positions.map { pos in SIMD4<Float>(1.0, 0.0, 0.0, 1.0) }
+        commandEncoder.setVertexBytes(positions, length: MemoryLayout<SIMD3<Float>>.stride * positions.count, index: 0)
+        commandEncoder.setVertexBytes(colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 1)
+        commandEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)
+        commandEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: positions.count)
     }
 }
