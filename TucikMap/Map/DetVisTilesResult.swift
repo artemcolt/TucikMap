@@ -8,16 +8,16 @@
 import MetalKit
 
 struct AreaRange {
-    let minX: simd_int1
-    let minY: simd_int1
-    let maxX: simd_int1
-    let maxY: simd_int1
-    let z: simd_int1
+    let startX: Int
+    let endX: Int
+    let minY: Int
+    let maxY: Int
+    let z: Int
     
     static func == (lhs: AreaRange, rhs: AreaRange) -> Bool {
-        return lhs.minX == rhs.minX &&
+        return lhs.startX == rhs.startX &&
                lhs.minY == rhs.minY &&
-               lhs.maxX == rhs.maxX &&
+               lhs.endX == rhs.endX &&
                lhs.maxY == rhs.maxY &&
                lhs.z == rhs.z
     }

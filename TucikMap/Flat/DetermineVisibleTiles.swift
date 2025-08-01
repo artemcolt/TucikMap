@@ -22,37 +22,36 @@ class DetermineVisibleTiles {
     
     func determine() -> DetVisTilesResult {
         
-        var visibleTiles: [Tile] = determineRealArea()
+        let realArea = determineRealArea()
+        var visibleTiles = realArea.tiles
+        let areaRange = realArea.areaRange
         
         if Settings.printVisibleTiles {
             print(visibleTiles)
         }
-        
-        let minX = visibleTiles.min(by: { $0.x < $1.x })!.x
-        let minY = visibleTiles.min(by: { $0.y < $1.y })!.y
-        let maxX = visibleTiles.min(by: { $0.x > $1.x })!.x
-        let maxY = visibleTiles.min(by: { $0.y > $1.y })!.y
-        
-        let zoomLevel = mapZoomState.zoomLevel
-        let areaRange = AreaRange(minX: simd_int1(minX),
-                                  minY: simd_int1(minY),
-                                  maxX: simd_int1(maxX),
-                                  maxY: simd_int1(maxY),
-                                  z: simd_int1(zoomLevel))
         
         if Settings.showOnlyTiles.count > 0 {
             visibleTiles = fixedTiles()
         }
         
         if Settings.printVisibleAreaRange {
-            print("z: \(zoomLevel) x:\(minX)-\(maxX) y:\(minY)-\(maxY)")
+            print("z: \(areaRange.z) startX:\(areaRange.startX) endX:\(areaRange.endX) minY:\(areaRange.minY) maxY:\(areaRange.maxY)")
         }
         
         return DetVisTilesResult(visibleTiles: visibleTiles,
                                  areaRange: areaRange)
     }
     
-    private func determineRealArea() -> [Tile]  {
+    private func normalize(coord: Int, z: Int) -> Int {
+        let n = 1 << z
+        var normalized = coord % n
+        if normalized < 0 {
+            normalized += n
+        }
+        return normalized
+    }
+    
+    private func determineRealArea() -> (tiles: [Tile], areaRange: AreaRange)  {
         var visibleTiles: [Tile] = []
         var zoomLevel = mapZoomState.zoomLevel
         
@@ -89,14 +88,35 @@ class DetermineVisibleTiles {
             endY += shiftY
         }
         
+        var startX = centerTileX - halfTilesX
+        var endX = centerTileX + halfTilesX
+        
+        // Кастомно настраиваем видимую область для малых зумов
+        switch zoomLevel {
+        case 0:
+            startX = 0
+            endX = 0
+            startY = 0
+            endY = 0
+        case 1:
+            startX = 0
+            endX = 1
+            startY = 0
+            endY = 1
+        default: break
+        }
+        
+        let areaRange = AreaRange(startX: startX, endX: endX, minY: startY, maxY: endY, z: zoomLevel)
+        
         // Перебираем все видимые тайлы
-        for tileX in (centerTileX - halfTilesX)...(centerTileX + halfTilesX) {
+        for tileX in startX...endX {
             for tileY in startY...endY {
-                let skip = tileX < 0 || tileY < 0 || tileX > maxTileCoord || tileY > maxTileCoord
-                if skip { continue }
+                if tileY < 0 || tileY > maxTileCoord { continue }
+                
+                let normTileX = normalize(coord: tileX, z: zoomLevel)
                 
                 // Добавляем тайл с текущим уровнем зума
-                let tile = Tile(x: tileX, y: tileY, z: zoomLevel)
+                let tile = Tile(x: normTileX, y: tileY, z: zoomLevel)
                 if Settings.allowOnlyTiles.isEmpty {
                     visibleTiles.append(tile)
                 } else if Settings.allowOnlyTiles.contains(tile) {
@@ -105,7 +125,7 @@ class DetermineVisibleTiles {
             }
         }
         
-        return visibleTiles
+        return (tiles: visibleTiles, areaRange: areaRange)
     }
     
     private func fixedTiles() -> [Tile] {

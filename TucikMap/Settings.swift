@@ -85,12 +85,12 @@ class Settings {
     static let printCenterLatLon        : Bool = false
     static let printCenterTile          : Bool = false
     // Tile(x: 39617, y: 20488, z: 16)
-    static let showOnlyTiles            : [Tile] = [ ]
+    static let showOnlyTiles            : [Tile] = [ Tile(x: 1, y: 0, z: 1) ]
     static let allowOnlyTiles           : [Tile] = [] // Tile(x: 19808, y: 10244, z: 15) Tile(x: 19808, y: 10244, z: 15), Tile(x: 39617, y: 20488, z: 16)
     
-    static let useGoToAtStart = false
-    static let goToAtStartZ: Float = 3.0
-    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(0, 0) // 55.74958790780624, 37.62346867711091
+    static let useGoToAtStart = true
+    static let goToAtStartZ: Float = 2.0
+    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(59.723550916289604, -175.46419900667388) // 55.74958790780624, 37.62346867711091
     
     static let maxRoadLabelsDivision = 1
     static let roadLabelScreenSpacing = Float(0)

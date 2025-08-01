@@ -131,10 +131,9 @@ class GlobeMode {
         let tilesCount = mapZoomState.tilesCount
         let panX = Float(camera.mapPanning.x)
         
-        
         var uShiftMap = panX
         if z > 1 {
-            let uTileSize = Float(1.0 / 3)
+            let uTileSize = Float(1.0 / 3.0)
             let halfTilesCount = Float(tilesCount) / 2.0
             let uShift = (panX * 2.0) * halfTilesCount * uTileSize
             uShiftMap = uTileSize - uTileSize / 2 + uShift.truncatingRemainder(dividingBy: uTileSize)

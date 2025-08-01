@@ -27,14 +27,6 @@ struct VertexOut {
     float2 texCoord;
 };
 
-struct AreaRange {
-    int minX;
-    int minY;
-    int maxX;
-    int maxY;
-    int z;
-};
-
 struct GlobeParams {
     float globeRotation;
     float uShift;

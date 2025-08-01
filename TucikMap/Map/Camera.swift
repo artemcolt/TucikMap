@@ -223,11 +223,17 @@ class Camera {
     private func updateCameraCenterTile() -> Bool {
         let tileSize = mapZoomState.tileSize
         let borderedZoomLevel = mapZoomState.zoomLevel
-        let worldTilesHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
+        let worldHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
         
         // Определяем центр карты в координатах тайлов
-        centerTileX = (-Float(mapPanning.x) + worldTilesHalf) / tileSize
-        centerTileY = (Float(mapPanning.y) + worldTilesHalf) / tileSize
+        centerTileX = (-Float(mapPanning.x) + worldHalf) / tileSize
+        centerTileY = (Float(mapPanning.y) + worldHalf) / tileSize
+        
+        if mapPanning.x == 0.5 {
+            centerTileX = Float(mapZoomState.maxTileCoord)
+        } else if mapPanning.x == -0.5 {
+            centerTileX = Float(0)
+        }
         
         let changed = Int(centerTileX) != previousCenterTileX || Int(centerTileY) != previousCenterTileY
                                                               || borderedZoomLevel != previousBorderedZoomLevel

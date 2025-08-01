@@ -51,11 +51,13 @@ class GlobeTexturing {
                 metalTiles: [MetalTile],
                 areaRange: AreaRange) {
         
-        let minTileX    = Float(areaRange.minX)
-        let maxTileX    = Float(areaRange.maxX)
+        let minTileX    = Float(areaRange.startX)
+        let maxTileX    = Float(areaRange.endX)
         let minTileY    = Float(areaRange.minY)
         let maxTileY    = Float(areaRange.maxY)
         let currentZ    = Float(areaRange.z)
+        let tilesNum    = pow(2, currentZ)
+        let lastCoord   = tilesNum - 1
         
         let visXCenter  = minTileX + (maxTileX - minTileX) / 2
         let visYCenter  = minTileY + (maxTileY - minTileY) / 2
@@ -84,6 +86,8 @@ class GlobeTexturing {
         for metalTile in metalTiles {
             let tile = metalTile.tile
             let z = Float(tile.z)
+            let currentTilesNum = pow(2, z)
+            let currentLastCoord = currentTilesNum - 1
             
             let relTile = tile.atDifferentZ(targetZ: Int(currentZ))
             let relX = relTile.x
@@ -93,8 +97,15 @@ class GlobeTexturing {
             let factor = pow(2, Float(zDiff))
             let worldTileSize = Float(normalTileSize * windowTileFraction)
             
+            // Чтобы на границе по x все правильно показывалось
+            var loopingShift = Float(0)
+            if minTileX < 0 && maxTileX > 0 && tile.x >= Int(tilesNum) - 2 {
+                loopingShift = tilesNum
+            } else if maxTileX > lastCoord && minTileX < lastCoord && tile.x <= 1 {
+                loopingShift = -tilesNum
+            }
             
-            let centerTileX = relX + factor / 2
+            let centerTileX = relX + factor / 2 - loopingShift
             let centerTileY = relY + factor / 2
             
             let difXFromCenter = visXCenter - centerTileX
