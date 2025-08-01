@@ -13,7 +13,7 @@ class GlobeTexturing {
     private let pipelines           : Pipelines
     private let drawTile            : DrawTile = DrawTile()
     private let uniformsBuffer      : MTLBuffer
-    private let textureSize         : Int = 4096
+    private let textureSize         : Int = Settings.globeTextureSize
     private var texturesBuffered    : [MTLTexture] = []
     
     func getTexture(frameBufferIndex: Int) -> MTLTexture {
@@ -57,7 +57,6 @@ class GlobeTexturing {
         let maxTileY    = Float(areaRange.maxY)
         let currentZ    = Float(areaRange.z)
         let tilesNum    = pow(2, currentZ)
-        let lastCoord   = tilesNum - 1
         
         let visXCenter  = minTileX + (maxTileX - minTileX) / 2
         let visYCenter  = minTileY + (maxTileY - minTileY) / 2
@@ -83,58 +82,61 @@ class GlobeTexturing {
         pipelines.polygonPipeline.selectPipeline(renderEncoder: commandEncoder)
         drawTile.setUniforms(renderEncoder: commandEncoder, uniformsBuffer: uniformsBuffer)
         
-        for metalTile in metalTiles {
-            let tile = metalTile.tile
-            let z = Float(tile.z)
-            let currentTilesNum = pow(2, z)
-            let currentLastCoord = currentTilesNum - 1
-            
-            let relTile = tile.atDifferentZ(targetZ: Int(currentZ))
-            let relX = relTile.x
-            let relY = relTile.y
-            
-            let zDiff = currentZ - z
-            let factor = pow(2, Float(zDiff))
-            let worldTileSize = Float(normalTileSize * windowTileFraction)
-            
-            // Чтобы на границе по x все правильно показывалось
-            var loopingShift = Float(0)
-            if minTileX < 0 && maxTileX > 0 && tile.x >= Int(tilesNum) - 2 {
-                loopingShift = tilesNum
-            } else if maxTileX > lastCoord && minTileX < lastCoord && tile.x <= 1 {
-                loopingShift = -tilesNum
+        for looping in -1...1 {
+            for metalTile in metalTiles {
+                let tile = metalTile.tile
+                let z = Float(tile.z)
+                
+                let relTile = tile.atDifferentZ(targetZ: Int(currentZ))
+                let relX = relTile.x
+                let relY = relTile.y
+                
+                let zDiff = currentZ - z
+                let factor = pow(2, Float(zDiff)) // так же это относительный размер тайла
+                let worldTileSize = Float(normalTileSize * windowTileFraction)
+                
+                // Чтобы на границе по x все правильно показывалось
+                let loopingShift = Float(looping) * tilesNum
+                
+                let centerTileX = relX + factor / 2 - loopingShift
+                let centerTileY = relY + factor / 2
+                
+                let difXFromCenter = visXCenter - centerTileX
+                let difYFromCenter = visYCenter - centerTileY
+                
+                var relativeTileDeltaX = Float(0)
+                var relativeTileDeltaY = Float(0)
+                
+                // при сетке из трех нужно отцентрировать
+                // но в итоге работает на любой сетке
+                relativeTileDeltaX -= 0.5
+                relativeTileDeltaY += 0.5
+                
+                relativeTileDeltaX -= difXFromCenter
+                relativeTileDeltaY += difYFromCenter
+                
+                // пропускаем то что в итоге не отображается в текстуре
+                let leftTileBorder = relativeTileDeltaX - factor / 2
+                let rightTileBorder = relativeTileDeltaX + factor / 2
+                let relativeVisibleBorders = Float(windowSize / 2.0)
+                let tooMuchLeft  = leftTileBorder <= -relativeVisibleBorders && rightTileBorder <= -relativeVisibleBorders
+                let tooMuchRight = leftTileBorder >= relativeVisibleBorders  && rightTileBorder >= relativeVisibleBorders
+                if tooMuchLeft || tooMuchRight {
+                    continue
+                }
+                
+                let centerX = relativeTileDeltaX * worldTileSize
+                let centerY = relativeTileDeltaY * worldTileSize
+                let scale = windowTileFraction * factor
+                
+                let scaleMatrix = MatrixUtils.matrix_scale(scale, scale, 1.0)
+                let translateMatrix = MatrixUtils.matrix_translate(centerX, centerY, 0.0)
+                let modelMatrix = translateMatrix * scaleMatrix
+                
+                drawTile.draw(renderEncoder: commandEncoder,
+                              tile2dBuffers: metalTile.tile2dBuffers,
+                              modelMatrix: modelMatrix)
             }
-            
-            let centerTileX = relX + factor / 2 - loopingShift
-            let centerTileY = relY + factor / 2
-            
-            let difXFromCenter = visXCenter - centerTileX
-            let difYFromCenter = visYCenter - centerTileY
-            
-            var relativeTileDeltaX = Float(0)
-            var relativeTileDeltaY = Float(0)
-            
-            // при сетке из трех нужно отцентрировать
-            relativeTileDeltaX -= 0.5
-            relativeTileDeltaY += 0.5
-            
-            relativeTileDeltaX -= difXFromCenter
-            relativeTileDeltaY += difYFromCenter
-            
-            let xShift = relativeTileDeltaX * worldTileSize
-            let yShift = relativeTileDeltaY * worldTileSize
-            
-            let scale = windowTileFraction * factor
-            let centerX = Float(xShift)
-            let centerY = Float(yShift)
-            
-            let scaleMatrix = MatrixUtils.matrix_scale(scale, scale, 1.0)
-            let translateMatrix = MatrixUtils.matrix_translate(centerX, centerY, 0.0)
-            let modelMatrix = translateMatrix * scaleMatrix
-            
-            drawTile.draw(renderEncoder: commandEncoder,
-                          tile2dBuffers: metalTile.tile2dBuffers,
-                          modelMatrix: modelMatrix)
         }
         
         if Settings.drawHelpGridOnTexture {
