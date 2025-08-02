@@ -119,6 +119,13 @@ class Camera {
     }
     
     func updateMap(view: MTKView, size: CGSize) {
+        // Зацикливаем карту
+        if mapPanning.x > 0.5 {
+            mapPanning.x = -0.5
+        } else if mapPanning.x < -0.5 {
+            mapPanning.x = 0.5
+        }
+        
         let _ = updateCameraCenterTile()
         
         drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)

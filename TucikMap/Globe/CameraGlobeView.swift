@@ -27,11 +27,6 @@ class CameraGlobeView : Camera {
         forward         = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
         cameraPosition  = targetPosition + forward * cameraDistance
         mapPanning.y    = max(min(mapPanning.y, 1.0), -1.0)
-        if mapPanning.x > 0.5 {
-            mapPanning.x = -0.5
-        } else if mapPanning.x < -0.5 {
-            mapPanning.x = 0.5
-        }
         
         let mapSize     = Double(Settings.mapSize) // размер карты снизу и доверху
         let panY        = mapPanning.y // 0 в центре карты, на половине пути

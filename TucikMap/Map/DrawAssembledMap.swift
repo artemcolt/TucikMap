@@ -47,6 +47,7 @@ class DrawAssembledMap {
             let tileProps       = tileFrameProps.get(tile: tile.tile)
             guard tileProps.contains else { continue }
                     
+            //let loopMatrix      = MatrixUtils.matrix_translate(Settings.mapSize * Float(loop), 0, 0)
             let modelMatrix     = tileProps.model
             let tile2dBuffers   = tile.tile2dBuffers
             

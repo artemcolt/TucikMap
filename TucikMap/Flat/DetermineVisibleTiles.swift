@@ -21,13 +21,15 @@ class DetermineVisibleTiles {
     }
     
     func determine() -> DetVisTilesResult {
-        
         let realArea = determineRealArea()
         var visibleTiles = realArea.tiles
         let areaRange = realArea.areaRange
         
         if Settings.printVisibleTiles {
-            print(visibleTiles)
+            print("------")
+            for tile in visibleTiles {
+                print("x:\(tile.x) y:\(tile.y) z:\(tile.z)")
+            }
         }
         
         if Settings.showOnlyTiles.count > 0 {
