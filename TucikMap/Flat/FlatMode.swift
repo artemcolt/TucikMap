@@ -106,16 +106,17 @@ class FlatMode {
         let uniformsBuffer          = updateBufferedUniform.getCurrentFrameBuffer()
         let assembledMap            = mapUpdaterFlat.assembledMap
         let assembledTiles          = assembledMap.tiles
+        let areaRange               = assembledMap.areaRange
         let mapPanning              = camera.mapPanning
         let lastUniforms            = updateBufferedUniform.lastUniforms!
         let tileFrameProps          = TileFrameProps(mapZoomState: mapZoomState,
                                                      pan: mapPanning,
-                                                     uniforms: lastUniforms)
+                                                     uniforms: lastUniforms,
+                                                     areaRange: areaRange)
         
         if (mapCadDisplayLoop.checkEvaluateScreenData()) {
             let _ = screenCollisionsDetector.evaluate(lastUniforms: lastUniforms, mapPanning: mapPanning)
         }
-        
         
         // Применяем если есть актуальные данные меток для свежего кадра
         applyLabelsState.apply(currentFBIdx: currentFBIdx)
@@ -129,6 +130,7 @@ class FlatMode {
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
+            areaRange: areaRange,
             tileFrameProps: tileFrameProps
         )
         renderEncoder.endEncoding()
@@ -238,9 +240,9 @@ class FlatMode {
             let metalRoadLabels = tileRoadLabels.metalRoadLabels
             let tile = metalRoadLabels.tile
             guard let roadLabels = metalRoadLabels.roadLabels else { continue }
-            let props = tileFrameProps.get(tile: tile)
+            let props = tileFrameProps.get(tile: tile, loop: 0)
             let modelMatrix = props.model
-            guard props.contains else { continue }
+            guard props.frustrumPassed else { continue }
             let metas = roadLabels.mapLabelsCpuMeta
             
             for i2 in 0..<metas.count {

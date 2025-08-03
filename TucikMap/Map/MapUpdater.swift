@@ -63,7 +63,7 @@ class MapUpdater {
         
         var replacements = Set<MetalTile>()
         var actual = Set<MetalTile>()
-        let actualZ = visibleTiles[0].z
+        let actualZ = areaRange.z
         for i in 0..<visibleTiles.count {
             let tile = visibleTiles[i]
             

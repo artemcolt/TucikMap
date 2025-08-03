@@ -107,8 +107,6 @@ class GlobeTexturing {
                 var relativeTileDeltaX = Float(0)
                 var relativeTileDeltaY = Float(0)
                 
-                // при сетке из трех нужно отцентрировать
-                // но в итоге работает на любой сетке
                 relativeTileDeltaX -= 0.5
                 relativeTileDeltaY += 0.5
                 
@@ -121,7 +119,7 @@ class GlobeTexturing {
                 let relativeVisibleBorders = Float(windowSize / 2.0)
                 let tooMuchLeft  = leftTileBorder <= -relativeVisibleBorders && rightTileBorder <= -relativeVisibleBorders
                 let tooMuchRight = leftTileBorder >= relativeVisibleBorders  && rightTileBorder >= relativeVisibleBorders
-                if tooMuchLeft || tooMuchRight {
+                if (tooMuchLeft || tooMuchRight) {
                     continue
                 }
                 
@@ -133,9 +131,10 @@ class GlobeTexturing {
                 let translateMatrix = MatrixUtils.matrix_translate(centerX, centerY, 0.0)
                 let modelMatrix = translateMatrix * scaleMatrix
                 
+                drawTile.setTileConsts(renderEncoder: commandEncoder, tile2dBuffers: metalTile.tile2dBuffers)
                 drawTile.draw(renderEncoder: commandEncoder,
-                              tile2dBuffers: metalTile.tile2dBuffers,
-                              modelMatrix: modelMatrix)
+                              modelMatrix: modelMatrix,
+                              tile2dBuffers: metalTile.tile2dBuffers)
             }
         }
         

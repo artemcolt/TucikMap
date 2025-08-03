@@ -81,6 +81,7 @@ class GlobeMode {
         samplerState = metalDevice.makeSamplerState(descriptor: samplerDescriptor)!
         
         for _ in 0..<Settings.maxBuffersInFlight {
+            // TODO адаптировать размеры буфферов
             let verticesBuffer = metalDevice.makeBuffer(length: MemoryLayout<GlobePipeline.Vertex>.stride * 5_000)!
             let indicesBuffer  = metalDevice.makeBuffer(length: MemoryLayout<UInt32>.stride * 40_000)!
             planesBuffered.append(GlobePlane(
@@ -153,6 +154,7 @@ class GlobeMode {
         }
         
         if generatePlaneCount > 0 {
+            // TODO segments сколько выставлять
             changePlane(bufferIndex: currentFbIndex, segments: 40, areaRange: areaRange)
             generatePlaneCount -= 1
         }
@@ -167,8 +169,10 @@ class GlobeMode {
         
         var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
                                                         uShift: uShiftMap,
-                                                        globeRadius: camera.globeRadius)
-
+                                                        globeRadius: camera.globeRadius,
+                                                        transition: camera.test,
+                                                        mapZ: simd_int1(z))
+        //print(cos(camera.globeRotation))
         
         let buffered        = planesBuffered[currentFbIndex]
         let texture         = globeTexturing.getTexture(frameBufferIndex: currentFbIndex)

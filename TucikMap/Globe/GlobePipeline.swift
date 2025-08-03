@@ -18,6 +18,8 @@ class GlobePipeline {
         let globeRotation       : Float
         let uShift              : Float
         let globeRadius         : Float
+        let transition          : Float
+        let mapZ                : simd_int1
     }
     
     let pipelineState: MTLRenderPipelineState

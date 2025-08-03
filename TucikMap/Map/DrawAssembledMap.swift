@@ -38,20 +38,22 @@ class DrawAssembledMap {
         renderEncoder: MTLRenderCommandEncoder,
         uniformsBuffer: MTLBuffer,
         tiles: [MetalTile],
+        areaRange: AreaRange,
         tileFrameProps: TileFrameProps
     ) {
         guard tiles.isEmpty == false else { return }
         drawTile.setUniforms(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
         
         for tile in tiles {
-            let tileProps       = tileFrameProps.get(tile: tile.tile)
-            guard tileProps.contains else { continue }
-                    
-            //let loopMatrix      = MatrixUtils.matrix_translate(Settings.mapSize * Float(loop), 0, 0)
-            let modelMatrix     = tileProps.model
-            let tile2dBuffers   = tile.tile2dBuffers
-            
-            drawTile.draw(renderEncoder: renderEncoder, tile2dBuffers: tile2dBuffers, modelMatrix: modelMatrix)
+            let tile2dBuffers = tile.tile2dBuffers
+            drawTile.setTileConsts(renderEncoder: renderEncoder, tile2dBuffers: tile2dBuffers)
+            for loop in -1...1 {
+                let tileProps       = tileFrameProps.get(tile: tile.tile, loop: loop)
+                let tileModelMatrix = tileProps.model
+                guard tileProps.frustrumPassed else { continue }
+                
+                drawTile.draw(renderEncoder: renderEncoder, modelMatrix: tileModelMatrix, tile2dBuffers: tile2dBuffers)
+            }
         }
     }
     
@@ -64,26 +66,30 @@ class DrawAssembledMap {
         guard tiles.isEmpty == false else { return }
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
+        
         for metalTile in tiles {
             let tileBuffers = metalTile.tile3dBuffers
             guard let verticesBuffer = tileBuffers.verticesBuffer,
                   let indicesBuffer = tileBuffers.indicesBuffer,
                   let stylesBuffer = tileBuffers.stylesBuffer else { continue }
-            let tile = metalTile.tile
-            let props = tileFrameProps.get(tile: tile)
-            guard props.contains else { continue }
-            var modelMatrix = props.model
             
             renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(stylesBuffer, offset: 0, index: 2)
-            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<float4x4>.stride, index: 3)
             
-            renderEncoder.drawIndexedPrimitives(
-                type: .triangle,
-                indexCount: tileBuffers.indicesCount,
-                indexType: .uint32,
-                indexBuffer: indicesBuffer,
-                indexBufferOffset: 0)
+            for loop in -1...1 {
+                let tile = metalTile.tile
+                let props = tileFrameProps.get(tile: tile, loop: loop)
+                guard props.frustrumPassed else { continue }
+                var modelMatrix = props.model
+                renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<float4x4>.stride, index: 3)
+                
+                renderEncoder.drawIndexedPrimitives(
+                    type: .triangle,
+                    indexCount: tileBuffers.indicesCount,
+                    indexType: .uint32,
+                    indexBuffer: indicesBuffer,
+                    indexBufferOffset: 0)
+            }
         }
     }
     
@@ -105,11 +111,6 @@ class DrawAssembledMap {
         for metalTile in geoLabels {
             guard let textLabels        = metalTile.textLabels else { continue }
             
-            let tile                    = metalTile.tile
-            let props                   = tileFrameProps.get(tile: tile)
-            guard props.contains else { continue }
-            
-            var modelMatrix             = props.model
             let metalDrawMapLabels      = textLabels.metalDrawMapLabels
             let vertexBuffer            = metalDrawMapLabels.vertexBuffer
             let verticesCount           = metalDrawMapLabels.verticesCount
@@ -122,9 +123,13 @@ class DrawAssembledMap {
             renderEncoder.setVertexBuffer(mapLabelSymbolMeta,   offset: 0, index: 2)
             renderEncoder.setVertexBuffer(mapLabelGpuMeta,      offset: 0, index: 3)
             renderEncoder.setVertexBuffer(intersectionsBuffer,  offset: 0, index: 5)
-            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 7)
             renderEncoder.setFragmentTexture(atlasTexture, index: 0)
             
+            let tile = metalTile.tile
+            let props = tileFrameProps.get(tile: tile, loop: 0)
+            guard props.frustrumPassed else { continue }
+            var modelMatrix = props.model
+            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 7)
             renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount)
         }
     }
@@ -155,11 +160,7 @@ class DrawAssembledMap {
             
             let draw                    = roadLabels.draw
             let tile                    = metalRoad.tile
-            let tileProps               = tileFrameProps.get(tile: tile)
             
-            guard tileProps.contains else { continue }
-            
-            var modelMatrix             = tileProps.model
             
             let vertexBuffer            = draw.vertexBuffer
             let verticesCount           = draw.verticesCount
@@ -181,10 +182,12 @@ class DrawAssembledMap {
             renderEncoder.setVertexBuffer(lineToStartFloatsBuffer,  offset: 0, index: 7)
             renderEncoder.setVertexBuffer(startRoadAtBuffer,        offset: 0, index: 8)
             renderEncoder.setVertexBuffer(intersectionsBuffer,      offset: 0, index: 10)
-            
-            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 5)
             renderEncoder.setFragmentTexture(atlasTexture, index: 0)
             
+            let tileProps = tileFrameProps.get(tile: tile, loop: 0)
+            guard tileProps.frustrumPassed else { continue }
+            var modelMatrix = tileProps.model
+            renderEncoder.setVertexBytes(&modelMatrix, length: MemoryLayout<matrix_float4x4>.stride, index: 5)
             renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount, instanceCount: instances)
         }
     }

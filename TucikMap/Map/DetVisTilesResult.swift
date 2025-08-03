@@ -13,6 +13,7 @@ struct AreaRange {
     let minY: Int
     let maxY: Int
     let z: Int
+    let tileXCount: Int
     
     static func == (lhs: AreaRange, rhs: AreaRange) -> Bool {
         return lhs.startX == rhs.startX &&

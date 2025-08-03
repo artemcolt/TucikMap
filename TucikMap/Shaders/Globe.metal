@@ -31,16 +31,29 @@ struct GlobeParams {
     float globeRotation;
     float uShift;
     float globeRadius;
+    float transition;
+    int mapZ;
 };
+
+float latToMercatorY(float latitudeRadians) {
+    float sin_phi = sin(latitudeRadians);
+    // Обработка крайних случаев: если |sin_phi| близко к 1, ограничить, чтобы избежать NaN/inf
+    sin_phi = clamp(sin_phi, -0.999999f, 0.999999f);
+    float log_term = log((1.0f + sin_phi) / (1.0f - sin_phi));
+    float y_proj = 0.5f * log_term;
+    float y_norm = y_proj / M_PI_F;
+    return y_norm;
+}
 
 vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
                                    constant Uniforms& uniforms [[buffer(1)]],
                                    constant GlobeParams& globeParams [[buffer(2)]]) {
     
     constexpr float PI = M_PI_F;
-    float theta = vertexIn.xCoord * PI + PI / 2.0;
+    constexpr float HALF_PI = M_PI_F / 2.0;
+    float theta = vertexIn.xCoord * PI + HALF_PI;
     float y = vertexIn.yCoord * PI;
-    float phi = 2.0 * atan(exp(y)) - PI / 2.0;
+    float phi = 2.0 * atan(exp(y)) - HALF_PI;
 
     float radius = globeParams.globeRadius;
     float4 spherePos;
@@ -49,13 +62,31 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     spherePos.z = radius * cos(phi) * sin(theta);
     spherePos.w = 1;
     
-    float rotation          = globeParams.globeRotation;
-    float4x4 translation    = translation_matrix(float3(0, 0, -radius));
-    float4x4 globeRotation  = rotation_matrix(rotation, float3(1, 0, 0));
-    float4 worldPosition    = translation * globeRotation * spherePos;
+    float perimeter           = 2.0 * PI * radius;
+    float halfPerimeter       = perimeter / 2.0;
     
-    float4 viewPosition     = uniforms.viewMatrix * worldPosition;
-    float4 clipPosition     = uniforms.projectionMatrix * viewPosition;
+    float rotation            = globeParams.globeRotation;
+    float4x4 translation      = translation_matrix(float3(0, 0, -radius));
+    float4x4 globeRotation    = rotation_matrix(rotation, float3(1, 0, 0));
+    float4 globeWorldPosition = translation * globeRotation * spherePos;
+    
+    float mapScale            = pow(2.0, globeParams.mapZ);
+    float distortion          = cos(rotation);
+    float planeShiftY         = -latToMercatorY(rotation);
+    
+    float4x4 planeScaleMatrix = scale_matrix(float3(distortion, distortion, 1));
+    float4x4 planeTranslationMatrix = translation_matrix(float3(0, planeShiftY, 0));
+    
+    float4 planeWorldPosition = planeScaleMatrix * float4(-vertexIn.xCoord, vertexIn.yCoord + planeShiftY, 0, 1);
+    
+
+    float transition          = (cos(uniforms.elapsedTimeSeconds * 0.5) + 1) / 2;
+    //transition                = globeParams.transition;
+    
+    //transition = 1;
+    float4 worldPosition      = mix(globeWorldPosition, planeWorldPosition, transition);
+    float4 viewPosition       = uniforms.viewMatrix * worldPosition;
+    float4 clipPosition       = uniforms.projectionMatrix * viewPosition;
     
     
     
@@ -71,3 +102,4 @@ fragment float4 fragmentShaderGlobe(VertexOut in [[stage_in]],
     float4 color = colorTexture.sample(textureSampler, in.texCoord);
     return color;
 }
+

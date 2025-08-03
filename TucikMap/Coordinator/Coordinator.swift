@@ -23,6 +23,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     private var mapCadDisplayLoop           : MapCADisplayLoop
     private var mapZoomState                : MapZoomState
     private var drawPoint                   : DrawPoint
+    private var drawAxes                    : DrawAxes
         
     private var metalTilesStorage           : MetalTilesStorage
     private var renderFrameControl          : RenderFrameControl
@@ -49,6 +50,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         mapZoomState            = MapZoomState()
         screenUniforms          = ScreenUniforms(metalDevice: metalDevice)
         drawPoint               = DrawPoint(metalDevice: metalDevice)
+        drawAxes                = DrawAxes(metalDevice: metalDevice)
         drawingFrameRequester   = DrawingFrameRequester()
         frameCounter            = FrameCounter()
         mapModeStorage          = MapModeStorage()
@@ -187,6 +189,11 @@ class Coordinator: NSObject, MTKViewDelegate {
             pointSize: Settings.cameraCenterPointSize,
             position: cameraStorage.currentView.targetPosition,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
+        )
+        drawAxes.draw(renderEncoder: renderEncoder,
+                      uniformsBuffer: uniformsBuffer,
+                      lineLength: 1.0,
+                      position: SIMD3<Float>(0, 0, 0)
         )
         
         pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)

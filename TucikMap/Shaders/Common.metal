@@ -57,3 +57,13 @@ float4x4 rotation_matrix(float angle, float3 axis) {
         float4(0.0f, 0.0f, 0.0f, 1.0f)
     );
 }
+
+// Функция для создания матрицы масштабирования
+float4x4 scale_matrix(float3 scale) {
+    return float4x4(
+        float4(scale.x, 0.0f, 0.0f, 0.0f),
+        float4(0.0f, scale.y, 0.0f, 0.0f),
+        float4(0.0f, 0.0f, scale.z, 0.0f),
+        float4(0.0f, 0.0f, 0.0f, 1.0f)
+    );
+}

@@ -10,42 +10,56 @@ import MetalKit
 class TileFrameProps {
     struct Props {
         let model: matrix_float4x4
-        let contains: Bool
+        let frustrumPassed: Bool
+    }
+    
+    struct LoopedTile: Hashable {
+        let tile: Tile
+        let loop: Int
+        
+        static func == (lhs_: LoopedTile, rhs_: LoopedTile) -> Bool {
+            let lhs = lhs_.tile
+            let rhs = rhs_.tile
+            return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs_.loop == rhs_.loop
+        }
+        
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(tile)
+            hasher.combine(loop)
+        }
     }
     
     private let frustrum: FrustrumCulling
     private let mapZoomState: MapZoomState
     private let pan: SIMD3<Double>
-    private var properties: [Tile: Props] = [:]
+    private let areaRange: AreaRange
+    private var properties: [LoopedTile: Props] = [:]
     
-    init(mapZoomState: MapZoomState, pan: SIMD3<Double>, uniforms: Uniforms) {
+    
+    init(mapZoomState: MapZoomState, pan: SIMD3<Double>, uniforms: Uniforms, areaRange: AreaRange) {
         self.mapZoomState   = mapZoomState
         self.pan            = pan
+        self.areaRange      = areaRange
         
         frustrum            = FrustrumCulling(projection: uniforms.projectionMatrix, view: uniforms.viewMatrix)
     }
     
-    func get(tile: Tile) -> Props {
-        var current = properties[tile]
+    func get(tile: Tile, loop: Int) -> Props {
+        let loopedTile = LoopedTile(tile: tile, loop: loop)
+        var current = properties[loopedTile]
         if current == nil {
-            let modelMatrix = tile.getModelMatrix(mapZoomState: mapZoomState, pan: pan)
+            let modelMatrix     = tile.getModelMatrix(mapZoomState: mapZoomState, pan: pan)
+            let mapScaleFactor  = pow(2.0, Float(areaRange.z))
+            let loopMatrix      = MatrixUtils.matrix_translate(Settings.mapSize * mapScaleFactor * Float(loop), 0, 0)
+            let loopedModel     = loopMatrix * modelMatrix
             
-            let lb              = modelMatrix * simd_float4(-1, -1, 0, 1)
-            let rb              = modelMatrix * simd_float4( 1, -1, 0, 1)
-            let rt              = modelMatrix * simd_float4( 1,  1, 0, 1)
-            let lt              = modelMatrix * simd_float4(-1,  1, 0, 1)
+            let bounds = frustrum.createBounds(modelMatrix: loopedModel)
+            let frustrumPassed = frustrum.contains(bounds: bounds)
             
-            let lb2             = SIMD2<Float>(lb.x, lb.y)
-            let rb2             = SIMD2<Float>(rb.x, rb.y)
-            let rt2             = SIMD2<Float>(rt.x, rt.y)
-            let lt2             = SIMD2<Float>(lt.x, lt.y)
-            
-            let bounds          = FrustrumCulling.TileBounds(lb: lb2, rb: rb2, rt: rt2, lt: lt2)
-            let contains        = frustrum.contains(bounds: bounds)
-            current             = Props(model: modelMatrix, contains: contains)
-            
-            properties[tile] = current
+            current = Props(model: loopedModel, frustrumPassed: frustrumPassed)
+            properties[loopedTile] = current
         }
+        
         return current!
     }
 }

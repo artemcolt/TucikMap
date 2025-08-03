@@ -82,4 +82,19 @@ class FrustrumCulling {
     func contains(bounds: FrustrumCulling.TileBounds) -> Bool {
         return frustrum.containsTile(bounds: bounds)
     }
+    
+    func createBounds(modelMatrix: matrix_float4x4) -> TileBounds {
+        let lb              = modelMatrix * simd_float4(-1, -1, 0, 1)
+        let rb              = modelMatrix * simd_float4( 1, -1, 0, 1)
+        let rt              = modelMatrix * simd_float4( 1,  1, 0, 1)
+        let lt              = modelMatrix * simd_float4(-1,  1, 0, 1)
+        
+        let lb2             = SIMD2<Float>(lb.x, lb.y)
+        let rb2             = SIMD2<Float>(rb.x, rb.y)
+        let rt2             = SIMD2<Float>(rt.x, rt.y)
+        let lt2             = SIMD2<Float>(lt.x, lt.y)
+        
+        let bounds          = TileBounds(lb: lb2, rb: rb2, rt: rt2, lt: lt2)
+        return bounds
+    }
 }

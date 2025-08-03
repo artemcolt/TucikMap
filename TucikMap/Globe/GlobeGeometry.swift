@@ -18,6 +18,7 @@ class GlobeGeometry {
         let maxY = Float(areaRange.maxY)
         let minY = Float(areaRange.minY)
         let z = Int(areaRange.z)
+        let tileXCount = Float(areaRange.tileXCount)
         
         let tilesNum = pow(2.0, Float(z))
         let initialY = -(minY / tilesNum) * 2 + 1
@@ -26,11 +27,8 @@ class GlobeGeometry {
         let ySize = abs(finalY - initialY)
         let yStep = ySize / Float(segments)
         
-        let minX = Float(areaRange.startX)
-        let maxX = Float(areaRange.endX)
-        
-        let initialX = (minX / tilesNum) * 2 - 1
-        let finalX = ((maxX + 1) / tilesNum) * 2 - 1
+        let initialX = Float(-1)
+        let finalX = (tileXCount / tilesNum) * 2 - 1
         let xSize = abs(finalX - initialX)
         let xStep = xSize / Float(segments)
         let xHalfSize = xSize / 2
