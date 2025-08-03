@@ -32,7 +32,6 @@ struct GlobeParams {
     float uShift;
     float globeRadius;
     float transition;
-    int mapZ;
 };
 
 float latToMercatorY(float latitudeRadians) {
@@ -70,14 +69,11 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     float4x4 globeRotation    = rotation_matrix(rotation, float3(1, 0, 0));
     float4 globeWorldPosition = translation * globeRotation * spherePos;
     
-    float mapScale            = pow(2.0, globeParams.mapZ);
     float distortion          = cos(rotation);
     float planeShiftY         = -latToMercatorY(rotation);
     
-    float4x4 planeScaleMatrix = scale_matrix(float3(distortion, distortion, 1));
-    float4x4 planeTranslationMatrix = translation_matrix(float3(0, planeShiftY, 0));
-    
-    float4 planeWorldPosition = planeScaleMatrix * float4(-vertexIn.xCoord, vertexIn.yCoord + planeShiftY, 0, 1);
+    float planeFactor = distortion * halfPerimeter;
+    float4 planeWorldPosition = float4(-vertexIn.xCoord * planeFactor, vertexIn.yCoord * planeFactor + planeShiftY * planeFactor, 0, 1);
     
 
     float transition          = (cos(uniforms.elapsedTimeSeconds * 0.5) + 1) / 2;

@@ -170,8 +170,7 @@ class GlobeMode {
         var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
                                                         uShift: uShiftMap,
                                                         globeRadius: camera.globeRadius,
-                                                        transition: camera.test,
-                                                        mapZ: simd_int1(z))
+                                                        transition: camera.test)
         //print(cos(camera.globeRotation))
         
         let buffered        = planesBuffered[currentFbIndex]
