@@ -23,11 +23,15 @@ class Settings {
     
     
     
-    static let mapSize: Float = 1.0
-    static let nullZoomCameraDistance: Float = mapSize / (2 * tan(fov / 2))
+    
+    static let nullZoomCameraDistance: Float = 1.0 / (2 * tan(fov / 2))
     static let minCameraDistance: Float = nullZoomCameraDistance / pow(2, 18)
     static let farPlaneIncreaseFactor: Float = 2.0
     static let nullZoomGlobeRadius: Float = 0.3
+    
+    static let globeMapSize: Float = 1.0
+    static var flatMapSize: Float = 2 * Float.pi * nullZoomGlobeRadius
+    
     
     static let maxTileZoom: Int = 16
     static let visibleTilesCount: Int = 9

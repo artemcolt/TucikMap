@@ -116,7 +116,7 @@ struct Tile: Hashable {
     
     func getTilePointPanningCoordinates(normalizedX: Double, normalizedY: Double) -> MapPanningTilePoint {
         // Размер тайла на зуме 0
-        let mapSize = Double(Settings.mapSize)
+        let mapSize = Double(Settings.flatMapSize)
         
         // Размер тайла на текущем зуме: mapSize / 2^z
         let tileSize = mapSize / pow(2.0, Double(z))

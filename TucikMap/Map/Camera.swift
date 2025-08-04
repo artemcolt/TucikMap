@@ -193,7 +193,7 @@ class Camera {
     }
     
     func getCenterLatLon() -> (lat: Double, lon: Double) {
-        let mapSize = Double(Settings.mapSize)
+        let mapSize = Double(Settings.flatMapSize)
         
         // Step 1: Reverse the map offset to get Mercator coordinates x and y
         let x = mapSize / 2 - mapPanning.x
@@ -213,7 +213,7 @@ class Camera {
         mapZoom = zoom
         
         let lat = -lat
-        let mapSize = Double(Settings.mapSize)
+        let mapSize = Double(Settings.flatMapSize)
         
         // Шаг 1: Преобразование lat, lon в координаты Меркатора
         let _ = lon * .pi / 180
@@ -246,7 +246,11 @@ class Camera {
     }
     
     private func updateCameraCenterTile() -> Bool {
-        let tileSize = mapZoomState.tileSize
+        var tileSize = mapZoomState.flatTileSize
+        if mapModeStorage.mapMode == .globe {
+            tileSize = mapZoomState.globeTileSize
+        }
+        
         let borderedZoomLevel = mapZoomState.zoomLevel
         let worldHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
         

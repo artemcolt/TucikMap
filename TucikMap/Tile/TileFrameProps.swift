@@ -50,7 +50,7 @@ class TileFrameProps {
         if current == nil {
             let modelMatrix     = tile.getModelMatrix(mapZoomState: mapZoomState, pan: pan)
             let mapScaleFactor  = pow(2.0, Float(areaRange.z))
-            let loopMatrix      = MatrixUtils.matrix_translate(Settings.mapSize * mapScaleFactor * Float(loop), 0, 0)
+            let loopMatrix      = MatrixUtils.matrix_translate(Settings.flatMapSize * mapScaleFactor * Float(loop), 0, 0)
             let loopedModel     = loopMatrix * modelMatrix
             
             let bounds = frustrum.createBounds(modelMatrix: loopedModel)

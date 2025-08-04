@@ -28,7 +28,7 @@ class CameraGlobeView : Camera {
         cameraPosition  = targetPosition + forward * cameraDistance
         mapPanning.y    = max(min(mapPanning.y, 1.0), -1.0)
         
-        let mapSize     = Double(Settings.mapSize) // размер карты снизу и доверху
+        let mapSize     = Double(Settings.globeMapSize) // размер карты снизу и доверху
         let panY        = mapPanning.y // 0 в центре карты, на половине пути
         let mercY       = -panY / mapSize * 2.0 * Double.pi
         let latitude    = 2.0 * atan(exp(mercY)) - Double.pi / 2
