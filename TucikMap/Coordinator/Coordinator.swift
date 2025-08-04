@@ -161,12 +161,12 @@ class Coordinator: NSObject, MTKViewDelegate {
             self?.semaphore.signal()
         }
         
-        mapModeStorage.updateTransition()
-        let modeChanged = mapModeStorage.modeSwitching(view: view)
-        if modeChanged {
-            // Пересчитать параметры камеры
-            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
-        }
+//        mapModeStorage.updateTransition()
+//        let modeChanged = mapModeStorage.modeSwitching(view: view)
+//        if modeChanged {
+//            // Пересчитать параметры камеры
+//            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
+//        }
         
         updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
