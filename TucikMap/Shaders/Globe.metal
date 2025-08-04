@@ -77,7 +77,7 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     
 
     float transition          = (cos(uniforms.elapsedTimeSeconds * 0.5) + 1) / 2;
-    //transition                = globeParams.transition;
+    transition                = globeParams.transition;
     
     //transition = 1;
     float4 worldPosition      = mix(globeWorldPosition, planeWorldPosition, transition);

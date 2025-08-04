@@ -53,8 +53,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         drawAxes                = DrawAxes(metalDevice: metalDevice)
         drawingFrameRequester   = DrawingFrameRequester()
         frameCounter            = FrameCounter()
-        mapModeStorage          = MapModeStorage()
         pipelines               = Pipelines(metalDevice: metalDevice)
+        mapModeStorage          = MapModeStorage(mapZoomState: mapZoomState)
         mapCadDisplayLoop       = MapCADisplayLoop(frameCounter: frameCounter,
                                                    drawingFrameRequester: drawingFrameRequester)
         cameraStorage           = CameraStorage(mapModeStorage: mapModeStorage,
@@ -124,7 +124,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             updateBufferedUniform: updateBufferedUniform,
                                             globeTexturing: globeTexturing,
                                             screenUniforms: screenUniforms,
-                                            mapUpdater: mapUpdaterStorage.globe)
+                                            mapUpdater: mapUpdaterStorage.globe,
+                                            mapModeStorage: mapModeStorage)
         super.init()
     }
     
@@ -159,6 +160,14 @@ class Coordinator: NSObject, MTKViewDelegate {
         commandBuffer.addCompletedHandler { [weak self] _ in
             self?.semaphore.signal()
         }
+        
+        mapModeStorage.updateTransition()
+        let modeChanged = mapModeStorage.modeSwitching(view: view)
+        if modeChanged {
+            // Пересчитать параметры камеры
+            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
+        }
+        
         updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
         let uniformsBuffer = updateBufferedUniform.getCurrentFrameBuffer()

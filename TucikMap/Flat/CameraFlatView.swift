@@ -41,7 +41,7 @@ class CameraFlatView : Camera {
 //        }
         
         // Compute camera position based on distance and orientation
-        forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
+        let forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
         cameraPosition = targetPosition + forward * cameraDistance
         
         super.updateMap(view: view, size: size)

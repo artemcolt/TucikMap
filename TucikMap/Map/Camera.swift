@@ -19,17 +19,34 @@ class Camera {
         get { return cameraContext.mapZoom }
         set { cameraContext.mapZoom = newValue }
     }
-    var test: Float  = 0.0
-    
-    var cameraYawQuaternion         : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
-    var forward                     : SIMD3<Float> = SIMD3<Float>(0, 0, 1)
-    
-    var cameraDistance              : Float = 0
-    var cameraPitch                 : Float = 0
-    var cameraPosition              : SIMD3<Float> = SIMD3<Float>()
-    var targetPosition              : SIMD3<Float> = SIMD3<Float>()
-    var cameraQuaternion            : simd_quatf = .init(ix: 0, iy: 0, iz: 0, r: 1)
-    var rotationYaw                 : Float = 0
+    var cameraYawQuaternion : simd_quatf {
+        get { return cameraContext.cameraYawQuaternion }
+        set { cameraContext.cameraYawQuaternion = newValue }
+    }
+    var cameraDistance : Float {
+        get { return cameraContext.cameraDistance }
+        set { cameraContext.cameraDistance = newValue }
+    }
+    var cameraPitch : Float {
+        get { return cameraContext.cameraPitch }
+        set { cameraContext.cameraPitch = newValue }
+    }
+    var cameraPosition : SIMD3<Float> {
+        get { return cameraContext.cameraPosition }
+        set { cameraContext.cameraPosition = newValue }
+    }
+    var targetPosition : SIMD3<Float> {
+        get { return cameraContext.targetPosition }
+        set { cameraContext.targetPosition = newValue }
+    }
+    var cameraQuaternion : simd_quatf {
+        get { return cameraContext.cameraQuaternion }
+        set { cameraContext.cameraQuaternion = newValue }
+    }
+    var rotationYaw : Float {
+        get { return cameraContext.rotationYaw }
+        set { cameraContext.rotationYaw = newValue }
+    }
     
     var pinchDeltaDistance          : Float = 0
     var twoFingerDeltaPitch         : Float = 0
@@ -116,12 +133,7 @@ class Camera {
     }
     
     func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
-        //mapModeStorage.switchState()
-        if test == 0 {
-            test = 1
-        } else if test == 1 {
-            test = 0
-        }
+        mapModeStorage.switchState()
     }
     
     func updateMap(view: MTKView, size: CGSize) {

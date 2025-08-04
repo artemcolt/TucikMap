@@ -34,6 +34,7 @@ class GlobeMode {
     private let screenUniforms          : ScreenUniforms
     private let drawTexture             : DrawTexture
     private let mapUpdater              : MapUpdaterGlobe
+    private let mapModeStorage          : MapModeStorage
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
@@ -54,8 +55,10 @@ class GlobeMode {
          updateBufferedUniform: UpdateBufferedUniform,
          globeTexturing: GlobeTexturing,
          screenUniforms: ScreenUniforms,
-         mapUpdater: MapUpdaterGlobe) {
+         mapUpdater: MapUpdaterGlobe,
+         mapModeStorage: MapModeStorage) {
         
+        self.mapModeStorage         = mapModeStorage
         self.drawTexture            = DrawTexture(screenUniforms: screenUniforms)
         self.screenUniforms         = screenUniforms
         self.globeGeometry          = GlobeGeometry()
@@ -167,11 +170,11 @@ class GlobeMode {
             generateTextureCount -= 1
         }
         
+        let transition      = mapModeStorage.transition
         var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
                                                         uShift: uShiftMap,
                                                         globeRadius: camera.globeRadius,
-                                                        transition: camera.test)
-        //print(cos(camera.globeRotation))
+                                                        transition: transition)
         
         let buffered        = planesBuffered[currentFbIndex]
         let texture         = globeTexturing.getTexture(frameBufferIndex: currentFbIndex)
