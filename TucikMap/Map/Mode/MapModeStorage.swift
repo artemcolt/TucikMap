@@ -11,18 +11,14 @@ class MapModeStorage {
     var mapMode: MapMode = .globe
     let mapZoomState: MapZoomState
     private(set) var transition: Float = 0
+    var switchModeFlag: Bool = false
     
     init(mapZoomState: MapZoomState) {
         self.mapZoomState = mapZoomState
     }
     
     func switchState() {
-        switch mapMode {
-        case .flat:
-            mapMode = .globe
-        case .globe:
-            mapMode = .flat
-        }
+        switchModeFlag = true
     }
     
     func updateTransition() {

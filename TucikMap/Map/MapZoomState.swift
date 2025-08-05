@@ -10,9 +10,7 @@ import simd
 
 class MapZoomState {
     private let nullZoomCameraDistance = Settings.nullZoomCameraDistance
-    
     private let globeBaseTileSize: Float = Settings.globeMapSize
-    private let flatBaseTileSize: Float = Settings.flatMapSize
     
     private(set) var zoomLevelFloat: Float = 0
     private(set) var zoomLevel: Int = 0
@@ -23,6 +21,8 @@ class MapZoomState {
     private(set) var powZoomLevel: Float = 0
     
     func update(zoomLevelFloat: Float) {
+        let flatBaseTileSize: Float = Settings.flatMapSize
+        
         self.zoomLevelFloat = zoomLevelFloat
         zoomLevel = Int(floor(zoomLevelFloat))
         powZoomLevel = pow(2.0, Float(zoomLevel))

@@ -161,12 +161,39 @@ class Coordinator: NSObject, MTKViewDelegate {
             self?.semaphore.signal()
         }
         
-//        mapModeStorage.updateTransition()
 //        let modeChanged = mapModeStorage.modeSwitching(view: view)
 //        if modeChanged {
 //            // Пересчитать параметры камеры
 //            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
 //        }
+        
+        mapModeStorage.updateTransition()
+        if mapModeStorage.switchModeFlag {
+            mapModeStorage.switchModeFlag = false
+            switch mapModeStorage.mapMode {
+            case .flat:
+                mapModeStorage.mapMode = .globe
+                let halfFlatMapSize = Double(Settings.flatMapSize) / 2.0
+                let halfGlobeMapSize = Double(Settings.globeMapSize) / 2.0
+                let flatPanning = cameraStorage.flatView.mapPanning
+                let globePanX = flatPanning.x / halfFlatMapSize * halfGlobeMapSize
+                let globePanY = flatPanning.y / halfFlatMapSize * halfGlobeMapSize
+                //print("globePanX \(globePanX) globePanY \(globePanY)")
+                
+                cameraStorage.globeView.mapPanning = SIMD3<Double>(globePanX, globePanY, 0)
+            case .globe:
+                let distortion = Float(abs(cos(cameraStorage.globeView.globeRotation)))
+                Settings.flatMapSize = Settings.baseFlatMapSize * distortion
+                let halfFlatMapSize = Double(Settings.flatMapSize) / 2.0
+                mapModeStorage.mapMode = .flat
+                let globePanning = cameraStorage.globeView.mapPanning
+                let flatPanX = globePanning.x * 2.0 * halfFlatMapSize
+                let flatPanY = globePanning.y * 2.0 * halfFlatMapSize
+                
+                cameraStorage.flatView.mapPanning = SIMD3<Double>(flatPanX, flatPanY, 0)
+            }
+            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
+        }
         
         updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         

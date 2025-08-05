@@ -11,10 +11,6 @@ class Camera {
     var cameraContext       : CameraContext
     var mapModeStorage      : MapModeStorage
     
-    var mapPanning : SIMD3<Double> {
-        get { return cameraContext.mapPanning }
-        set { cameraContext.mapPanning = newValue }
-    }
     var mapZoom : Float {
         get { return cameraContext.mapZoom }
         set { cameraContext.mapZoom = newValue }
@@ -48,6 +44,7 @@ class Camera {
         set { cameraContext.rotationYaw = newValue }
     }
     
+    var mapPanning                  : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
     var pinchDeltaDistance          : Float = 0
     var twoFingerDeltaPitch         : Float = 0
     var panDeltaX                   : Float = 0
