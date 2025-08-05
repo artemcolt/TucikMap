@@ -34,7 +34,7 @@ class GlobeMode {
     private let screenUniforms          : ScreenUniforms
     private let drawTexture             : DrawTexture
     private let mapUpdater              : MapUpdaterGlobe
-    private let mapModeStorage          : MapModeStorage
+    private let switchMapMode           : SwitchMapMode
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
@@ -56,9 +56,9 @@ class GlobeMode {
          globeTexturing: GlobeTexturing,
          screenUniforms: ScreenUniforms,
          mapUpdater: MapUpdaterGlobe,
-         mapModeStorage: MapModeStorage) {
+         switchMapMode: SwitchMapMode) {
         
-        self.mapModeStorage         = mapModeStorage
+        self.switchMapMode          = switchMapMode
         self.drawTexture            = DrawTexture(screenUniforms: screenUniforms)
         self.screenUniforms         = screenUniforms
         self.globeGeometry          = GlobeGeometry()
@@ -171,7 +171,7 @@ class GlobeMode {
         }
         
         let globeRadius     = Settings.nullZoomGlobeRadius * mapZoomState.powZoomLevel
-        let transition      = mapModeStorage.transition
+        let transition      = switchMapMode.transition
         var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.latitude,
                                                         uShift: uShiftMap,
                                                         globeRadius: globeRadius,

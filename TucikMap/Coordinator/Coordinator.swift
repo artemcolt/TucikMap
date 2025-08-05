@@ -35,6 +35,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     private let mapUpdaterStorage           : MapUpdaterStorage
     private let screenCollisionsDetector    : ScreenCollisionsDetector
     private let globeTexturing              : GlobeTexturing
+    private let switchMapMode               : SwitchMapMode
     
     var flatMode: FlatMode
     var globeMode: GlobeMode
@@ -54,7 +55,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         drawingFrameRequester   = DrawingFrameRequester()
         frameCounter            = FrameCounter()
         pipelines               = Pipelines(metalDevice: metalDevice)
-        mapModeStorage          = MapModeStorage(mapZoomState: mapZoomState)
+        mapModeStorage          = MapModeStorage()
         mapCadDisplayLoop       = MapCADisplayLoop(frameCounter: frameCounter,
                                                    drawingFrameRequester: drawingFrameRequester)
         cameraStorage           = CameraStorage(mapModeStorage: mapModeStorage,
@@ -66,6 +67,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         metalTilesStorage       = MetalTilesStorage(determineStyle: determineFeatureStyle,
                                                     metalDevice: metalDevice,
                                                     textTools: textTools)
+        switchMapMode           = SwitchMapMode(mapModeStorage: mapModeStorage, cameraStorage: cameraStorage, mapZoomState: mapZoomState)
         renderFrameControl      = RenderFrameControl(mapCADisplayLoop: mapCadDisplayLoop,
                                                      drawingFrameRequester: drawingFrameRequester)
         drawUI                  = DrawUI(device: metalDevice, textTools: textTools, screenUniforms: screenUniforms)
@@ -125,7 +127,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             globeTexturing: globeTexturing,
                                             screenUniforms: screenUniforms,
                                             mapUpdater: mapUpdaterStorage.globe,
-                                            mapModeStorage: mapModeStorage)
+                                            switchMapMode: switchMapMode)
         super.init()
     }
     
@@ -161,40 +163,15 @@ class Coordinator: NSObject, MTKViewDelegate {
             self?.semaphore.signal()
         }
         
-        mapModeStorage.updateTransition()
-        mapModeStorage.modeSwitching(view: view)
-        if mapModeStorage.switchModeFlag {
-            mapModeStorage.switchModeFlag = false
-            switch mapModeStorage.mapMode {
-            case .flat:
-                mapModeStorage.mapMode = .globe
-                let halfFlatMapSize = Double(cameraStorage.flatView.mapSize) / 2.0
-                let halfGlobeMapSize = Double(cameraStorage.globeView.mapSize) / 2.0
-                let flatPanning = cameraStorage.flatView.mapPanning
-                let globePanX = flatPanning.x / halfFlatMapSize * halfGlobeMapSize
-                let globePanY = flatPanning.y / halfFlatMapSize * halfGlobeMapSize
-                //print("globePanX \(globePanX) globePanY \(globePanY)")
-                
-                cameraStorage.globeView.mapPanning = SIMD3<Double>(globePanX, globePanY, 0)
-            case .globe:
-                let distortion = Float(abs(cos(cameraStorage.globeView.latitude)))
-                cameraStorage.flatView.applyDistortion(distortion: distortion)
-                let halfFlatMapSize = Double(cameraStorage.flatView.mapSize) / 2.0
-                mapModeStorage.mapMode = .flat
-                let globePanning = cameraStorage.globeView.mapPanning
-                let flatPanX = globePanning.x * 2.0 * halfFlatMapSize
-                let flatPanY = globePanning.y * 2.0 * halfFlatMapSize
-                
-                cameraStorage.flatView.mapPanning = SIMD3<Double>(flatPanX, flatPanY, 0)
-            }
-            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
-        }
+        // Поменять режим рендринга когда нужно
+        // Глобус / Плоскость
+        let switched = switchMapMode.switchingMapMode(view: view)
         
         updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
         let uniformsBuffer = updateBufferedUniform.getCurrentFrameBuffer()
         
-        if cameraStorage.currentView.isMapStateUpdated() {
+        if cameraStorage.currentView.isMapStateUpdated() || switched {
             mapUpdaterStorage.currentView.update(view: view, useOnlyCached: false)
         }
         

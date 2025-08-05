@@ -9,7 +9,6 @@ import MetalKit
 
 class Camera {
     var cameraContext       : CameraContext
-    var mapModeStorage      : MapModeStorage
     
     var mapSize : Float { get { return 0 } }
     var mapZoom : Float {
@@ -67,10 +66,8 @@ class Camera {
     init(mapZoomState: MapZoomState,
          drawingFrameRequester: DrawingFrameRequester,
          mapCadDisplayLoop: MapCADisplayLoop,
-         cameraContext: CameraContext,
-         mapModeStorage: MapModeStorage) {
+         cameraContext: CameraContext) {
         
-        self.mapModeStorage = mapModeStorage
         self.mapZoomState = mapZoomState
         self.drawingFrameRequester = drawingFrameRequester
         self.mapCadDisplayLoop = mapCadDisplayLoop
@@ -132,7 +129,7 @@ class Camera {
     }
     
     func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
-        mapModeStorage.switchState()
+        //switchMapMode.switchModeFlag = true
     }
     
     func updateMap(view: MTKView, size: CGSize) {
@@ -170,7 +167,7 @@ class Camera {
         mapCadDisplayLoop.forceUpdateStates()
     }
     
-    private func applyMovementToCamera(view: MTKView) {
+    func applyMovementToCamera(view: MTKView) {
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
         mapZoom -= pinchDeltaDistance

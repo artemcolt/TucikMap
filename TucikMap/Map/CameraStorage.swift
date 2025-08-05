@@ -55,14 +55,12 @@ class CameraStorage {
         _flatView = CameraFlatView(mapZoomState: mapZoomState,
                                    drawingFrameRequester: drawingFrameRequester,
                                    mapCadDisplayLoop: mapCadDisplayLoop,
-                                   cameraContext: cameraContext,
-                                   mapModeStorage: mapModeStorage)
+                                   cameraContext: cameraContext)
         
         _globeView = CameraGlobeView(mapZoomState: mapZoomState,
                                      drawingFrameRequester: drawingFrameRequester,
                                      mapCadDisplayLoop: mapCadDisplayLoop,
-                                     cameraContext: cameraContext,
-                                     mapModeStorage: mapModeStorage)
+                                     cameraContext: cameraContext)
     }
     
     // Handle single-finger pan gesture for target translation
