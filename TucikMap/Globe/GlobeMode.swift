@@ -44,6 +44,9 @@ class GlobeMode {
     private var generatePlaneCount      : Int = 0
     private var generateTextureCount    : Int = 0
     
+    private let maxGeomVerticesCount        : Int = 10_000
+    private let maxGeomIndicesCount         : Int = 40_000
+    
     
     init(metalDevice: MTLDevice,
          pipelines: Pipelines,
@@ -85,8 +88,8 @@ class GlobeMode {
         
         for _ in 0..<Settings.maxBuffersInFlight {
             // TODO адаптировать размеры буфферов
-            let verticesBuffer = metalDevice.makeBuffer(length: MemoryLayout<GlobePipeline.Vertex>.stride * 5_000)!
-            let indicesBuffer  = metalDevice.makeBuffer(length: MemoryLayout<UInt32>.stride * 40_000)!
+            let verticesBuffer = metalDevice.makeBuffer(length: MemoryLayout<GlobePipeline.Vertex>.stride * maxGeomVerticesCount)!
+            let indicesBuffer  = metalDevice.makeBuffer(length: MemoryLayout<UInt32>.stride * maxGeomIndicesCount)!
             planesBuffered.append(GlobePlane(
                 verticesBuffer: verticesBuffer,
                 indicesBuffer: indicesBuffer,
@@ -98,10 +101,13 @@ class GlobeMode {
     
     func changePlane(bufferIndex: Int, segments: Int, areaRange: AreaRange) {
         let newPlane = globeGeometry.createPlane(segments: segments, areaRange: areaRange)
-        planesBuffered[bufferIndex].verticesBuffer.contents().copyMemory(from: newPlane.vertices,
-                                                      byteCount: MemoryLayout<GlobePipeline.Vertex>.stride * newPlane.vertices.count)
-        planesBuffered[bufferIndex].indicesBuffer.contents().copyMemory(from: newPlane.indices,
-                                                     byteCount: MemoryLayout<UInt32>.stride * newPlane.indices.count)
+        let vertices = newPlane.vertices
+        let indices  = newPlane.indices
+        
+        planesBuffered[bufferIndex].verticesBuffer.contents().copyMemory(from: vertices,
+                                                      byteCount: MemoryLayout<GlobePipeline.Vertex>.stride * vertices.count)
+        planesBuffered[bufferIndex].indicesBuffer.contents().copyMemory(from: indices,
+                                                     byteCount: MemoryLayout<UInt32>.stride * indices.count)
         planesBuffered[bufferIndex].indicesCount = newPlane.indices.count
     }
     
@@ -158,7 +164,7 @@ class GlobeMode {
         
         if generatePlaneCount > 0 {
             // TODO segments сколько выставлять
-            changePlane(bufferIndex: currentFbIndex, segments: 40, areaRange: areaRange)
+            changePlane(bufferIndex: currentFbIndex, segments: 80, areaRange: areaRange)
             generatePlaneCount -= 1
         }
         
