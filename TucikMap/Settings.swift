@@ -31,7 +31,6 @@ class Settings {
     
     static let globeMapSize: Float = 1.0
     static let baseFlatMapSize: Float = 2 * Float.pi * nullZoomGlobeRadius
-    static var flatMapSize: Float = baseFlatMapSize
     
     static let maxTileZoom: Int = 16
     static let visibleTilesCount: Int = 9

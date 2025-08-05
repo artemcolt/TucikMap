@@ -18,6 +18,7 @@ class CombinedCompSP {
         let modelMatrices                   : [matrix_float4x4]
         let uniforms                        : Uniforms
         let mapPanning                      : SIMD3<Double>
+        let mapSize                         : Float
         let inputComputeScreenVertices      : [ComputeScreenPositions.Vertex]
         
         // Сохраняем данные испольуемые в рассчетах чтобы после получения экранных координат с GPU продолжить работу
@@ -42,6 +43,7 @@ class CombinedCompSP {
         
         let uniforms                        : Uniforms
         let mapPanning                      : SIMD3<Double>
+        let mapSize                         : Float
         
         let metalGeoLabels                  : [MetalTile.TextLabels]
         let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
@@ -103,6 +105,7 @@ class CombinedCompSP {
         var uniforms                        = input.uniforms
         var inputComputeScreenVertices      = input.inputComputeScreenVertices
         let mapPanning                      = input.mapPanning
+        let mapSize                         = input.mapSize
         let metalGeoLabels                  = input.metalGeoLabels
         let mapLabelLineCollisionsMeta      = input.mapLabelLineCollisionsMeta
         let startRoadResultsIndex           = input.startRoadResultsIndex
@@ -145,6 +148,7 @@ class CombinedCompSP {
                 let result  = Result(output: output,
                                      uniforms: uniforms,
                                      mapPanning: mapPanning,
+                                     mapSize: mapSize,
                                      
                                      metalGeoLabels: metalGeoLabels,
                                      mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,

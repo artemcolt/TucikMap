@@ -28,17 +28,14 @@ class MapModeStorage {
         transition              = max(0.0, min(1.0, (currentZoom - transitionZoomStart) / (transitionZoomEnd - transitionZoomStart)))
     }
     
-    func modeSwitching(view: MTKView) -> Bool {
+    func modeSwitching(view: MTKView) {
         let transitionZoomEnd   = Settings.globeToPlaneZoomEnd
         let currentZoom         = mapZoomState.zoomLevelFloat
         
         if currentZoom <= transitionZoomEnd && mapMode != .globe {
-            mapMode = .globe
-            return true
+            switchState()
         } else if currentZoom >= transitionZoomEnd && mapMode != .flat {
-            mapMode = .flat
-            return true
+            switchState()
         }
-        return false
     }
 }

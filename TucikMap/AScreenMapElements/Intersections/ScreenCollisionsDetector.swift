@@ -126,7 +126,7 @@ class ScreenCollisionsDetector {
         //print(time)
     }
     
-    func evaluate(lastUniforms: Uniforms, mapPanning: SIMD3<Double>) -> Bool {
+    func evaluate(lastUniforms: Uniforms, mapPanning: SIMD3<Double>, mapSize: Float) -> Bool {
         var pipeline = ForEvaluationResult(
             inputComputeScreenVertices: [],
             mapLabelLineCollisionsMeta: [],
@@ -135,7 +135,7 @@ class ScreenCollisionsDetector {
             geoLabelsSize: 0,
             startRoadResultsIndex: 0
         )
-        let modelMatrices = ModelMatrices(mapZoomState: mapZoomState, mapPanning: mapPanning)
+        let modelMatrices = ModelMatrices(mapZoomState: mapZoomState, mapPanning: mapPanning, mapSize: mapSize)
         
         handleGeoLabels.forEvaluateCollisions(mapPanning: mapPanning,
                                               pipeline: &pipeline,
@@ -150,6 +150,7 @@ class ScreenCollisionsDetector {
         let input = CombinedCompSP.Input(modelMatrices: modelMatricesArray,
                                          uniforms: lastUniforms,
                                          mapPanning: mapPanning,
+                                         mapSize: mapSize,
                                          inputComputeScreenVertices: pipeline.inputComputeScreenVertices,
                                          
                                          metalGeoLabels: pipeline.metalGeoLabels,

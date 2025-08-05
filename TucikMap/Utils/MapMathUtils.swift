@@ -20,9 +20,10 @@ class MapMathUtils {
     static func getTilePositionTranslate(
         tile: Tile,
         mapZoomState: MapZoomState,
-        pan: SIMD3<Double>
+        pan: SIMD3<Double>,
+        mapSize: Float
     ) -> TilePositionTranslate {
-        let mapSize = Double(Settings.flatMapSize)
+        let mapSize = Double(mapSize)
         let zoomFactor = pow(2.0, Double(tile.z - mapZoomState.zoomLevel));
         
         let tileCenterX = Double(tile.x) + 0.5;
@@ -51,9 +52,10 @@ class MapMathUtils {
     static func getTileModelMatrix(
         tile: Tile,
         mapZoomState: MapZoomState,
-        pan: SIMD3<Double>
+        pan: SIMD3<Double>,
+        mapSize: Float
     ) -> float4x4 {
-        let tileTranslation = getTilePositionTranslate(tile: tile, mapZoomState: mapZoomState, pan: pan)
+        let tileTranslation = getTilePositionTranslate(tile: tile, mapZoomState: mapZoomState, pan: pan, mapSize: mapSize)
         return MatrixUtils.createTileModelMatrix(
             scaleX: tileTranslation.scaleX,
             scaleY: tileTranslation.scaleY,

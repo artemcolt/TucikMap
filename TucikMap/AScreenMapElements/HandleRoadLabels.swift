@@ -100,6 +100,7 @@ class HandleRoadLabels {
     func onPointsReady(result: CombinedCompSP.Result, spaceDiscretisation: SpaceDiscretisation, viewportSize: SIMD2<Float>) {
         let uniforms                    = result.uniforms
         let mapPanning                  = result.mapPanning
+        let mapSize                     = result.mapSize
         let output                      = result.output
         let startRoadResultsIndex       = result.startRoadResultsIndex
         let metalRoadLabelsTiles        = result.metalRoadLabelsTiles // по тайлам метки дорог
@@ -112,7 +113,7 @@ class HandleRoadLabels {
         //print("--------------------")
         for metalRoadLabels in metalRoadLabelsTiles {
             guard let roadLabels    = metalRoadLabels.roadLabels else { continue }
-            let modelMatrix         = metalRoadLabels.tile.getModelMatrix(mapZoomState: mapZoomState, pan: mapPanning)
+            let modelMatrix         = metalRoadLabels.tile.getModelMatrix(mapZoomState: mapZoomState, pan: mapPanning, mapSize: mapSize)
             let meta                = roadLabels.mapLabelsCpuMeta
             var maxInstances        = 0
             let labelsCount         = meta.count

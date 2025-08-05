@@ -29,6 +29,7 @@ class TileFrameProps {
         }
     }
     
+    private let cameraFlatView: CameraFlatView
     private let frustrum: FrustrumCulling
     private let mapZoomState: MapZoomState
     private let pan: SIMD3<Double>
@@ -36,10 +37,11 @@ class TileFrameProps {
     private var properties: [LoopedTile: Props] = [:]
     
     
-    init(mapZoomState: MapZoomState, pan: SIMD3<Double>, uniforms: Uniforms, areaRange: AreaRange) {
+    init(mapZoomState: MapZoomState, pan: SIMD3<Double>, uniforms: Uniforms, areaRange: AreaRange, cameraFlatView: CameraFlatView) {
         self.mapZoomState   = mapZoomState
         self.pan            = pan
         self.areaRange      = areaRange
+        self.cameraFlatView = cameraFlatView
         
         frustrum            = FrustrumCulling(projection: uniforms.projectionMatrix, view: uniforms.viewMatrix)
     }
@@ -48,9 +50,9 @@ class TileFrameProps {
         let loopedTile = LoopedTile(tile: tile, loop: loop)
         var current = properties[loopedTile]
         if current == nil {
-            let modelMatrix     = tile.getModelMatrix(mapZoomState: mapZoomState, pan: pan)
+            let modelMatrix     = tile.getModelMatrix(mapZoomState: mapZoomState, pan: pan, mapSize: cameraFlatView.mapSize)
             let mapScaleFactor  = pow(2.0, Float(areaRange.z))
-            let loopMatrix      = MatrixUtils.matrix_translate(Settings.flatMapSize * mapScaleFactor * Float(loop), 0, 0)
+            let loopMatrix      = MatrixUtils.matrix_translate(cameraFlatView.mapSize * mapScaleFactor * Float(loop), 0, 0)
             let loopedModel     = loopMatrix * modelMatrix
             
             let bounds = frustrum.createBounds(modelMatrix: loopedModel)

@@ -114,9 +114,9 @@ struct Tile: Hashable {
         return Tile(x: parentX, y: parentY, z: targetZoom)
     }
     
-    func getTilePointPanningCoordinates(normalizedX: Double, normalizedY: Double) -> MapPanningTilePoint {
+    func getTilePointPanningCoordinates(normalizedX: Double, normalizedY: Double, mapSize: Float) -> MapPanningTilePoint {
         // Размер тайла на зуме 0
-        let mapSize = Double(Settings.flatMapSize)
+        let mapSize = Double(mapSize)
         
         // Размер тайла на текущем зуме: mapSize / 2^z
         let tileSize = mapSize / pow(2.0, Double(z))
@@ -130,8 +130,8 @@ struct Tile: Hashable {
         return MapPanningTilePoint(x: -globalX, y: globalY)
     }
     
-    func getModelMatrix(mapZoomState: MapZoomState, pan: SIMD3<Double>) -> matrix_float4x4 {
-        return MapMathUtils.getTileModelMatrix(tile: self, mapZoomState: mapZoomState, pan: pan)
+    func getModelMatrix(mapZoomState: MapZoomState, pan: SIMD3<Double>, mapSize: Float) -> matrix_float4x4 {
+        return MapMathUtils.getTileModelMatrix(tile: self, mapZoomState: mapZoomState, pan: pan, mapSize: mapSize)
     }
     
     func atDifferentZ(targetZ: Int) -> (x: Float, y: Float) {

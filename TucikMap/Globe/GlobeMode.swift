@@ -170,10 +170,11 @@ class GlobeMode {
             generateTextureCount -= 1
         }
         
+        let globeRadius     = Settings.nullZoomGlobeRadius * mapZoomState.powZoomLevel
         let transition      = mapModeStorage.transition
-        var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.globeRotation,
+        var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.latitude,
                                                         uShift: uShiftMap,
-                                                        globeRadius: camera.globeRadius,
+                                                        globeRadius: globeRadius,
                                                         transition: transition)
         
         let buffered        = planesBuffered[currentFbIndex]

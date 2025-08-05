@@ -112,10 +112,11 @@ class FlatMode {
         let tileFrameProps          = TileFrameProps(mapZoomState: mapZoomState,
                                                      pan: mapPanning,
                                                      uniforms: lastUniforms,
-                                                     areaRange: areaRange)
+                                                     areaRange: areaRange,
+                                                     cameraFlatView: camera)
         
         if (mapCadDisplayLoop.checkEvaluateScreenData()) {
-            let _ = screenCollisionsDetector.evaluate(lastUniforms: lastUniforms, mapPanning: mapPanning)
+            let _ = screenCollisionsDetector.evaluate(lastUniforms: lastUniforms, mapPanning: mapPanning, mapSize: camera.mapSize)
         }
         
         // Применяем если есть актуальные данные меток для свежего кадра

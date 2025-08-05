@@ -11,6 +11,7 @@ class Camera {
     var cameraContext       : CameraContext
     var mapModeStorage      : MapModeStorage
     
+    var mapSize : Float { get { return 0 } }
     var mapZoom : Float {
         get { return cameraContext.mapZoom }
         set { cameraContext.mapZoom = newValue }
@@ -44,6 +45,7 @@ class Camera {
         set { cameraContext.rotationYaw = newValue }
     }
     
+    var latitude                    : Float = 0
     var mapPanning                  : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
     var pinchDeltaDistance          : Float = 0
     var twoFingerDeltaPitch         : Float = 0
@@ -134,12 +136,27 @@ class Camera {
     }
     
     func updateMap(view: MTKView, size: CGSize) {
+        mapZoom = max(0, min(mapZoom, Settings.zoomLevelMax))
+        cameraDistance = Settings.nullZoomCameraDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
+        mapZoomState.update(zoomLevelFloat: mapZoom, mapSize: mapSize)
+        
+        // Compute camera position based on distance and orientation
+        let forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
+        cameraPosition = targetPosition + forward * cameraDistance
+        
+        let mapSize     = Double(mapSize) // размер карты снизу и доверху
+        let panY        = mapPanning.y // 0 в центре карты, на половине пути
+        let mercY       = -panY / mapSize * 2.0 * Double.pi
+        latitude        = Float(2.0 * atan(exp(mercY)) - Double.pi / 2)
+        
         // Зацикливаем карту
-        if mapPanning.x > 0.5 {
-            mapPanning.x = -0.5
-        } else if mapPanning.x < -0.5 {
-            mapPanning.x = 0.5
+        let halfMapSize = Double(mapSize) / 2.0
+        if mapPanning.x > halfMapSize {
+            mapPanning.x = -halfMapSize
+        } else if mapPanning.x < -halfMapSize {
+            mapPanning.x = halfMapSize
         }
+        mapPanning.y = max(-halfMapSize, min(halfMapSize, mapPanning.y))
         
         let _ = updateCameraCenterTile()
         
@@ -183,14 +200,12 @@ class Camera {
         let newMapPanning = mapPanning + SIMD3<Double>(right * panDeltaX + forward * panDeltaY)
         mapPanning.y = newMapPanning.y
         mapPanning.x = newMapPanning.x
-        
-        //print(mapPanning)
             
         updateMap(view: view, size: view.drawableSize)
     }
     
     func getCenterLatLon() -> (lat: Double, lon: Double) {
-        let mapSize = Double(Settings.flatMapSize)
+        let mapSize = Double(mapSize)
         
         // Step 1: Reverse the map offset to get Mercator coordinates x and y
         let x = mapSize / 2 - mapPanning.x
@@ -210,7 +225,7 @@ class Camera {
         mapZoom = zoom
         
         let lat = -lat
-        let mapSize = Double(Settings.flatMapSize)
+        let mapSize = Double(mapSize)
         
         // Шаг 1: Преобразование lat, lon в координаты Меркатора
         let _ = lon * .pi / 180
@@ -243,10 +258,7 @@ class Camera {
     }
     
     private func updateCameraCenterTile() -> Bool {
-        var tileSize = mapZoomState.flatTileSize
-        if mapModeStorage.mapMode == .globe {
-            tileSize = mapZoomState.globeTileSize
-        }
+        let tileSize = mapZoomState.tileSize
         
         let borderedZoomLevel = mapZoomState.zoomLevel
         let worldHalf = Float(mapZoomState.tilesCount) / 2.0 * tileSize
@@ -255,9 +267,10 @@ class Camera {
         centerTileX = (-Float(mapPanning.x) + worldHalf) / tileSize
         centerTileY = (Float(mapPanning.y) + worldHalf) / tileSize
         
-        if mapPanning.x == 0.5 {
+        let halfMapSize = Double(mapSize) / 2.0
+        if mapPanning.x == halfMapSize {
             centerTileX = Float(mapZoomState.maxTileCoord)
-        } else if mapPanning.x == -0.5 {
+        } else if mapPanning.x == -halfMapSize {
             centerTileX = Float(0)
         }
         

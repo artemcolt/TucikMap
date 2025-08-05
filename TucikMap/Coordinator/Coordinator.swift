@@ -161,20 +161,15 @@ class Coordinator: NSObject, MTKViewDelegate {
             self?.semaphore.signal()
         }
         
-//        let modeChanged = mapModeStorage.modeSwitching(view: view)
-//        if modeChanged {
-//            // Пересчитать параметры камеры
-//            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
-//        }
-        
         mapModeStorage.updateTransition()
+        mapModeStorage.modeSwitching(view: view)
         if mapModeStorage.switchModeFlag {
             mapModeStorage.switchModeFlag = false
             switch mapModeStorage.mapMode {
             case .flat:
                 mapModeStorage.mapMode = .globe
-                let halfFlatMapSize = Double(Settings.flatMapSize) / 2.0
-                let halfGlobeMapSize = Double(Settings.globeMapSize) / 2.0
+                let halfFlatMapSize = Double(cameraStorage.flatView.mapSize) / 2.0
+                let halfGlobeMapSize = Double(cameraStorage.globeView.mapSize) / 2.0
                 let flatPanning = cameraStorage.flatView.mapPanning
                 let globePanX = flatPanning.x / halfFlatMapSize * halfGlobeMapSize
                 let globePanY = flatPanning.y / halfFlatMapSize * halfGlobeMapSize
@@ -182,9 +177,9 @@ class Coordinator: NSObject, MTKViewDelegate {
                 
                 cameraStorage.globeView.mapPanning = SIMD3<Double>(globePanX, globePanY, 0)
             case .globe:
-                let distortion = Float(abs(cos(cameraStorage.globeView.globeRotation)))
-                Settings.flatMapSize = Settings.baseFlatMapSize * distortion
-                let halfFlatMapSize = Double(Settings.flatMapSize) / 2.0
+                let distortion = Float(abs(cos(cameraStorage.globeView.latitude)))
+                cameraStorage.flatView.applyDistortion(distortion: distortion)
+                let halfFlatMapSize = Double(cameraStorage.flatView.mapSize) / 2.0
                 mapModeStorage.mapMode = .flat
                 let globePanning = cameraStorage.globeView.mapPanning
                 let flatPanX = globePanning.x * 2.0 * halfFlatMapSize
