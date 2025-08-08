@@ -43,20 +43,19 @@ class ScreenCollisionsDetector {
         var startRoadResultsIndex: Int
     }
     
-    private let modelMatrixBufferSize       = Settings.geoLabelsModelMatrixBufferSize
+    fileprivate let parametersBufferSize    = Settings.geoLabelsParametersBufferSize
     
     private let computeScreenPositions      : ComputeScreenPositions
     private let metalDevice                 : MTLDevice
     private let metalCommandQueue           : MTLCommandQueue
     
-    private let mapZoomState                : MapZoomState
+    fileprivate let mapZoomState            : MapZoomState
     private let drawingFrameRequester       : DrawingFrameRequester
     private let frameCounter                : FrameCounter
-    private let mapModeStorage              : MapModeStorage
-    private var projectPoints               : CombinedCompSP!
+    fileprivate var projectPoints           : CombinedCompSP!
     
-    private let handleGeoLabels             : HandleGeoLabels
-    private var handleRoadLabels            : HandleRoadLabels!
+    fileprivate let handleGeoLabels         : HandleGeoLabels
+    fileprivate var handleRoadLabels        : HandleRoadLabels!
     
     private var viewportSize                : SIMD2<Float> = SIMD2<Float>()
     
@@ -76,7 +75,6 @@ class ScreenCollisionsDetector {
         mapZoomState: MapZoomState,
         drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
-        mapModeStorage: MapModeStorage
     ) {
         handleGeoLabels = HandleGeoLabels(
             frameCounter: frameCounter,
@@ -89,7 +87,6 @@ class ScreenCollisionsDetector {
         self.mapZoomState = mapZoomState
         self.drawingFrameRequester = drawingFrameRequester
         self.frameCounter = frameCounter
-        self.mapModeStorage = mapModeStorage
         self.projectPoints = CombinedCompSP(
             computeScreenPositions: computeScreenPositions,
             metalDevice: metalDevice,
@@ -116,26 +113,22 @@ class ScreenCollisionsDetector {
     }
     
     private func onPointsReady(result: CombinedCompSP.Result) {
-        //let startTime = CFAbsoluteTimeGetCurrent()
         
         let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
         handleGeoLabels.onPointsReady(result: result, spaceDiscretisation: spaceDiscretisation)
         handleRoadLabels.onPointsReady(result: result, spaceDiscretisation: spaceDiscretisation, viewportSize: viewportSize)
         
         drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
-        
-        //let endTime = CFAbsoluteTimeGetCurrent()
-        //let time = endTime - startTime
-        //print(time)
     }
-    
+}
+
+class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
     func evaluate(lastUniforms: Uniforms,
                   mapPanning: SIMD3<Double>,
                   mapSize: Float,
                   latitude: Float,
                   longitude: Float,
-                  globeRadius: Float,
-                  mapMode: MapMode) -> Bool {
+                  globeRadius: Float) -> Bool {
         var pipeline = ForEvaluationResult(
             inputComputeScreenVertices: [],
             mapLabelLineCollisionsMeta: [],
@@ -144,22 +137,17 @@ class ScreenCollisionsDetector {
             geoLabelsSize: 0,
             startRoadResultsIndex: 0
         )
-        let modelMatrices = PrepareToScreenData(mapZoomState: mapZoomState,
-                                                mapPanning: mapPanning,
-                                                mapSize: mapSize,
-                                                latitude: latitude,
-                                                longitude: longitude,
-                                                globeRadius: globeRadius,
-                                                mapMode: mapMode)
         
-        handleGeoLabels.forEvaluateCollisions(mapPanning: mapPanning,
-                                              pipeline: &pipeline,
-                                              modelMatrices: modelMatrices)
+        let prepareToScreenData = PrepareToScreenDataGlobe(mapZoomState: mapZoomState,
+                                                          mapPanning: mapPanning,
+                                                          latitude: latitude,
+                                                          longitude: longitude,
+                                                          globeRadius: globeRadius)
         
-        handleRoadLabels.forEvaluateCollisions(mapPanning: mapPanning,
-                                               lastUniforms: lastUniforms,
-                                               pipeline: &pipeline,
-                                               modelMatrices: modelMatrices)
+        
+        handleGeoLabels.forEvaluateCollisions(pipeline: &pipeline,
+                                              prepareToScreenData: prepareToScreenData)
+        
         
         let input = CombinedCompSP.Input(uniforms: lastUniforms,
                                          mapPanning: mapPanning,
@@ -177,7 +165,7 @@ class ScreenCollisionsDetector {
         
         
         // TODO
-        if modelMatrices.resultSize > modelMatrixBufferSize {
+        if prepareToScreenData.resultSize > parametersBufferSize {
             // если быстро зумить камеру туда/cюда то geoLabels будет расти в размере из-за того что анимация не успевает за изменениями
             // в таком случае пропускаем изменения и отображаем старые данные до тех пор пока пользователь не успокоиться
             //renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight) // продолжаем рендрить чтобы обновились данные в конце концов
@@ -189,15 +177,67 @@ class ScreenCollisionsDetector {
             return false // Слишком много точек для преобразования, пропускаем рендринг
         }
         
-        switch mapModeStorage.mapMode {
-        case .flat:
-            let modelMatricesArray = modelMatrices.getMatricesArray()
-            let inputFlat = CombinedCompSP.InputFlat(input: input, modelMatrices: modelMatricesArray)
-            projectPoints.project(inputFlat: inputFlat)
-        case .globe:
-            let inputGlobe = CombinedCompSP.InputGlobe(input: input, parameters: modelMatrices.getParametersArray())
-            projectPoints.projectGlobe(inputGlobe: inputGlobe)
+        let inputGlobe = CombinedCompSP.InputGlobe(input: input, parameters: prepareToScreenData.parameters)
+        projectPoints.projectGlobe(inputGlobe: inputGlobe)
+        
+        return false
+    }
+}
+
+class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
+    func evaluate(lastUniforms: Uniforms,
+                  mapPanning: SIMD3<Double>,
+                  mapSize: Float) -> Bool {
+        var pipeline = ForEvaluationResult(
+            inputComputeScreenVertices: [],
+            mapLabelLineCollisionsMeta: [],
+            metalGeoLabels: [],
+            metalRoadLabels: [],
+            geoLabelsSize: 0,
+            startRoadResultsIndex: 0
+        )
+        
+        let prepareToScreenData = PrepareToScreenDataFlat(mapZoomState: mapZoomState, mapPanning: mapPanning, mapSize: mapSize)
+        
+        
+        handleGeoLabels.forEvaluateCollisions(pipeline: &pipeline,
+                                              prepareToScreenData: prepareToScreenData)
+        
+        handleRoadLabels.forEvaluateCollisions(lastUniforms: lastUniforms,
+                                               pipeline: &pipeline,
+                                               prepareToScreenData: prepareToScreenData)
+        
+        let input = CombinedCompSP.Input(uniforms: lastUniforms,
+                                         mapPanning: mapPanning,
+                                         mapSize: mapSize,
+                                         inputComputeScreenVertices: pipeline.inputComputeScreenVertices,
+                                         
+                                         metalGeoLabels: pipeline.metalGeoLabels,
+                                         mapLabelLineCollisionsMeta: pipeline.mapLabelLineCollisionsMeta,
+                                         actualLabelsIds: handleGeoLabels.actualLabelsIds,
+                                         geoLabelsSize: pipeline.geoLabelsSize,
+                                         
+                                         startRoadResultsIndex: pipeline.startRoadResultsIndex,
+                                         roadLabels: pipeline.metalRoadLabels,
+                                         actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
+        
+        
+        // TODO
+        if prepareToScreenData.resultSize > parametersBufferSize {
+            // если быстро зумить камеру туда/cюда то geoLabels будет расти в размере из-за того что анимация не успевает за изменениями
+            // в таком случае пропускаем изменения и отображаем старые данные до тех пор пока пользователь не успокоиться
+            //renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight) // продолжаем рендрить чтобы обновились данные в конце концов
+            return true // recompute is needed again but later
         }
+        
+        // TODO Как обработать случай когда точек для преобразования слишком много
+        if input.inputComputeScreenVertices.count > Settings.maxInputComputeScreenPoints {
+            return false // Слишком много точек для преобразования, пропускаем рендринг
+        }
+        
+        let modelMatricesArray = prepareToScreenData.matrices
+        let inputFlat = CombinedCompSP.InputFlat(input: input, modelMatrices: modelMatricesArray)
+        projectPoints.projectFlat(inputFlat: inputFlat)
         
         return false
     }

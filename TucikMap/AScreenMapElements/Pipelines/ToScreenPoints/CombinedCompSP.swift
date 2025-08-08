@@ -68,7 +68,7 @@ class CombinedCompSP {
     private let metalCommandQueue               : MTLCommandQueue
     
     private let uniformBuffer                   : MTLBuffer
-    private let inputModelMatricesBuffer        : MTLBuffer
+    private let inputParametersBuffer           : MTLBuffer
     private let inputScreenPositionsBuffer      : MTLBuffer
     private let outputWorldPositionsBuffer      : MTLBuffer
     private let onPointsReady                   : (Result) -> Void
@@ -76,7 +76,7 @@ class CombinedCompSP {
     // размер для входного буффера точек, максимально может быть столько точек
     private let inputBufferWorldPostionsSize    = Settings.maxInputComputeScreenPoints
     // размер для входного буффера матриц, макисмально может быть столько матриц
-    private let modelMatrixBufferSize           = Settings.geoLabelsModelMatrixBufferSize
+    private let modelMatrixBufferSize           = Settings.geoLabelsParametersBufferSize
     
     init(
         computeScreenPositions: ComputeScreenPositions,
@@ -99,7 +99,7 @@ class CombinedCompSP {
         
         
         var inputModelMatrices          = Array(repeating: matrix_identity_float4x4, count: modelMatrixBufferSize)
-        inputModelMatricesBuffer        = metalDevice.makeBuffer(bytes: &inputModelMatrices,
+        inputParametersBuffer        = metalDevice.makeBuffer(bytes: &inputModelMatrices,
                                                                  length: MemoryLayout<matrix_float4x4>.stride * modelMatrixBufferSize)!
         
         // в буфере храняться точки в экранной проекции
@@ -107,11 +107,29 @@ class CombinedCompSP {
         outputWorldPositionsBuffer      = metalDevice.makeBuffer(length: MemoryLayout<SIMD2<Float>>.stride * inputBufferWorldPostionsSize)!
     }
     
-    func project(inputFlat: InputFlat) {
+    func projectFlat(inputFlat: InputFlat) {
+        var modelMatrices = inputFlat.modelMatrices
+        
+        // для вызова заполянем текущие буффера в GPU
+        // и вызывваем на GPU рассчет
+        inputParametersBuffer.contents().copyMemory(from: &modelMatrices,
+                                                    byteCount: MemoryLayout<matrix_float4x4>.stride * modelMatrices.count)
+        
+        project(input: inputFlat.input, mapMode: .flat)
+    }
+    
+    func projectGlobe(inputGlobe: InputGlobe) {
+        var parameters = inputGlobe.parameters
+        
+        inputParametersBuffer.contents().copyMemory(from: &parameters,
+                                                    byteCount: MemoryLayout<CompScreenGlobePipe.Parmeters>.stride * parameters.count)
+        
+        project(input: inputGlobe.input, mapMode: .globe)
+    }
+    
+    func project(input: Input, mapMode: MapMode) {
         // проецируем из мировых координат в координаты экрана
         // для этого нужен тайл чтобы матрицу трансформации сделать в мировые координаты из локальных координат тайла
-        let input                           = inputFlat.input
-        var modelMatrices                   = inputFlat.modelMatrices
         var uniforms                        = input.uniforms
         var inputComputeScreenVertices      = input.inputComputeScreenVertices
         let mapPanning                      = input.mapPanning
@@ -124,10 +142,6 @@ class CombinedCompSP {
         let geoLabelsSize                   = input.geoLabelsSize
         let actualRoadLabelIds              = input.actualRoadLabelsIds
         
-        // для вызова заполянем текущие буффера в GPU
-        // и вызывваем на GPU рассчет
-        inputModelMatricesBuffer.contents().copyMemory(from: &modelMatrices,
-                                                       byteCount: MemoryLayout<matrix_float4x4>.stride * modelMatrices.count)
         
         uniformBuffer.contents().copyMemory(from: &uniforms, byteCount: MemoryLayout<Uniforms>.stride)
         
@@ -138,7 +152,7 @@ class CombinedCompSP {
               let computeCommandEncoder     = commandBuffer.makeComputeCommandEncoder() else { return }
         
         
-        let calculationBlock                = ComputeScreenPositions.CalculationBlock(inputModelMatricesBuffer: inputModelMatricesBuffer,
+        let calculationBlock                = ComputeScreenPositions.CalculationBlock(inputParametersBuffer: inputParametersBuffer,
                                                                                       inputBuffer: inputScreenPositionsBuffer,
                                                                                       outputBuffer: outputWorldPositionsBuffer,
                                                                                       vertexCount: inputBufferWorldPostionsSize,
@@ -147,76 +161,8 @@ class CombinedCompSP {
         
         computeScreenPositions.compute(uniforms: uniformBuffer,
                                        computeEncoder: computeCommandEncoder,
-                                       calculationBlock: calculationBlock)
-            
-        
-        computeCommandEncoder.endEncoding()
-        commandBuffer.addCompletedHandler { buffer in
-            DispatchQueue.main.async {
-                // Вычислили экранные координаты на gpu
-                let output  = calculationBlock.readOutput()
-                let result  = Result(output: output,
-                                     uniforms: uniforms,
-                                     mapPanning: mapPanning,
-                                     mapSize: mapSize,
-                                     
-                                     metalGeoLabels: metalGeoLabels,
-                                     mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
-                                     actualLabelsIds: actualLabelsIds,
-                                     geoLabelsSize: geoLabelsSize,
-                                     
-                                     startRoadResultsIndex: startRoadResultsIndex,
-                                     metalRoadLabelsTiles: roadLabels,
-                                     actualRoadLabelsIds: actualRoadLabelIds
-                )
-                
-                self.onPointsReady(result)
-            }
-        }
-        commandBuffer.commit()
-    }
-    
-    func projectGlobe(inputGlobe: InputGlobe) {
-        // проецируем из мировых координат в координаты экрана
-        // для этого нужен тайл чтобы матрицу трансформации сделать в мировые координаты из локальных координат тайла
-        let input                           = inputGlobe.input
-        var parameters                      = inputGlobe.parameters
-        var uniforms                        = input.uniforms
-        var inputComputeScreenVertices      = input.inputComputeScreenVertices
-        let mapPanning                      = input.mapPanning
-        let mapSize                         = input.mapSize
-        let metalGeoLabels                  = input.metalGeoLabels
-        let mapLabelLineCollisionsMeta      = input.mapLabelLineCollisionsMeta
-        let startRoadResultsIndex           = input.startRoadResultsIndex
-        let roadLabels                      = input.roadLabels
-        let actualLabelsIds                 = input.actualLabelsIds
-        let geoLabelsSize                   = input.geoLabelsSize
-        let actualRoadLabelIds              = input.actualRoadLabelsIds
-        
-        // для вызова заполянем текущие буффера в GPU
-        // и вызываем на GPU рассчет
-        inputModelMatricesBuffer.contents().copyMemory(from: &parameters,
-                                                       byteCount: MemoryLayout<CompScreenGlobePipe.Parmeters>.stride * parameters.count)
-        
-        uniformBuffer.contents().copyMemory(from: &uniforms, byteCount: MemoryLayout<Uniforms>.stride)
-        
-        inputScreenPositionsBuffer.contents().copyMemory(from: &inputComputeScreenVertices,
-                                                         byteCount: MemoryLayout<ComputeScreenPositions.Vertex>.stride * inputComputeScreenVertices.count)
-        
-        guard let commandBuffer             = metalCommandQueue.makeCommandBuffer(),
-              let computeCommandEncoder     = commandBuffer.makeComputeCommandEncoder() else { return }
-        
-        
-        let calculationBlock                = ComputeScreenPositions.CalculationBlock(inputModelMatricesBuffer: inputModelMatricesBuffer,
-                                                                                      inputBuffer: inputScreenPositionsBuffer,
-                                                                                      outputBuffer: outputWorldPositionsBuffer,
-                                                                                      vertexCount: inputBufferWorldPostionsSize,
-                                                                                      readVerticesCount: inputComputeScreenVertices.count)
-        
-        
-        computeScreenPositions.computeGlobe(uniforms: uniformBuffer,
-                                            computeEncoder: computeCommandEncoder,
-                                            calculationBlock: calculationBlock)
+                                       calculationBlock: calculationBlock,
+                                       mode: mapMode)
             
         
         computeCommandEncoder.endEncoding()

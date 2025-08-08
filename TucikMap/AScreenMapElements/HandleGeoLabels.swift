@@ -139,9 +139,8 @@ class HandleGeoLabels {
     }
     
     func forEvaluateCollisions(
-        mapPanning: SIMD3<Double>,
         pipeline: inout ScreenCollisionsDetector.ForEvaluationResult,
-        modelMatrices: PrepareToScreenData
+        prepareToScreenData: PrepareToScreenData
     ) {
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
         var metalGeoLabels: [MetalTile.TextLabels] = []
@@ -158,7 +157,7 @@ class HandleGeoLabels {
         var mapLabelLineCollisionsMeta: [MapLabelsAssembler.MapLabelCpuMeta] = []
         for i in 0..<metalGeoLabels.count {
             let metalTile = metalGeoLabels[i]
-            let matrixIndex = modelMatrices.getForScreenDataIndex(tile: metalTile.tile)
+            let matrixIndex = prepareToScreenData.getForScreenDataIndex(tile: metalTile.tile)
             
             guard let textLabels = metalTile.textLabels else { continue }
             let inputArray = textLabels.mapLabelCpuMeta.map {

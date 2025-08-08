@@ -45,7 +45,7 @@ class MapUpdaterStorage {
          frameCounter: FrameCounter,
          metalTilesStorage: MetalTilesStorage,
          mapCadDisplayLoop: MapCADisplayLoop,
-         screenCollisionsDetector: ScreenCollisionsDetector,
+         scrCollDetStorage: ScrCollDetStorage,
          updateBufferedUniform: UpdateBufferedUniform,
          globeTexturing: GlobeTexturing,
          mapUpdaterContext: MapUpdaterContext) {
@@ -63,7 +63,7 @@ class MapUpdaterStorage {
                                mapCadDisplayLoop: mapCadDisplayLoop,
                                mapModeStorage: mapModeStorage,
                                mapUpdaterContext: mapUpdaterContext,
-                               screenCollisionsDetector: screenCollisionsDetector,
+                               screenCollisionsDetector: scrCollDetStorage.flat,
                                updateBufferedUniform: updateBufferedUniform)
         
         _globe = MapUpdaterGlobe(mapZoomState: mapZoomState,
@@ -76,7 +76,7 @@ class MapUpdaterStorage {
                                  mapCadDisplayLoop: mapCadDisplayLoop,
                                  mapModeStorage: mapModeStorage,
                                  mapUpdaterContext: mapUpdaterContext,
-                                 screenCollisionsDetector: screenCollisionsDetector,
+                                 screenCollisionsDetector: scrCollDetStorage.globe,
                                  updateBufferedUniform: updateBufferedUniform,
                                  globeTexturing: globeTexturing)
     }

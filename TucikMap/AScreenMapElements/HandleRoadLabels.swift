@@ -55,10 +55,9 @@ class HandleRoadLabels {
         self.roadLabelsByTiles = roadLabels + savePrevious
     }
     
-    func forEvaluateCollisions(mapPanning: SIMD3<Double>,
-                               lastUniforms: Uniforms,
+    func forEvaluateCollisions(lastUniforms: Uniforms,
                                pipeline: inout ScreenCollisionsDetector.ForEvaluationResult,
-                               modelMatrices: PrepareToScreenData
+                               prepareToScreenData: PrepareToScreenData
     ) {
         // Удаляет стухшие тайлы с дорожными метками
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
@@ -78,7 +77,7 @@ class HandleRoadLabels {
             let roadLabelsOfTile    = roadLabelsByTiles[i]
             guard let roadLabels    = roadLabelsOfTile.roadLabels else { continue }
             
-            let matrixIndex         = modelMatrices.getForScreenDataIndex(tile: roadLabelsOfTile.tile)
+            let matrixIndex         = prepareToScreenData.getForScreenDataIndex(tile: roadLabelsOfTile.tile)
             for meta in roadLabels.mapLabelsCpuMeta {
                 roadLabelsCount += 1
                 let computeInput = meta.localPositions.map { localPoint in ComputeScreenPositions.Vertex(location: localPoint,

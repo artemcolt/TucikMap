@@ -109,7 +109,7 @@ class Settings {
     static let drawRoadPointsDebug: Bool = false
     
     static let roadLabelTextSize: Float = 50
-    static let geoLabelsModelMatrixBufferSize: Int = 40
+    static let geoLabelsParametersBufferSize: Int = 40
     
     static let printRoadLabelsCount: Bool = false
     static let filterRoadLenLabel: Float = 0.3

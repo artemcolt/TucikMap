@@ -6,12 +6,12 @@
 //
 
 class ApplyLabelsState {
-    private let screenCollisionsDetector: ScreenCollisionsDetector
+    private let scrCollDetStorage: ScrCollDetStorage
     private var assembledMap: AssembledMap
     
-    init(screenCollisionsDetector: ScreenCollisionsDetector, assembledMap: AssembledMap) {
-        self.screenCollisionsDetector = screenCollisionsDetector
-        self.assembledMap = assembledMap
+    init(scrCollDetStorage: ScrCollDetStorage, assembledMap: AssembledMap) {
+        self.scrCollDetStorage  = scrCollDetStorage
+        self.assembledMap       = assembledMap
     }
     
     func apply(
@@ -21,7 +21,7 @@ class ApplyLabelsState {
         // Когда мы уже посчитали коллизии и все что нужно для отрисвки
         // дорожные метки и просто метки
         
-        if let labelsWithIntersections = screenCollisionsDetector.getLabelsWithIntersections() {
+        if let labelsWithIntersections = scrCollDetStorage.currentView.getLabelsWithIntersections() {
             let geoLabels               = labelsWithIntersections.geoLabels
             assembledMap.tileGeoLabels  = geoLabels
             let intersections           = labelsWithIntersections.intersections
@@ -37,7 +37,7 @@ class ApplyLabelsState {
         }
         
         
-        if let roadLabelsTB = screenCollisionsDetector.getRoadLabels() {
+        if let roadLabelsTB = scrCollDetStorage.currentView.getRoadLabels() {
             var finalRoadLabels       : [DrawAssembledMap.FinalDrawRoadLabel] = []
             let tilesPrepare          = roadLabelsTB.tilesPrepare
             

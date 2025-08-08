@@ -14,7 +14,7 @@ import MetalKit
 class ComputeScreenPositions {
     let metalDevice                  : MTLDevice
     let computeScreenPipeline        : ComputeScreenPipeline // Пайплайн для отправки данных на gpu для параллельного рассчета
-    let computeScreenGlobePipeline   : CompScreenGlobePipe
+    let computeScreenGlobePipeline   : CompScreenGlobePipe   // Это для глобуса
     
     let threadsPerGroup = MTLSize(
         width:  32,
@@ -32,7 +32,7 @@ class ComputeScreenPositions {
     
     // Содержит все данные для рассчета и получения результата
     struct CalculationBlock {
-        let inputModelMatricesBuffer        : MTLBuffer
+        let inputParametersBuffer           : MTLBuffer
         let inputBuffer                     : MTLBuffer
         let outputBuffer                    : MTLBuffer
         let vertexCount                     : Int // полный размер выделенного буффера
@@ -57,38 +57,22 @@ class ComputeScreenPositions {
         uniforms                                : MTLBuffer,
         computeEncoder                          : MTLComputeCommandEncoder,
         calculationBlock                        : CalculationBlock,
+        mode                                    : MapMode
     ) {
-        computeScreenPipeline.selectComputePipeline(computeEncoder: computeEncoder)
+        switch mode {
+        case .flat: computeScreenPipeline.selectComputePipeline(computeEncoder: computeEncoder)
+        case .globe: computeScreenGlobePipeline.selectComputePipeline(computeEncoder: computeEncoder)
+        }
+        
         let inputBuffer                     = calculationBlock.inputBuffer
         let outputBuffer                    = calculationBlock.outputBuffer
         let vertexCount                     = calculationBlock.vertexCount
-        let inputModelMatricesBuffer        = calculationBlock.inputModelMatricesBuffer
+        let inputParametersBuffer           = calculationBlock.inputParametersBuffer
         
         computeEncoder.setBuffer(inputBuffer,               offset: 0, index: 0)
         computeEncoder.setBuffer(outputBuffer,              offset: 0, index: 1)
         computeEncoder.setBuffer(uniforms,                  offset: 0, index: 2)
-        computeEncoder.setBuffer(inputModelMatricesBuffer,  offset: 0, index: 3)
-        
-        let threadGroupsWidth = (vertexCount + threadsPerGroup.width - 1) / threadsPerGroup.width
-        let threadGroups      = MTLSize(width: threadGroupsWidth, height: 1, depth: 1)
-        computeEncoder.dispatchThreadgroups(threadGroups, threadsPerThreadgroup: threadsPerGroup)
-    }
-    
-    func computeGlobe(
-        uniforms                                : MTLBuffer,
-        computeEncoder                          : MTLComputeCommandEncoder,
-        calculationBlock                        : CalculationBlock,
-    ) {
-        computeScreenGlobePipeline.selectComputePipeline(computeEncoder: computeEncoder)
-        let inputBuffer                     = calculationBlock.inputBuffer
-        let outputBuffer                    = calculationBlock.outputBuffer
-        let vertexCount                     = calculationBlock.vertexCount
-        let inputModelMatricesBuffer        = calculationBlock.inputModelMatricesBuffer
-        
-        computeEncoder.setBuffer(inputBuffer,               offset: 0, index: 0)
-        computeEncoder.setBuffer(outputBuffer,              offset: 0, index: 1)
-        computeEncoder.setBuffer(uniforms,                  offset: 0, index: 2)
-        computeEncoder.setBuffer(inputModelMatricesBuffer,  offset: 0, index: 3)
+        computeEncoder.setBuffer(inputParametersBuffer,     offset: 0, index: 3)
         
         let threadGroupsWidth = (vertexCount + threadsPerGroup.width - 1) / threadsPerGroup.width
         let threadGroups      = MTLSize(width: threadGroupsWidth, height: 1, depth: 1)

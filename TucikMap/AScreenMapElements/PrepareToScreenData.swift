@@ -8,73 +8,81 @@
 import MetalKit
 
 class PrepareToScreenData {
-    private let mapMode: MapMode
-    private var matrices: [matrix_float4x4] = []
-    private var parameters: [CompScreenGlobePipe.Parmeters] = []
-    private var tileToIndex: [Tile:Int] = [:]
-    private var mapZoomState: MapZoomState
-    private var mapPanning: SIMD3<Double>
-    private var mapSize: Float
-    private var latitude: Float
-    private var longitude: Float
-    private var globeRadius: Float
-    private(set) var resultSize: Int
+    var tileToIndex: [Tile:Int] = [:]
+    var mapZoomState: MapZoomState
+    var resultSize: Int
     
-    func getMatricesArray() -> [matrix_float4x4] {
-        return matrices
-    }
-    
-    func getParametersArray() -> [CompScreenGlobePipe.Parmeters] {
-        return parameters
-    }
-    
-    init(mapZoomState: MapZoomState,
-         mapPanning: SIMD3<Double>,
-         mapSize: Float,
-         latitude: Float,
-         longitude: Float,
-         globeRadius: Float,
-         mapMode: MapMode) {
+    init(mapZoomState: MapZoomState) {
         self.mapZoomState = mapZoomState
-        self.mapPanning = mapPanning
-        self.mapSize = mapSize
-        self.mapMode = mapMode
-        self.latitude = latitude
-        self.longitude = longitude
-        self.globeRadius = globeRadius
         self.resultSize = 0
     }
     
-    func getForScreenDataIndex(tile: Tile) -> Int {
+    func getForScreenDataIndex(tile: Tile) -> Int { return -1 }
+}
+
+class PrepareToScreenDataGlobe : PrepareToScreenData {
+    private(set) var parameters: [CompScreenGlobePipe.Parmeters] = []
+    private(set) var latitude: Float
+    private(set) var longitude: Float
+    private(set) var globeRadius: Float
+    
+    init(mapZoomState: MapZoomState,
+         mapPanning: SIMD3<Double>,
+         latitude: Float,
+         longitude: Float,
+         globeRadius: Float) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.globeRadius = globeRadius
+        
+        super.init(mapZoomState: mapZoomState)
+    }
+    
+    override func getForScreenDataIndex(tile: Tile) -> Int {
         var indexTo = tileToIndex[tile]
         if indexTo == nil {
-            switch mapMode {
-            case .flat:
-                let modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile, mapZoomState: mapZoomState, pan: mapPanning, mapSize: mapSize)
-                indexTo = matrices.count
-                tileToIndex[tile] = indexTo
-                matrices.append(modelMatrix)
-                resultSize = matrices.count
-            case .globe:
-                let centerTileX = Float(tile.x) + 0.5
-                let centerTileY = Float(tile.y) + 0.5
-                let z = Float(tile.z)
-                let factor = 1.0 / pow(2, z)
-                let tilesNum = pow(2, z)
-                let centerX = -1.0 + (centerTileX / tilesNum) * 2.0
-                let centerY = (1.0 - (centerTileY / tilesNum) * 2.0)
-                
-                let param = CompScreenGlobePipe.Parmeters(latitude: latitude,
-                                                          longitude: longitude,
-                                                          globeRadius: globeRadius,
-                                                          centerX: centerX,
-                                                          centerY: centerY,
-                                                          factor: factor)
-                indexTo = parameters.count
-                tileToIndex[tile] = indexTo
-                parameters.append(param)
-                resultSize = parameters.count
-            }
+            let centerTileX = Float(tile.x) + 0.5
+            let centerTileY = Float(tile.y) + 0.5
+            let z = Float(tile.z)
+            let factor = 1.0 / pow(2, z)
+            let tilesNum = pow(2, z)
+            let centerX = -1.0 + (centerTileX / tilesNum) * 2.0
+            let centerY = (1.0 - (centerTileY / tilesNum) * 2.0)
+            
+            let param = CompScreenGlobePipe.Parmeters(latitude: latitude,
+                                                      longitude: longitude,
+                                                      globeRadius: globeRadius,
+                                                      centerX: centerX,
+                                                      centerY: centerY,
+                                                      factor: factor)
+            indexTo = parameters.count
+            tileToIndex[tile] = indexTo
+            parameters.append(param)
+            resultSize = parameters.count
+        }
+        return indexTo!
+    }
+}
+
+class PrepareToScreenDataFlat : PrepareToScreenData {
+    private(set) var matrices: [matrix_float4x4] = []
+    private var mapSize: Float
+    private var mapPanning: SIMD3<Double>
+    
+    init(mapZoomState: MapZoomState, mapPanning: SIMD3<Double>, mapSize: Float) {
+        self.mapSize = mapSize
+        self.mapPanning = mapPanning
+        super.init(mapZoomState: mapZoomState)
+    }
+    
+    override func getForScreenDataIndex(tile: Tile) -> Int {
+        var indexTo = tileToIndex[tile]
+        if indexTo == nil {
+            let modelMatrix = MapMathUtils.getTileModelMatrix(tile: tile, mapZoomState: mapZoomState, pan: mapPanning, mapSize: mapSize)
+            indexTo = matrices.count
+            tileToIndex[tile] = indexTo
+            matrices.append(modelMatrix)
+            resultSize = matrices.count
         }
         return indexTo!
     }
