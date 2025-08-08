@@ -91,7 +91,8 @@ class ScreenCollisionsDetector {
             computeScreenPositions: computeScreenPositions,
             metalDevice: metalDevice,
             metalCommandQueue: metalCommandQueue,
-            onPointsReady: self.onPointsReady
+            onPointsReadyGlobe: self.onPointsReadyGlobe,
+            onPointsReadyFlat: self.onPointsReadyFlat
         )
         
         handleRoadLabels = HandleRoadLabels(mapZoomState: mapZoomState, frameCounter: frameCounter)
@@ -112,11 +113,40 @@ class ScreenCollisionsDetector {
         viewportSize = SIMD2<Float>(Float(view.drawableSize.width), Float(view.drawableSize.height))
     }
     
-    private func onPointsReady(result: CombinedCompSP.Result) {
-        
+    private func onPointsReadyGlobe(resultGlobe: CombinedCompSP.ResultGlobe) {
+        let result = resultGlobe.result
         let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
-        handleGeoLabels.onPointsReady(result: result, spaceDiscretisation: spaceDiscretisation)
-        handleRoadLabels.onPointsReady(result: result, spaceDiscretisation: spaceDiscretisation, viewportSize: viewportSize)
+        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: result.output,
+                                                           metalGeoLabels: result.metalGeoLabels,
+                                                           mapLabelLineCollisionsMeta: result.mapLabelLineCollisionsMeta,
+                                                           actualLabelsIds: result.actualLabelsIds,
+                                                           geoLabelsSize: result.geoLabelsSize)
+        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceDiscretisation: spaceDiscretisation)
+        
+        drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
+    }
+    
+    private func onPointsReadyFlat(resultFlat: CombinedCompSP.ResultFlat) {
+        let result = resultFlat.result
+        let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
+        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: result.output,
+                                                           metalGeoLabels: result.metalGeoLabels,
+                                                           mapLabelLineCollisionsMeta: result.mapLabelLineCollisionsMeta,
+                                                           actualLabelsIds: result.actualLabelsIds,
+                                                           geoLabelsSize: result.geoLabelsSize)
+        
+        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceDiscretisation: spaceDiscretisation)
+        
+        let handleRoadInput = HandleRoadLabels.OnPointsReady(output: result.output,
+                                                             uniforms: result.uniforms,
+                                                             mapPanning: resultFlat.mapPanning,
+                                                             mapSize: resultFlat.mapSize,
+                                                             startRoadResultsIndex: resultFlat.startRoadResultsIndex,
+                                                             metalRoadLabelsTiles: resultFlat.metalRoadLabelsTiles,
+                                                             actualRoadLabelsIds: resultFlat.actualRoadLabelsIds)
+        
+        handleRoadLabels.onPointsReady(result: handleRoadInput, spaceDiscretisation: spaceDiscretisation, viewportSize: viewportSize)
+        
         
         drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
     }
@@ -150,18 +180,11 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
         
         
         let input = CombinedCompSP.Input(uniforms: lastUniforms,
-                                         mapPanning: mapPanning,
-                                         mapSize: mapSize,
                                          inputComputeScreenVertices: pipeline.inputComputeScreenVertices,
-                                         
                                          metalGeoLabels: pipeline.metalGeoLabels,
                                          mapLabelLineCollisionsMeta: pipeline.mapLabelLineCollisionsMeta,
                                          actualLabelsIds: handleGeoLabels.actualLabelsIds,
-                                         geoLabelsSize: pipeline.geoLabelsSize,
-                                         
-                                         startRoadResultsIndex: pipeline.startRoadResultsIndex,
-                                         roadLabels: pipeline.metalRoadLabels,
-                                         actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
+                                         geoLabelsSize: pipeline.geoLabelsSize)
         
         
         // TODO
@@ -203,23 +226,15 @@ class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
         handleGeoLabels.forEvaluateCollisions(pipeline: &pipeline,
                                               prepareToScreenData: prepareToScreenData)
         
-        handleRoadLabels.forEvaluateCollisions(lastUniforms: lastUniforms,
-                                               pipeline: &pipeline,
+        handleRoadLabels.forEvaluateCollisions(pipeline: &pipeline,
                                                prepareToScreenData: prepareToScreenData)
         
         let input = CombinedCompSP.Input(uniforms: lastUniforms,
-                                         mapPanning: mapPanning,
-                                         mapSize: mapSize,
                                          inputComputeScreenVertices: pipeline.inputComputeScreenVertices,
-                                         
                                          metalGeoLabels: pipeline.metalGeoLabels,
                                          mapLabelLineCollisionsMeta: pipeline.mapLabelLineCollisionsMeta,
                                          actualLabelsIds: handleGeoLabels.actualLabelsIds,
-                                         geoLabelsSize: pipeline.geoLabelsSize,
-                                         
-                                         startRoadResultsIndex: pipeline.startRoadResultsIndex,
-                                         roadLabels: pipeline.metalRoadLabels,
-                                         actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
+                                         geoLabelsSize: pipeline.geoLabelsSize)
         
         
         // TODO
@@ -236,7 +251,14 @@ class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
         }
         
         let modelMatricesArray = prepareToScreenData.matrices
-        let inputFlat = CombinedCompSP.InputFlat(input: input, modelMatrices: modelMatricesArray)
+        let inputFlat = CombinedCompSP.InputFlat(input: input,
+                                                 modelMatrices: modelMatricesArray,
+                                                 mapPanning: mapPanning,
+                                                 mapSize: mapSize,
+                                                 startRoadResultsIndex: pipeline.startRoadResultsIndex,
+                                                 roadLabels: pipeline.metalRoadLabels,
+                                                 actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
+        
         projectPoints.projectFlat(inputFlat: inputFlat)
         
         return false

@@ -9,6 +9,17 @@ import MetalKit
 
 
 class HandleRoadLabels {
+    struct OnPointsReady {
+        let output                          : [SIMD2<Float>]
+        let uniforms                        : Uniforms
+        let mapPanning                      : SIMD3<Double>
+        let mapSize                         : Float
+        
+        let startRoadResultsIndex           : Int
+        let metalRoadLabelsTiles            : [MetalTile.RoadLabels]
+        let actualRoadLabelsIds             : Set<UInt>
+    }
+    
     private let mapZoomState        : MapZoomState
     private let frameCounter        : FrameCounter
     private var roadLabelsByTiles   : [MetalTile.RoadLabels] = []
@@ -55,8 +66,7 @@ class HandleRoadLabels {
         self.roadLabelsByTiles = roadLabels + savePrevious
     }
     
-    func forEvaluateCollisions(lastUniforms: Uniforms,
-                               pipeline: inout ScreenCollisionsDetector.ForEvaluationResult,
+    func forEvaluateCollisions(pipeline: inout ScreenCollisionsDetector.ForEvaluationResult,
                                prepareToScreenData: PrepareToScreenData
     ) {
         // Удаляет стухшие тайлы с дорожными метками
@@ -96,7 +106,7 @@ class HandleRoadLabels {
         pipeline.inputComputeScreenVertices.append(contentsOf: forCompute)
     }
     
-    func onPointsReady(result: CombinedCompSP.Result, spaceDiscretisation: SpaceDiscretisation, viewportSize: SIMD2<Float>) {
+    func onPointsReady(result: OnPointsReady, spaceDiscretisation: SpaceDiscretisation, viewportSize: SIMD2<Float>) {
         let uniforms                    = result.uniforms
         let mapPanning                  = result.mapPanning
         let mapSize                     = result.mapSize

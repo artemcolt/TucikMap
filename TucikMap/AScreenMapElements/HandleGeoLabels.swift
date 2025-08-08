@@ -13,6 +13,14 @@ import MetalKit
 // определяет сколько хранить метки тайла,а какие удалить
 // определяет пересечения меток
 class HandleGeoLabels {
+    struct OnPointsReady {
+        let output                          : [SIMD2<Float>]
+        let metalGeoLabels                  : [MetalTile.TextLabels]
+        let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
+        let actualLabelsIds                 : Set<UInt>
+        let geoLabelsSize                   : Int
+    }
+    
     private struct SortedGeoLabel {
         let i: Int
         let screenPositions: SIMD2<Float>
@@ -40,12 +48,12 @@ class HandleGeoLabels {
         self.mapZoomState = mapZoomState
     }
     
-    func onPointsReady(result: CombinedCompSP.Result, spaceDiscretisation: SpaceDiscretisation) {
-        let output                          = result.output
-        let mapLabelLineCollisionsMeta      = result.mapLabelLineCollisionsMeta
-        let actualLabelsIdsCaching          = result.actualLabelsIds
-        let metalGeoLabels                  = result.metalGeoLabels
-        let geoLabelsSize                   = result.geoLabelsSize
+    func onPointsReady(input: OnPointsReady, spaceDiscretisation: SpaceDiscretisation) {
+        let output                          = input.output
+        let mapLabelLineCollisionsMeta      = input.mapLabelLineCollisionsMeta
+        let actualLabelsIdsCaching          = input.actualLabelsIds
+        let metalGeoLabels                  = input.metalGeoLabels
+        let geoLabelsSize                   = input.geoLabelsSize
         
         var sortedGeoLabels: [SortedGeoLabel] = []
         sortedGeoLabels.reserveCapacity(geoLabelsSize)
