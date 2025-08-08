@@ -52,6 +52,7 @@ class ScreenCollisionsDetector {
     private let mapZoomState                : MapZoomState
     private let drawingFrameRequester       : DrawingFrameRequester
     private let frameCounter                : FrameCounter
+    private let mapModeStorage              : MapModeStorage
     private var projectPoints               : CombinedCompSP!
     
     private let handleGeoLabels             : HandleGeoLabels
@@ -74,7 +75,8 @@ class ScreenCollisionsDetector {
         metalCommandQueue: MTLCommandQueue,
         mapZoomState: MapZoomState,
         drawingFrameRequester: DrawingFrameRequester,
-        frameCounter: FrameCounter
+        frameCounter: FrameCounter,
+        mapModeStorage: MapModeStorage
     ) {
         handleGeoLabels = HandleGeoLabels(
             frameCounter: frameCounter,
@@ -87,6 +89,7 @@ class ScreenCollisionsDetector {
         self.mapZoomState = mapZoomState
         self.drawingFrameRequester = drawingFrameRequester
         self.frameCounter = frameCounter
+        self.mapModeStorage = mapModeStorage
         self.projectPoints = CombinedCompSP(
             computeScreenPositions: computeScreenPositions,
             metalDevice: metalDevice,
@@ -126,7 +129,13 @@ class ScreenCollisionsDetector {
         //print(time)
     }
     
-    func evaluate(lastUniforms: Uniforms, mapPanning: SIMD3<Double>, mapSize: Float) -> Bool {
+    func evaluate(lastUniforms: Uniforms,
+                  mapPanning: SIMD3<Double>,
+                  mapSize: Float,
+                  latitude: Float,
+                  longitude: Float,
+                  globeRadius: Float,
+                  mapMode: MapMode) -> Bool {
         var pipeline = ForEvaluationResult(
             inputComputeScreenVertices: [],
             mapLabelLineCollisionsMeta: [],
@@ -135,7 +144,13 @@ class ScreenCollisionsDetector {
             geoLabelsSize: 0,
             startRoadResultsIndex: 0
         )
-        let modelMatrices = ModelMatrices(mapZoomState: mapZoomState, mapPanning: mapPanning, mapSize: mapSize)
+        let modelMatrices = PrepareToScreenData(mapZoomState: mapZoomState,
+                                                mapPanning: mapPanning,
+                                                mapSize: mapSize,
+                                                latitude: latitude,
+                                                longitude: longitude,
+                                                globeRadius: globeRadius,
+                                                mapMode: mapMode)
         
         handleGeoLabels.forEvaluateCollisions(mapPanning: mapPanning,
                                               pipeline: &pipeline,
@@ -146,9 +161,7 @@ class ScreenCollisionsDetector {
                                                pipeline: &pipeline,
                                                modelMatrices: modelMatrices)
         
-        let modelMatricesArray = modelMatrices.getMatricesArray()
-        let input = CombinedCompSP.Input(modelMatrices: modelMatricesArray,
-                                         uniforms: lastUniforms,
+        let input = CombinedCompSP.Input(uniforms: lastUniforms,
                                          mapPanning: mapPanning,
                                          mapSize: mapSize,
                                          inputComputeScreenVertices: pipeline.inputComputeScreenVertices,
@@ -162,8 +175,9 @@ class ScreenCollisionsDetector {
                                          roadLabels: pipeline.metalRoadLabels,
                                          actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
         
+        
         // TODO
-        if modelMatricesArray.count > modelMatrixBufferSize {
+        if modelMatrices.resultSize > modelMatrixBufferSize {
             // если быстро зумить камеру туда/cюда то geoLabels будет расти в размере из-за того что анимация не успевает за изменениями
             // в таком случае пропускаем изменения и отображаем старые данные до тех пор пока пользователь не успокоиться
             //renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight) // продолжаем рендрить чтобы обновились данные в конце концов
@@ -175,7 +189,15 @@ class ScreenCollisionsDetector {
             return false // Слишком много точек для преобразования, пропускаем рендринг
         }
         
-        projectPoints.project(input: input)
+        switch mapModeStorage.mapMode {
+        case .flat:
+            let modelMatricesArray = modelMatrices.getMatricesArray()
+            let inputFlat = CombinedCompSP.InputFlat(input: input, modelMatrices: modelMatricesArray)
+            projectPoints.project(inputFlat: inputFlat)
+        case .globe:
+            let inputGlobe = CombinedCompSP.InputGlobe(input: input, parameters: modelMatrices.getParametersArray())
+            projectPoints.projectGlobe(inputGlobe: inputGlobe)
+        }
         
         return false
     }

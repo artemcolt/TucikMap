@@ -14,7 +14,6 @@ class FlatMode {
     private var updateBufferedUniform       : UpdateBufferedUniform!
     private var mapUpdaterFlat              : MapUpdaterFlat
     private var mapCadDisplayLoop           : MapCADisplayLoop
-    private var screenCollisionsDetector    : ScreenCollisionsDetector
     
     var depthStencilStatePrePass        : MTLDepthStencilState!
     var depthStencilStateColorPass      : MTLDepthStencilState!
@@ -48,7 +47,6 @@ class FlatMode {
          updateBufferedUniform: UpdateBufferedUniform,
          mapModeStorage: MapModeStorage,
          drawPoint: DrawPoint,
-         screenCollisionsDetector: ScreenCollisionsDetector,
          mapUpdaterFlat: MapUpdaterFlat) {
         
         self.drawPoint                  = drawPoint
@@ -59,7 +57,6 @@ class FlatMode {
         self.mapZoomState               = mapZoomState
         self.updateBufferedUniform      = updateBufferedUniform
         self.mapUpdaterFlat             = mapUpdaterFlat
-        self.screenCollisionsDetector   = screenCollisionsDetector
         
         let depthPrePassDescriptor  = MTLDepthStencilDescriptor()
         depthPrePassDescriptor.depthCompareFunction = .less
@@ -87,8 +84,6 @@ class FlatMode {
                                                        camera: camera,
                                                        mapZoomState: mapZoomState)
         
-        applyLabelsState            = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector,
-                                                       assembledMap: mapUpdaterFlat.assembledMap)
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -115,12 +110,6 @@ class FlatMode {
                                                      areaRange: areaRange,
                                                      cameraFlatView: camera)
         
-        if (mapCadDisplayLoop.checkEvaluateScreenData()) {
-            let _ = screenCollisionsDetector.evaluate(lastUniforms: lastUniforms, mapPanning: mapPanning, mapSize: camera.mapSize)
-        }
-        
-        // Применяем если есть актуальные данные меток для свежего кадра
-        applyLabelsState.apply(currentFBIdx: currentFBIdx)
         
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.depthAttachment.texture = nil
@@ -148,7 +137,6 @@ class FlatMode {
             tileFrameProps: tileFrameProps
         )
         roadLabelsEncoder.endEncoding()
-        
         
         
         // First: Depth pre-pass (populate min depths, no color)

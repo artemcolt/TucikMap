@@ -35,6 +35,7 @@ class GlobeMode {
     private let drawTexture             : DrawTexture
     private let mapUpdater              : MapUpdaterGlobe
     private let switchMapMode           : SwitchMapMode
+    private let drawGlobeLabels         : DrawGlobeLabels
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
@@ -44,8 +45,8 @@ class GlobeMode {
     private var generatePlaneCount      : Int = 0
     private var generateTextureCount    : Int = 0
     
-    private let maxGeomVerticesCount        : Int = 10_000
-    private let maxGeomIndicesCount         : Int = 40_000
+    private let maxGeomVerticesCount    : Int = 10_000
+    private let maxGeomIndicesCount     : Int = 40_000
     
     
     init(metalDevice: MTLDevice,
@@ -61,6 +62,9 @@ class GlobeMode {
          mapUpdater: MapUpdaterGlobe,
          switchMapMode: SwitchMapMode) {
         
+        self.drawGlobeLabels        = DrawGlobeLabels(screenUniforms: screenUniforms,
+                                                      metalDevice: metalDevice,
+                                                      camera: cameraStorage.currentView)
         self.switchMapMode          = switchMapMode
         self.drawTexture            = DrawTexture(screenUniforms: screenUniforms)
         self.screenUniforms         = screenUniforms
@@ -109,22 +113,6 @@ class GlobeMode {
         planesBuffered[bufferIndex].indicesBuffer.contents().copyMemory(from: indices,
                                                      byteCount: MemoryLayout<UInt32>.stride * indices.count)
         planesBuffered[bufferIndex].indicesCount = newPlane.indices.count
-    }
-    
-    func webMercatorYCoordinate(latitudeRadians: Float) -> Float {
-        // Clamp latitude to the valid range for Web Mercator to avoid infinity or invalid values
-        // The max latitude in radians for y=1 is approximately 1.484 (85.051 degrees)
-        let maxLat = 2 * (atan(exp(Float.pi)) - Float.pi / 4)
-        let clampedLat = max(min(latitudeRadians, maxLat), -maxLat)
-        
-        // Web Mercator y formula normalized to [-1, 1]
-        let y = log(tan(Float.pi / 4 + clampedLat / 2))
-        
-        return y / Float.pi
-    }
-    
-    func webMercatorDistortion(latitude: Float) -> Float {
-        return 1 / cos(latitude)
     }
     
     func draw(in view: MTKView,
@@ -176,7 +164,7 @@ class GlobeMode {
             generateTextureCount -= 1
         }
         
-        let globeRadius     = Settings.nullZoomGlobeRadius * mapZoomState.powZoomLevel
+        let globeRadius     = camera.globeRadius
         let transition      = switchMapMode.transition
         var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.latitude,
                                                         uShift: uShiftMap,
@@ -207,12 +195,25 @@ class GlobeMode {
             renderEncoder.endEncoding()
         }
         
+        renderPassDescriptor.colorAttachments[0].loadAction = .load
+        renderPassDescriptor.depthAttachment = nil
+        renderPassDescriptor.stencilAttachment = nil
+        
+        // На глобусе рисуем названия стран, городов, рек, морей
+        let basicRenderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
+        drawGlobeLabels.draw(
+            renderEncoder: basicRenderEncoder,
+            uniformsBuffer: uniformsBuffer,
+            geoLabels: assembledMap.tileGeoLabels,
+            currentFBIndex: currentFbIndex,
+            globeRadius: globeRadius
+        )
+        basicRenderEncoder.endEncoding()
+        
         
         if Settings.drawGlobeTexture {
             // draw texture
-            renderPassDescriptor.colorAttachments[0].loadAction = .load
-            renderPassDescriptor.depthAttachment = nil
-            renderPassDescriptor.stencilAttachment = nil
             let textureEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
             pipelines.texturePipeline.selectPipeline(renderEncoder: textureEncoder)
             drawTexture.draw(textureEncoder: textureEncoder, texture: texture, sideWidth: 500)

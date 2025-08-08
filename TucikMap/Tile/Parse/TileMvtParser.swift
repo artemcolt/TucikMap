@@ -183,10 +183,10 @@ class TileMvtParser {
         guard x > 0 && x < Double(Settings.tileExtent) && y > 0 && y < Double(Settings.tileExtent) else { return nil }
         guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: tileCoords) else { return nil }
         guard let nameEn = properties["name_en"] as? String else {return nil}
+        let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
         
         // здесь это нужно только чтобы id рассчитать
         // mapSize по идее любым может быть ВРОДЕ БЫ
-        let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
         let panningPoint = tileCoords
             .getTilePointPanningCoordinates(normalizedX: coordinate.x, normalizedY: coordinate.y, mapSize: 1.0)
         let uniqueGeoLabelKey = UniqueGeoLabelKey(x: panningPoint.x, y: panningPoint.y, name: nameEn)

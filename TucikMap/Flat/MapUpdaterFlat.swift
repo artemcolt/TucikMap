@@ -9,7 +9,6 @@ import MetalKit
 import SwiftUI
 
 class MapUpdaterFlat : MapUpdater {
-    private let screenCollisionsDetector: ScreenCollisionsDetector
     
     init(
         mapZoomState: MapZoomState,
@@ -25,7 +24,6 @@ class MapUpdaterFlat : MapUpdater {
         screenCollisionsDetector: ScreenCollisionsDetector,
         updateBufferedUniform: UpdateBufferedUniform,
     ) {
-        self.screenCollisionsDetector = screenCollisionsDetector
         super.init(mapZoomState: mapZoomState,
                    device: device,
                    camera: camera,
@@ -36,7 +34,8 @@ class MapUpdaterFlat : MapUpdater {
                    mapCadDisplayLoop: mapCadDisplayLoop,
                    mapModeStorage: mapModeStorage,
                    mapUpdaterContext: mapUpdaterContext,
-                   updateBufferedUniform: updateBufferedUniform)
+                   updateBufferedUniform: updateBufferedUniform,
+                   screenCollisionsDetector: screenCollisionsDetector)
         
         metalTilesStorage.addHandler(handler: onMetalingTileEnd)
     }
@@ -44,14 +43,6 @@ class MapUpdaterFlat : MapUpdater {
     private func onMetalingTileEnd(tile: Tile) {
         if mapModeStorage.mapMode == .flat {
             self.update(view: savedView, useOnlyCached: true)
-        }
-    }
-    
-    override func updateActions(view: MTKView, actual: Set<MetalTile>, visibleTilesResult: DetVisTilesResult) {
-        let allReady = actual.count == visibleTilesResult.visibleTiles.count
-        if allReady {
-            screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
-            mapCadDisplayLoop.forceUpdateStates()
         }
     }
 }

@@ -1,8 +1,8 @@
 //
-//  Labels.metal
+//  GlobeLabels.metal
 //  TucikMap
 //
-//  Created by Artem on 6/9/25.
+//  Created by Artem on 8/6/25.
 //
 
 #include <metal_stdlib>
@@ -49,17 +49,26 @@ struct MapLabelIntersection {
     float createdTime;
 };
 
+struct GlobeLabelsParams {
+    float latitude;
+    float longitude;
+    float globeRadius;
+    float centerX;
+    float centerY;
+    float factor;
+};
 
-vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
-                                    constant Uniforms &screenUniforms [[buffer(1)]],
-                                    constant MapLabelSymbolMeta* symbolsMeta [[buffer(2)]],
-                                    constant MapLabelLineMeta* linesMeta [[buffer(3)]],
-                                    constant Uniforms &worldUniforms [[buffer(4)]],
-                                    constant MapLabelIntersection* intersections [[buffer(5)]],
-                                    constant float& animationDuration [[buffer(6)]],
-                                    constant float4x4& modelMatrix [[buffer(7)]],
-                                    uint vertexID [[vertex_id]]
-                                    ) {
+
+vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
+                                         constant Uniforms &screenUniforms [[buffer(1)]],
+                                         constant MapLabelSymbolMeta* symbolsMeta [[buffer(2)]],
+                                         constant MapLabelLineMeta* linesMeta [[buffer(3)]],
+                                         constant Uniforms &worldUniforms [[buffer(4)]],
+                                         constant MapLabelIntersection* intersections [[buffer(5)]],
+                                         constant float& animationDuration [[buffer(6)]],
+                                         constant GlobeLabelsParams& globeLabelsParams [[buffer(7)]],
+                                         uint vertexID [[vertex_id]]
+                                         ) {
     int symbolIndex = vertexID / 6;
     MapLabelSymbolMeta symbolMeta = symbolsMeta[symbolIndex];
     int lineIndex = symbolMeta.lineMetaIndex;
@@ -68,7 +77,34 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     float textWidth = measuredText.width;
     float scale = lineMeta.scale;
     
-    float4 worldLabelPos = modelMatrix * float4(lineMeta.localPosition, 0.0, 1.0);
+    // Локальное преобразование
+    float4x4 localScale = scale_matrix(float3(globeLabelsParams.factor, globeLabelsParams.factor, 1.0));
+    float4x4 localTranslation = translation_matrix(float3(globeLabelsParams.centerX, globeLabelsParams.centerY, 0));
+    
+    // Начальный преобразоватор в коориднаты глобуса
+    float4 labelCoord4 = localTranslation * localScale * float4(lineMeta.localPosition, 0, 1);
+    float2 labelCoord = labelCoord4.xy;
+    
+    constexpr float PI = M_PI_F;
+    constexpr float HALF_PI = M_PI_F / 2.0;
+    float theta = -labelCoord.x * PI + HALF_PI;
+    float y = labelCoord.y * PI;
+    float phi = 2.0 * atan(exp(y)) - HALF_PI;
+
+    float radius = globeLabelsParams.globeRadius;
+    float4 spherePos;
+    spherePos.x = radius * cos(phi) * cos(theta);
+    spherePos.y = radius * sin(phi);
+    spherePos.z = radius * cos(phi) * sin(theta);
+    spherePos.w = 1;
+    
+    
+    float4x4 globeTranslate = translation_matrix(float3(0, 0, -radius));
+    float4x4 globeLongitude = rotation_matrix(-globeLabelsParams.longitude, float3(0, 1, 0));
+    float4x4 globeLatitude = rotation_matrix(globeLabelsParams.latitude, float3(1, 0, 0));
+    float4x4 globeRotation = globeLatitude * globeLongitude;
+    
+    float4 worldLabelPos = globeTranslate * globeRotation * spherePos;
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
    
@@ -98,9 +134,9 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     return out;
 }
 
-fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
-                                     texture2d<float> atlasTexture [[texture(0)]],
-                                     sampler textureSampler [[sampler(0)]]) {
+fragment float4 globeLabelsFragmentShader(VertexOut in [[stage_in]],
+                                          texture2d<float> atlasTexture [[texture(0)]],
+                                          sampler textureSampler [[sampler(0)]]) {
     // Чтение значения из MSDF атласа
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
     float sigDist = median(msdf.r, msdf.g, msdf.b);

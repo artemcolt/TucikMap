@@ -21,6 +21,7 @@ class MapUpdaterGlobe : MapUpdater {
          mapCadDisplayLoop: MapCADisplayLoop,
          mapModeStorage: MapModeStorage,
          mapUpdaterContext: MapUpdaterContext,
+         screenCollisionsDetector: ScreenCollisionsDetector,
          updateBufferedUniform: UpdateBufferedUniform,
          globeTexturing: GlobeTexturing) {
         self.globeTexturing = globeTexturing
@@ -34,7 +35,8 @@ class MapUpdaterGlobe : MapUpdater {
                    mapCadDisplayLoop: mapCadDisplayLoop,
                    mapModeStorage: mapModeStorage,
                    mapUpdaterContext: mapUpdaterContext,
-                   updateBufferedUniform: updateBufferedUniform)
+                   updateBufferedUniform: updateBufferedUniform,
+                   screenCollisionsDetector: screenCollisionsDetector)
         
         metalTilesStorage.addHandler(handler: onMetalingTileEnd)
     }
@@ -43,11 +45,5 @@ class MapUpdaterGlobe : MapUpdater {
         if mapModeStorage.mapMode == .globe {
             self.update(view: savedView, useOnlyCached: true)
         }
-    }
-    
-    override func updateActions(view: MTKView,
-                                actual: Set<MetalTile>,
-                                visibleTilesResult: DetVisTilesResult) {
-        
     }
 }

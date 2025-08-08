@@ -36,6 +36,7 @@ class Coordinator: NSObject, MTKViewDelegate {
     private let screenCollisionsDetector    : ScreenCollisionsDetector
     private let globeTexturing              : GlobeTexturing
     private let switchMapMode               : SwitchMapMode
+    private let applyLabelsState            : ApplyLabelsState
     
     var flatMode: FlatMode
     var globeMode: GlobeMode
@@ -82,10 +83,12 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                             metalCommandQueue: metalCommandQueue,
                                                             mapZoomState: mapZoomState,
                                                             drawingFrameRequester: drawingFrameRequester,
-                                                            frameCounter: frameCounter)
+                                                            frameCounter: frameCounter,
+                                                            mapModeStorage: mapModeStorage)
         
         globeTexturing          = GlobeTexturing(metalDevide: metalDevice, metalCommandQueue: metalCommandQueue, pipelines: pipelines)
         
+        let mapUpdaterContext   = MapUpdaterContext()
         mapUpdaterStorage       = MapUpdaterStorage(mapModeStorage: mapModeStorage,
                                                     mapZoomState: mapZoomState,
                                                     metalDevice: metalDevice,
@@ -97,7 +100,11 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                     mapCadDisplayLoop: mapCadDisplayLoop,
                                                     screenCollisionsDetector: screenCollisionsDetector,
                                                     updateBufferedUniform: updateBufferedUniform,
-                                                    globeTexturing: globeTexturing)
+                                                    globeTexturing: globeTexturing,
+                                                    mapUpdaterContext: mapUpdaterContext)
+        
+        applyLabelsState        = ApplyLabelsState(screenCollisionsDetector: screenCollisionsDetector,
+                                                   assembledMap: mapUpdaterContext.assembledMap)
         
         flatMode                = FlatMode(metalDevice: metalDevice,
                                            metalCommandQueue: metalCommandQueue,
@@ -113,7 +120,6 @@ class Coordinator: NSObject, MTKViewDelegate {
                                            updateBufferedUniform: updateBufferedUniform,
                                            mapModeStorage: mapModeStorage,
                                            drawPoint: drawPoint,
-                                           screenCollisionsDetector: screenCollisionsDetector,
                                            mapUpdaterFlat: mapUpdaterStorage.flat)
         
         globeMode               = GlobeMode(metalDevice: metalDevice,
@@ -170,10 +176,27 @@ class Coordinator: NSObject, MTKViewDelegate {
         updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
         let uniformsBuffer = updateBufferedUniform.getCurrentFrameBuffer()
+        let currentFBIdx = updateBufferedUniform.getCurrentFrameBufferIndex()
+        let lastUniforms = updateBufferedUniform.lastUniforms!
+        let camera = cameraStorage.currentView
+        let mapPanning = camera.mapPanning
+        let mapSize = camera.mapSize
         
         if cameraStorage.currentView.isMapStateUpdated() || switched {
             mapUpdaterStorage.currentView.update(view: view, useOnlyCached: false)
         }
+        
+        if (mapCadDisplayLoop.checkEvaluateScreenData()) {
+            let _ = screenCollisionsDetector.evaluate(lastUniforms: lastUniforms,
+                                                      mapPanning: mapPanning,
+                                                      mapSize: mapSize,
+                                                      latitude: camera.latitude,
+                                                      longitude: camera.longitude,
+                                                      globeRadius: camera.globeRadius,
+                                                      mapMode: mapModeStorage.mapMode)
+        }
+        // Применяем если есть актуальные данные меток для свежего кадра
+        applyLabelsState.apply(currentFBIdx: currentFBIdx)
         
         switch mapModeStorage.mapMode {
         case .flat:

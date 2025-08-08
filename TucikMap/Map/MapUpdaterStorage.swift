@@ -47,9 +47,10 @@ class MapUpdaterStorage {
          mapCadDisplayLoop: MapCADisplayLoop,
          screenCollisionsDetector: ScreenCollisionsDetector,
          updateBufferedUniform: UpdateBufferedUniform,
-         globeTexturing: GlobeTexturing) {
+         globeTexturing: GlobeTexturing,
+         mapUpdaterContext: MapUpdaterContext) {
         
-        self.mapUpdaterContext  = MapUpdaterContext()
+        self.mapUpdaterContext  = mapUpdaterContext
         self.mapModeStorage     = mapModeStorage
         
         _flat = MapUpdaterFlat(mapZoomState: mapZoomState,
@@ -75,6 +76,7 @@ class MapUpdaterStorage {
                                  mapCadDisplayLoop: mapCadDisplayLoop,
                                  mapModeStorage: mapModeStorage,
                                  mapUpdaterContext: mapUpdaterContext,
+                                 screenCollisionsDetector: screenCollisionsDetector,
                                  updateBufferedUniform: updateBufferedUniform,
                                  globeTexturing: globeTexturing)
     }

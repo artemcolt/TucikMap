@@ -18,6 +18,7 @@ class MapUpdater {
     private var drawingFrameRequester   : DrawingFrameRequester!
     private var frameCounter            : FrameCounter!
     private var mapUpdaterContext       : MapUpdaterContext
+    private let screenCollisionsDetector: ScreenCollisionsDetector
     var updateBufferedUniform           : UpdateBufferedUniform
     var mapCadDisplayLoop               : MapCADisplayLoop
     var metalDevice                     : MTLDevice
@@ -40,7 +41,9 @@ class MapUpdater {
         mapModeStorage: MapModeStorage,
         mapUpdaterContext: MapUpdaterContext,
         updateBufferedUniform: UpdateBufferedUniform,
+        screenCollisionsDetector: ScreenCollisionsDetector
     ) {
+        self.screenCollisionsDetector   = screenCollisionsDetector
         self.metalDevice                = device
         self.mapZoomState               = mapZoomState
         self.textTools                  = textTools
@@ -91,18 +94,16 @@ class MapUpdater {
         let fullMetalTilesArray     = replsArray + actual
         self.assembledMap.setNewState(tiles: fullMetalTilesArray, areaRange: areaRange)
         
-        updateActions(view: view,
-                      actual: actual,
-                      visibleTilesResult: visibleTilesResult)
+        let allReady = actual.count == visibleTilesResult.visibleTiles.count
+        if allReady {
+            screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
+            mapCadDisplayLoop.forceUpdateStates()
+        }
         
         if (Settings.debugAssemblingMap) {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
         drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
-    }
-    
-    func updateActions(view: MTKView, actual: Set<MetalTile>, visibleTilesResult: DetVisTilesResult) {
-        
     }
 }

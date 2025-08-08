@@ -44,7 +44,9 @@ class Camera {
         set { cameraContext.rotationYaw = newValue }
     }
     
+    var globeRadius                 : Float = 0
     var latitude                    : Float = 0
+    var longitude                   : Float = 0
     var mapPanning                  : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
     var pinchDeltaDistance          : Float = 0
     var twoFingerDeltaPitch         : Float = 0
@@ -141,11 +143,6 @@ class Camera {
         let forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
         cameraPosition = targetPosition + forward * cameraDistance
         
-        let mapSize     = Double(mapSize) // размер карты снизу и доверху
-        let panY        = mapPanning.y // 0 в центре карты, на половине пути
-        let mercY       = -panY / mapSize * 2.0 * Double.pi
-        latitude        = Float(2.0 * atan(exp(mercY)) - Double.pi / 2)
-        
         // Зацикливаем карту
         let halfMapSize = Double(mapSize) / 2.0
         if mapPanning.x > halfMapSize {
@@ -154,6 +151,15 @@ class Camera {
             mapPanning.x = halfMapSize
         }
         mapPanning.y = max(-halfMapSize, min(halfMapSize, mapPanning.y))
+        
+        let mapSize     = Double(mapSize) // размер карты снизу и доверху
+        let panY        = mapPanning.y // 0 в центре карты, на половине пути
+        let mercY       = -panY / mapSize * 2.0 * Double.pi
+        latitude        = Float(2.0 * atan(exp(mercY)) - Double.pi / 2)
+        let panX        = mapPanning.x
+        longitude       = -Float(panX / (mapSize / 2.0)) * Float.pi
+        
+        globeRadius     = Settings.nullZoomGlobeRadius * mapZoomState.powZoomLevel
         
         let _ = updateCameraCenterTile()
         
