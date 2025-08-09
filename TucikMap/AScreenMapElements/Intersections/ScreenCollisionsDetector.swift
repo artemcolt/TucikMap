@@ -43,21 +43,21 @@ class ScreenCollisionsDetector {
         var startRoadResultsIndex: Int
     }
     
-    fileprivate let parametersBufferSize    = Settings.geoLabelsParametersBufferSize
+    fileprivate let parametersBufferSize        = Settings.geoLabelsParametersBufferSize
     
-    private let computeScreenPositions      : ComputeScreenPositions
-    private let metalDevice                 : MTLDevice
-    private let metalCommandQueue           : MTLCommandQueue
+    fileprivate let computeScreenPositions      : ComputeScreenPositions
+    fileprivate let metalDevice                 : MTLDevice
+    fileprivate let metalCommandQueue           : MTLCommandQueue
     
-    fileprivate let mapZoomState            : MapZoomState
-    private let drawingFrameRequester       : DrawingFrameRequester
-    private let frameCounter                : FrameCounter
-    fileprivate var projectPoints           : CombinedCompSP!
+    fileprivate let mapZoomState                : MapZoomState
+    fileprivate let drawingFrameRequester       : DrawingFrameRequester
+    fileprivate let frameCounter                : FrameCounter
+    fileprivate var projectPoints               : CombinedCompSP!
     
-    fileprivate let handleGeoLabels         : HandleGeoLabels
-    fileprivate var handleRoadLabels        : HandleRoadLabels!
+    fileprivate let handleGeoLabels             : HandleGeoLabels
+    fileprivate var handleRoadLabels            : HandleRoadLabels!
     
-    private var viewportSize                : SIMD2<Float> = SIMD2<Float>()
+    fileprivate var viewportSize                : SIMD2<Float> = SIMD2<Float>()
     
     
     func getLabelsWithIntersections() -> GeoLabelsWithIntersections? {
@@ -80,6 +80,7 @@ class ScreenCollisionsDetector {
             frameCounter: frameCounter,
             mapZoomState: mapZoomState,
         )
+        handleRoadLabels = HandleRoadLabels(mapZoomState: mapZoomState, frameCounter: frameCounter)
         
         computeScreenPositions = ComputeScreenPositions(metalDevice: metalDevice, library: library)
         self.metalDevice = metalDevice
@@ -91,11 +92,12 @@ class ScreenCollisionsDetector {
             computeScreenPositions: computeScreenPositions,
             metalDevice: metalDevice,
             metalCommandQueue: metalCommandQueue,
-            onPointsReadyGlobe: self.onPointsReadyGlobe,
-            onPointsReadyFlat: self.onPointsReadyFlat
+            onPointsReadyGlobe: OnPointsReadyHandlerGlobe(drawingFrameRequester: drawingFrameRequester,
+                                                          handleGeoLabels: handleGeoLabels),
+            onPointsReadyFlat: OnPointsReadyHandlerFlat(drawingFrameRequester: drawingFrameRequester,
+                                                        handleGeoLabels: handleGeoLabels,
+                                                        handleRoadLabels: handleRoadLabels)
         )
-        
-        handleRoadLabels = HandleRoadLabels(mapZoomState: mapZoomState, frameCounter: frameCounter)
     }
     
     func newState(actualTiles: [MetalTile], view: MTKView) {
@@ -112,45 +114,9 @@ class ScreenCollisionsDetector {
         self.handleGeoLabels.setGeoLabels(geoLabels: textLabels)
         viewportSize = SIMD2<Float>(Float(view.drawableSize.width), Float(view.drawableSize.height))
     }
-    
-    private func onPointsReadyGlobe(resultGlobe: CombinedCompSP.ResultGlobe) {
-        let result = resultGlobe.result
-        let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
-        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: result.output,
-                                                           metalGeoLabels: result.metalGeoLabels,
-                                                           mapLabelLineCollisionsMeta: result.mapLabelLineCollisionsMeta,
-                                                           actualLabelsIds: result.actualLabelsIds,
-                                                           geoLabelsSize: result.geoLabelsSize)
-        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceDiscretisation: spaceDiscretisation)
-        
-        drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
-    }
-    
-    private func onPointsReadyFlat(resultFlat: CombinedCompSP.ResultFlat) {
-        let result = resultFlat.result
-        let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
-        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: result.output,
-                                                           metalGeoLabels: result.metalGeoLabels,
-                                                           mapLabelLineCollisionsMeta: result.mapLabelLineCollisionsMeta,
-                                                           actualLabelsIds: result.actualLabelsIds,
-                                                           geoLabelsSize: result.geoLabelsSize)
-        
-        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceDiscretisation: spaceDiscretisation)
-        
-        let handleRoadInput = HandleRoadLabels.OnPointsReady(output: result.output,
-                                                             uniforms: result.uniforms,
-                                                             mapPanning: resultFlat.mapPanning,
-                                                             mapSize: resultFlat.mapSize,
-                                                             startRoadResultsIndex: resultFlat.startRoadResultsIndex,
-                                                             metalRoadLabelsTiles: resultFlat.metalRoadLabelsTiles,
-                                                             actualRoadLabelsIds: resultFlat.actualRoadLabelsIds)
-        
-        handleRoadLabels.onPointsReady(result: handleRoadInput, spaceDiscretisation: spaceDiscretisation, viewportSize: viewportSize)
-        
-        
-        drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
-    }
 }
+
+
 
 class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
     func evaluate(lastUniforms: Uniforms,
@@ -207,6 +173,8 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
     }
 }
 
+
+
 class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
     func evaluate(lastUniforms: Uniforms,
                   mapPanning: SIMD3<Double>,
@@ -255,6 +223,7 @@ class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
                                                  modelMatrices: modelMatricesArray,
                                                  mapPanning: mapPanning,
                                                  mapSize: mapSize,
+                                                 viewportSize: viewportSize,
                                                  startRoadResultsIndex: pipeline.startRoadResultsIndex,
                                                  roadLabels: pipeline.metalRoadLabels,
                                                  actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)

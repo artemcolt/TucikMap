@@ -34,6 +34,7 @@ class CombinedCompSP {
         let modelMatrices                   : [matrix_float4x4]
         let mapPanning                      : SIMD3<Double>
         let mapSize                         : Float
+        let viewportSize                    : SIMD2<Float>
         
         // startRoadResultsIndex - данные о дорогах начинаются с этого индекса в output
         let startRoadResultsIndex           : Int
@@ -61,6 +62,7 @@ class CombinedCompSP {
         let result                          : Result
         let mapPanning                      : SIMD3<Double>
         let mapSize                         : Float
+        let viewportSize                    : SIMD2<Float>
         
         let startRoadResultsIndex           : Int
         let metalRoadLabelsTiles            : [MetalTile.RoadLabels]
@@ -78,8 +80,8 @@ class CombinedCompSP {
     private let inputParametersBuffer           : MTLBuffer
     private let inputScreenPositionsBuffer      : MTLBuffer
     private let outputWorldPositionsBuffer      : MTLBuffer
-    private let onPointsReadyGlobe              : (ResultGlobe) -> Void
-    private let onPointsReadyFlat               : (ResultFlat) -> Void
+    private let onPointsReadyGlobe              : OnPointsReadyHandlerGlobe
+    private let onPointsReadyFlat               : OnPointsReadyHandlerFlat
     
     // размер для входного буффера точек, максимально может быть столько точек
     private let inputBufferWorldPostionsSize    = Settings.maxInputComputeScreenPoints
@@ -90,8 +92,8 @@ class CombinedCompSP {
         computeScreenPositions: ComputeScreenPositions,
         metalDevice: MTLDevice,
         metalCommandQueue: MTLCommandQueue,
-        onPointsReadyGlobe: @escaping (ResultGlobe) -> Void,
-        onPointsReadyFlat: @escaping (ResultFlat) -> Void,
+        onPointsReadyGlobe: OnPointsReadyHandlerGlobe,
+        onPointsReadyFlat: OnPointsReadyHandlerFlat,
     ) {
         self.onPointsReadyGlobe         = onPointsReadyGlobe
         self.onPointsReadyFlat          = onPointsReadyFlat
@@ -130,6 +132,7 @@ class CombinedCompSP {
         let input                           = inputFlat.input
         let mapPanning                      = inputFlat.mapPanning
         let mapSize                         = inputFlat.mapSize
+        let viewportSize                    = inputFlat.viewportSize
         let startRoadResultsIndex           = inputFlat.startRoadResultsIndex
         let metalRoadLabelsTiles            = inputFlat.roadLabels
         let actualRoadLabelsIds             = inputFlat.actualRoadLabelsIds
@@ -179,11 +182,12 @@ class CombinedCompSP {
                 let resultFlat = ResultFlat(result: result,
                                             mapPanning: mapPanning,
                                             mapSize: mapSize,
+                                            viewportSize: viewportSize,
                                             startRoadResultsIndex: startRoadResultsIndex,
                                             metalRoadLabelsTiles: metalRoadLabelsTiles,
                                             actualRoadLabelsIds: actualRoadLabelsIds)
                 
-                self.onPointsReadyFlat(resultFlat)
+                self.onPointsReadyFlat.onPointsReadyFlat(resultFlat: resultFlat)
             }
         }
         commandBuffer.commit()
@@ -243,7 +247,7 @@ class CombinedCompSP {
                 
                 let resultGlobe = ResultGlobe(result: result)
                 
-                self.onPointsReadyGlobe(resultGlobe)
+                self.onPointsReadyGlobe.onPointsReadyGlobe(resultGlobe: resultGlobe)
             }
         }
         commandBuffer.commit()
