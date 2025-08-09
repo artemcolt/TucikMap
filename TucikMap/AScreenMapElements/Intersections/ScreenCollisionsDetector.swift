@@ -52,7 +52,9 @@ class ScreenCollisionsDetector {
     fileprivate let mapZoomState                : MapZoomState
     fileprivate let drawingFrameRequester       : DrawingFrameRequester
     fileprivate let frameCounter                : FrameCounter
-    fileprivate var projectPoints               : CombinedCompSP
+    
+    fileprivate var projectPointsFlat           : CombinedCompSPFlat
+    fileprivate var projectPointsGlobe          : CombinedCompSPGlobe
     
     fileprivate let handleGeoLabels             : HandleGeoLabels
     fileprivate var handleRoadLabels            : HandleRoadLabels
@@ -79,10 +81,15 @@ class ScreenCollisionsDetector {
         handleGeoLabels: HandleGeoLabels,
         handleRoadLabels: HandleRoadLabels,
         onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
-        onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat
+        onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat,
+        projectPointsFlat: CombinedCompSPFlat,
+        projectPointsGlobe: CombinedCompSPGlobe
     ) {
         self.handleGeoLabels = handleGeoLabels
         self.handleRoadLabels = handleRoadLabels
+        
+        self.projectPointsFlat = projectPointsFlat
+        self.projectPointsGlobe = projectPointsGlobe
         
         self.computeScreenPositions = computeScreenPositions
         self.metalDevice = metalDevice
@@ -90,14 +97,6 @@ class ScreenCollisionsDetector {
         self.mapZoomState = mapZoomState
         self.drawingFrameRequester = drawingFrameRequester
         self.frameCounter = frameCounter
-        
-        self.projectPoints = CombinedCompSP(
-            computeScreenPositions: computeScreenPositions,
-            metalDevice: metalDevice,
-            metalCommandQueue: metalCommandQueue,
-            onPointsReadyGlobe: onPointsReadyHandlerGlobe,
-            onPointsReadyFlat: onPointsReadyHandlerFlat
-        )
     }
     
     func newState(actualTiles: [MetalTile], view: MTKView) {
@@ -167,7 +166,7 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
         }
         
         let inputGlobe = CombinedCompSP.InputGlobe(input: input, parameters: prepareToScreenData.parameters)
-        projectPoints.projectGlobe(inputGlobe: inputGlobe)
+        projectPointsGlobe.projectGlobe(inputGlobe: inputGlobe)
         
         return false
     }
@@ -228,7 +227,7 @@ class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
                                                  roadLabels: pipeline.metalRoadLabels,
                                                  actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
         
-        projectPoints.projectFlat(inputFlat: inputFlat)
+        projectPointsFlat.projectFlat(inputFlat: inputFlat)
         
         return false
     }
