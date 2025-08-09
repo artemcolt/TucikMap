@@ -62,12 +62,12 @@ class ScrCollDetStorage {
         let combinedCompSPFlat = CombinedCompSPFlat(metalDevice: metalDevice,
                                                     metalCommandQueue: metalCommandQueue,
                                                     onPointsReadyFlat: onPointsReadyHandlerFlat,
-                                                    computeScreenPositionsFlat: computeScreenPositionsFlat)
+                                                    computeScreenPositions: computeScreenPositionsFlat)
         
         let combinedCompSPGlobe = CombinedCompSPGlobe(metalDevice: metalDevice,
                                                       metalCommandQueue: metalCommandQueue,
                                                       onPointsReadyGlobe: onPointsReadyHandlerGlobe,
-                                                      computeScreenPostionsGlobe: computeScreenPositionsGlobe)
+                                                      computeScreenPositions: computeScreenPositionsGlobe)
         
         _flat = ScreenCollisionsDetectorFlat(metalDevice: metalDevice,
                                              library: library,
