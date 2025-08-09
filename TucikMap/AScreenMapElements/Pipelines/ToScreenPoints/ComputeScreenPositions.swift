@@ -12,9 +12,7 @@ import MetalKit
 // рассчет происходит на gpu
 // рассчитывает экранные координаты для размещения информационного текста на карте
 class ComputeScreenPositions {
-    let metalDevice                  : MTLDevice
-    let computeScreenPipeline        : ComputeScreenPipeline // Пайплайн для отправки данных на gpu для параллельного рассчета
-    let computeScreenGlobePipeline   : CompScreenGlobePipe   // Это для глобуса
+    let metalDevice: MTLDevice
     
     let threadsPerGroup = MTLSize(
         width:  32,
@@ -47,22 +45,27 @@ class ComputeScreenPositions {
     
     init(metalDevice: MTLDevice, library: MTLLibrary) {
         self.metalDevice            = metalDevice
-        computeScreenPipeline       = ComputeScreenPipeline(metalDevice: metalDevice, library: library)
-        computeScreenGlobePipeline  = CompScreenGlobePipe(metalDevice: metalDevice, library: library)
+    }
+}
+
+
+
+class ComputeScreenPositionsGlobe: ComputeScreenPositions {
+    let computeScreenGlobePipeline: CompScreenGlobePipe   // Это для глобуса
+    
+    override init(metalDevice: MTLDevice, library: MTLLibrary) {
+        computeScreenGlobePipeline = CompScreenGlobePipe(metalDevice: metalDevice, library: library)
+        super.init(metalDevice: metalDevice, library: library)
     }
     
     // uniforms - текущее состояние камеры, экранная проекция считается в зависимости от текущей видимой области
     // calculationBlock - входные данные для рассчета и отсюда же брать результаты
-    func compute(
+    func computeGlobe(
         uniforms                                : MTLBuffer,
         computeEncoder                          : MTLComputeCommandEncoder,
         calculationBlock                        : CalculationBlock,
-        mode                                    : MapMode
     ) {
-        switch mode {
-        case .flat: computeScreenPipeline.selectComputePipeline(computeEncoder: computeEncoder)
-        case .globe: computeScreenGlobePipeline.selectComputePipeline(computeEncoder: computeEncoder)
-        }
+        computeScreenGlobePipeline.selectComputePipeline(computeEncoder: computeEncoder)
         
         let inputBuffer                     = calculationBlock.inputBuffer
         let outputBuffer                    = calculationBlock.outputBuffer
@@ -79,3 +82,37 @@ class ComputeScreenPositions {
         computeEncoder.dispatchThreadgroups(threadGroups, threadsPerThreadgroup: threadsPerGroup)
     }
 }
+
+
+
+class ComputeScreenPositionsFlat: ComputeScreenPositions {
+    let computeScreenPipeline: ComputeScreenPipeline // Пайплайн для отправки данных на gpu для параллельного рассчета
+    
+    override init(metalDevice: MTLDevice, library: MTLLibrary) {
+        computeScreenPipeline = ComputeScreenPipeline(metalDevice: metalDevice, library: library)
+        super.init(metalDevice: metalDevice, library: library)
+    }
+    
+    func computeFlat(
+        uniforms                                : MTLBuffer,
+        computeEncoder                          : MTLComputeCommandEncoder,
+        calculationBlock                        : CalculationBlock,
+    ) {
+        computeScreenPipeline.selectComputePipeline(computeEncoder: computeEncoder)
+        
+        let inputBuffer                     = calculationBlock.inputBuffer
+        let outputBuffer                    = calculationBlock.outputBuffer
+        let vertexCount                     = calculationBlock.vertexCount
+        let inputParametersBuffer           = calculationBlock.inputParametersBuffer
+        
+        computeEncoder.setBuffer(inputBuffer,               offset: 0, index: 0)
+        computeEncoder.setBuffer(outputBuffer,              offset: 0, index: 1)
+        computeEncoder.setBuffer(uniforms,                  offset: 0, index: 2)
+        computeEncoder.setBuffer(inputParametersBuffer,     offset: 0, index: 3)
+        
+        let threadGroupsWidth = (vertexCount + threadsPerGroup.width - 1) / threadsPerGroup.width
+        let threadGroups      = MTLSize(width: threadGroupsWidth, height: 1, depth: 1)
+        computeEncoder.dispatchThreadgroups(threadGroups, threadsPerThreadgroup: threadsPerGroup)
+    }
+}
+

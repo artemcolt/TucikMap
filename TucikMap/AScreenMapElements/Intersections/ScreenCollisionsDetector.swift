@@ -53,9 +53,6 @@ class ScreenCollisionsDetector {
     fileprivate let drawingFrameRequester       : DrawingFrameRequester
     fileprivate let frameCounter                : FrameCounter
     
-    fileprivate var projectPointsFlat           : CombinedCompSPFlat
-    fileprivate var projectPointsGlobe          : CombinedCompSPGlobe
-    
     fileprivate let handleGeoLabels             : HandleGeoLabels
     fileprivate var handleRoadLabels            : HandleRoadLabels
     
@@ -82,14 +79,9 @@ class ScreenCollisionsDetector {
         handleRoadLabels: HandleRoadLabels,
         onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
         onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat,
-        projectPointsFlat: CombinedCompSPFlat,
-        projectPointsGlobe: CombinedCompSPGlobe
     ) {
         self.handleGeoLabels = handleGeoLabels
         self.handleRoadLabels = handleRoadLabels
-        
-        self.projectPointsFlat = projectPointsFlat
-        self.projectPointsGlobe = projectPointsGlobe
         
         self.computeScreenPositions = computeScreenPositions
         self.metalDevice = metalDevice
@@ -118,6 +110,36 @@ class ScreenCollisionsDetector {
 
 
 class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
+    fileprivate var projectPointsGlobe: CombinedCompSPGlobe
+    
+    init(
+        metalDevice: MTLDevice,
+        library: MTLLibrary,
+        metalCommandQueue: MTLCommandQueue,
+        mapZoomState: MapZoomState,
+        drawingFrameRequester: DrawingFrameRequester,
+        frameCounter: FrameCounter,
+        computeScreenPositions: ComputeScreenPositions,
+        handleGeoLabels: HandleGeoLabels,
+        handleRoadLabels: HandleRoadLabels,
+        onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
+        onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat,
+        projectPointsGlobe: CombinedCompSPGlobe
+    ) {
+        self.projectPointsGlobe = projectPointsGlobe
+        super.init(metalDevice: metalDevice,
+                   library: library,
+                   metalCommandQueue: metalCommandQueue,
+                   mapZoomState: mapZoomState,
+                   drawingFrameRequester: drawingFrameRequester,
+                   frameCounter: frameCounter,
+                   computeScreenPositions: computeScreenPositions,
+                   handleGeoLabels: handleGeoLabels,
+                   handleRoadLabels: handleRoadLabels,
+                   onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
+                   onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
+    }
+    
     func evaluate(lastUniforms: Uniforms,
                   mapPanning: SIMD3<Double>,
                   mapSize: Float,
@@ -165,7 +187,7 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
             return false // Слишком много точек для преобразования, пропускаем рендринг
         }
         
-        let inputGlobe = CombinedCompSP.InputGlobe(input: input, parameters: prepareToScreenData.parameters)
+        let inputGlobe = CombinedCompSPGlobe.InputGlobe(input: input, parameters: prepareToScreenData.parameters)
         projectPointsGlobe.projectGlobe(inputGlobe: inputGlobe)
         
         return false
@@ -174,7 +196,37 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
 
 
 
-class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
+class ScreenCollisionsDetectorFlat: ScreenCollisionsDetector {
+    fileprivate var projectPointsFlat: CombinedCompSPFlat
+    
+    init(
+        metalDevice: MTLDevice,
+        library: MTLLibrary,
+        metalCommandQueue: MTLCommandQueue,
+        mapZoomState: MapZoomState,
+        drawingFrameRequester: DrawingFrameRequester,
+        frameCounter: FrameCounter,
+        computeScreenPositions: ComputeScreenPositions,
+        handleGeoLabels: HandleGeoLabels,
+        handleRoadLabels: HandleRoadLabels,
+        onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
+        onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat,
+        projectPointsFlat: CombinedCompSPFlat
+    ) {
+        self.projectPointsFlat = projectPointsFlat
+        super.init(metalDevice: metalDevice,
+                   library: library,
+                   metalCommandQueue: metalCommandQueue,
+                   mapZoomState: mapZoomState,
+                   drawingFrameRequester: drawingFrameRequester,
+                   frameCounter: frameCounter,
+                   computeScreenPositions: computeScreenPositions,
+                   handleGeoLabels: handleGeoLabels,
+                   handleRoadLabels: handleRoadLabels,
+                   onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
+                   onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
+    }
+    
     func evaluate(lastUniforms: Uniforms,
                   mapPanning: SIMD3<Double>,
                   mapSize: Float) -> Bool {
@@ -218,14 +270,14 @@ class ScreenCollisionsDetectorFlat : ScreenCollisionsDetector {
         }
         
         let modelMatricesArray = prepareToScreenData.matrices
-        let inputFlat = CombinedCompSP.InputFlat(input: input,
-                                                 modelMatrices: modelMatricesArray,
-                                                 mapPanning: mapPanning,
-                                                 mapSize: mapSize,
-                                                 viewportSize: viewportSize,
-                                                 startRoadResultsIndex: pipeline.startRoadResultsIndex,
-                                                 roadLabels: pipeline.metalRoadLabels,
-                                                 actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
+        let inputFlat = CombinedCompSPFlat.InputFlat(input: input,
+                                                     modelMatrices: modelMatricesArray,
+                                                     mapPanning: mapPanning,
+                                                     mapSize: mapSize,
+                                                     viewportSize: viewportSize,
+                                                     startRoadResultsIndex: pipeline.startRoadResultsIndex,
+                                                     roadLabels: pipeline.metalRoadLabels,
+                                                     actualRoadLabelsIds: handleRoadLabels.actualLabelsIds)
         
         projectPointsFlat.projectFlat(inputFlat: inputFlat)
         

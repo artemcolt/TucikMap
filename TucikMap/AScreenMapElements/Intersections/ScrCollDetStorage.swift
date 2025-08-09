@@ -56,17 +56,18 @@ class ScrCollDetStorage {
                                                                 handleGeoLabels: handleGeoLabels,
                                                                 handleRoadLabels: handleRoadLabels)
         
-        let combinedCompSPFlat = CombinedCompSPFlat(computeScreenPositions: computeScreenPositions,
-                                                    metalDevice: metalDevice,
-                                                    metalCommandQueue: metalCommandQueue,
-                                                    onPointsReadyGlobe: onPointsReadyHandlerGlobe,
-                                                    onPointsReadyFlat: onPointsReadyHandlerFlat)
+        let computeScreenPositionsGlobe = ComputeScreenPositionsGlobe(metalDevice: metalDevice, library: library)
+        let computeScreenPositionsFlat = ComputeScreenPositionsFlat(metalDevice: metalDevice, library: library)
         
-        let combinedCompSPGlobe = CombinedCompSPGlobe(computeScreenPositions: computeScreenPositions,
-                                                      metalDevice: metalDevice,
+        let combinedCompSPFlat = CombinedCompSPFlat(metalDevice: metalDevice,
+                                                    metalCommandQueue: metalCommandQueue,
+                                                    onPointsReadyFlat: onPointsReadyHandlerFlat,
+                                                    computeScreenPositionsFlat: computeScreenPositionsFlat)
+        
+        let combinedCompSPGlobe = CombinedCompSPGlobe(metalDevice: metalDevice,
                                                       metalCommandQueue: metalCommandQueue,
                                                       onPointsReadyGlobe: onPointsReadyHandlerGlobe,
-                                                      onPointsReadyFlat: onPointsReadyHandlerFlat)
+                                                      computeScreenPostionsGlobe: computeScreenPositionsGlobe)
         
         _flat = ScreenCollisionsDetectorFlat(metalDevice: metalDevice,
                                              library: library,
@@ -79,8 +80,7 @@ class ScrCollDetStorage {
                                              handleRoadLabels: handleRoadLabels,
                                              onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
                                              onPointsReadyHandlerFlat: onPointsReadyHandlerFlat,
-                                             projectPointsFlat: combinedCompSPFlat,
-                                             projectPointsGlobe: combinedCompSPGlobe)
+                                             projectPointsFlat: combinedCompSPFlat)
         
         _globe = ScreenCollisionsDetectorGlobe(metalDevice: metalDevice,
                                                library: library,
@@ -93,7 +93,6 @@ class ScrCollDetStorage {
                                                handleRoadLabels: handleRoadLabels,
                                                onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
                                                onPointsReadyHandlerFlat: onPointsReadyHandlerFlat,
-                                               projectPointsFlat: combinedCompSPFlat,
                                                projectPointsGlobe: combinedCompSPGlobe)
     }
 }

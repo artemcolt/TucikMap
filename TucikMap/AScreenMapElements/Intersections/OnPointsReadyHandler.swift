@@ -17,7 +17,7 @@ class OnPointsReadyHandler {
 }
 
 class OnPointsReadyHandlerGlobe : OnPointsReadyHandler {
-    func onPointsReadyGlobe(resultGlobe: CombinedCompSP.ResultGlobe) {
+    func onPointsReadyGlobe(resultGlobe: CombinedCompSPGlobe.ResultGlobe) {
         let result = resultGlobe.result
         let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
         let handleGeoInput = HandleGeoLabels.OnPointsReady(output: result.output,
@@ -41,7 +41,7 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
         super.init(drawingFrameRequester: drawingFrameRequester, handleGeoLabels: handleGeoLabels)
     }
     
-    func onPointsReadyFlat(resultFlat: CombinedCompSP.ResultFlat) {
+    func onPointsReadyFlat(resultFlat: CombinedCompSPFlat.ResultFlat) {
         let result = resultFlat.result
         let viewportSize = resultFlat.viewportSize
         let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)

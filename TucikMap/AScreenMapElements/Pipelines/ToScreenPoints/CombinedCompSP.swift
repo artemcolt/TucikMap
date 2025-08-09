@@ -29,24 +29,6 @@ class CombinedCompSP {
         let geoLabelsSize                   : Int
     }
     
-    struct InputFlat {
-        let input                           : Input
-        let modelMatrices                   : [matrix_float4x4]
-        let mapPanning                      : SIMD3<Double>
-        let mapSize                         : Float
-        let viewportSize                    : SIMD2<Float>
-        
-        // startRoadResultsIndex - данные о дорогах начинаются с этого индекса в output
-        let startRoadResultsIndex           : Int
-        let roadLabels                      : [MetalTile.RoadLabels]
-        let actualRoadLabelsIds             : Set<UInt>
-    }
-    
-    struct InputGlobe {
-        let input                           : Input
-        let parameters                      : [CompScreenGlobePipe.Parmeters]
-    }
-    
     // Результат работы класса для дальнейших вычислений
     struct Result {
         let output                          : [SIMD2<Float>]
@@ -58,46 +40,20 @@ class CombinedCompSP {
         let geoLabelsSize                   : Int
     }
     
-    struct ResultFlat {
-        let result                          : Result
-        let mapPanning                      : SIMD3<Double>
-        let mapSize                         : Float
-        let viewportSize                    : SIMD2<Float>
-        
-        let startRoadResultsIndex           : Int
-        let metalRoadLabelsTiles            : [MetalTile.RoadLabels]
-        let actualRoadLabelsIds             : Set<UInt>
-    }
-    
-    struct ResultGlobe {
-        let result                          : Result
-    }
-    
-    fileprivate let computeScreenPositions          : ComputeScreenPositions // переводит из мировых в координаты экрана
     fileprivate let metalCommandQueue               : MTLCommandQueue
     
     fileprivate let uniformBuffer                   : MTLBuffer
     fileprivate let inputParametersBuffer           : MTLBuffer
     fileprivate let inputScreenPositionsBuffer      : MTLBuffer
     fileprivate let outputWorldPositionsBuffer      : MTLBuffer
-    fileprivate let onPointsReadyGlobe              : OnPointsReadyHandlerGlobe
-    fileprivate let onPointsReadyFlat               : OnPointsReadyHandlerFlat
     
     // размер для входного буффера точек, максимально может быть столько точек
     fileprivate let inputBufferWorldPostionsSize    = Settings.maxInputComputeScreenPoints
     // размер для входного буффера матриц, макисмально может быть столько матриц
     fileprivate let modelMatrixBufferSize           = Settings.geoLabelsParametersBufferSize
     
-    init(
-        computeScreenPositions: ComputeScreenPositions,
-        metalDevice: MTLDevice,
-        metalCommandQueue: MTLCommandQueue,
-        onPointsReadyGlobe: OnPointsReadyHandlerGlobe,
-        onPointsReadyFlat: OnPointsReadyHandlerFlat,
-    ) {
-        self.onPointsReadyGlobe         = onPointsReadyGlobe
-        self.onPointsReadyFlat          = onPointsReadyFlat
-        self.computeScreenPositions     = computeScreenPositions
+    init(metalDevice: MTLDevice,
+         metalCommandQueue: MTLCommandQueue) {
         self.metalCommandQueue          = metalCommandQueue
         
         // этим значением запоним буффер входных вертексов
@@ -124,6 +80,27 @@ class CombinedCompSP {
 
 
 class CombinedCompSPGlobe: CombinedCompSP {
+    struct InputGlobe {
+        let input                           : Input
+        let parameters                      : [CompScreenGlobePipe.Parmeters]
+    }
+    
+    struct ResultGlobe {
+        let result                          : Result
+    }
+    
+    fileprivate let onPointsReadyGlobe: OnPointsReadyHandlerGlobe
+    fileprivate let computeScreenPostionsGlobe: ComputeScreenPositionsGlobe
+    
+    init(metalDevice: MTLDevice,
+         metalCommandQueue: MTLCommandQueue,
+         onPointsReadyGlobe: OnPointsReadyHandlerGlobe,
+         computeScreenPostionsGlobe: ComputeScreenPositionsGlobe) {
+        self.onPointsReadyGlobe = onPointsReadyGlobe
+        self.computeScreenPostionsGlobe = computeScreenPostionsGlobe
+        super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue)
+    }
+    
     func projectGlobe(inputGlobe: InputGlobe) {
         var parameters = inputGlobe.parameters
         
@@ -157,10 +134,9 @@ class CombinedCompSPGlobe: CombinedCompSP {
                                                                                       readVerticesCount: inputComputeScreenVertices.count)
         
         
-        computeScreenPositions.compute(uniforms: uniformBuffer,
-                                       computeEncoder: computeCommandEncoder,
-                                       calculationBlock: calculationBlock,
-                                       mode: .globe)
+        computeScreenPostionsGlobe.computeGlobe(uniforms: uniformBuffer,
+                                                computeEncoder: computeCommandEncoder,
+                                                calculationBlock: calculationBlock)
             
         
         computeCommandEncoder.endEncoding()
@@ -189,6 +165,42 @@ class CombinedCompSPGlobe: CombinedCompSP {
 
 
 class CombinedCompSPFlat: CombinedCompSP {
+    struct InputFlat {
+        let input                           : Input
+        let modelMatrices                   : [matrix_float4x4]
+        let mapPanning                      : SIMD3<Double>
+        let mapSize                         : Float
+        let viewportSize                    : SIMD2<Float>
+        
+        // startRoadResultsIndex - данные о дорогах начинаются с этого индекса в output
+        let startRoadResultsIndex           : Int
+        let roadLabels                      : [MetalTile.RoadLabels]
+        let actualRoadLabelsIds             : Set<UInt>
+    }
+    
+    struct ResultFlat {
+        let result                          : Result
+        let mapPanning                      : SIMD3<Double>
+        let mapSize                         : Float
+        let viewportSize                    : SIMD2<Float>
+        
+        let startRoadResultsIndex           : Int
+        let metalRoadLabelsTiles            : [MetalTile.RoadLabels]
+        let actualRoadLabelsIds             : Set<UInt>
+    }
+    
+    fileprivate let onPointsReadyFlat: OnPointsReadyHandlerFlat
+    fileprivate let computeScreenPositionsFlat: ComputeScreenPositionsFlat
+    
+    init(metalDevice: MTLDevice,
+         metalCommandQueue: MTLCommandQueue,
+         onPointsReadyFlat: OnPointsReadyHandlerFlat,
+         computeScreenPositionsFlat: ComputeScreenPositionsFlat) {
+        self.onPointsReadyFlat = onPointsReadyFlat
+        self.computeScreenPositionsFlat = computeScreenPositionsFlat
+        super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue)
+    }
+    
     func projectFlat(inputFlat: InputFlat) {
         var modelMatrices = inputFlat.modelMatrices
         
@@ -230,10 +242,9 @@ class CombinedCompSPFlat: CombinedCompSP {
                                                                                       readVerticesCount: inputComputeScreenVertices.count)
         
         
-        computeScreenPositions.compute(uniforms: uniformBuffer,
-                                       computeEncoder: computeCommandEncoder,
-                                       calculationBlock: calculationBlock,
-                                       mode: .flat)
+        computeScreenPositionsFlat.computeFlat(uniforms: uniformBuffer,
+                                               computeEncoder: computeCommandEncoder,
+                                               calculationBlock: calculationBlock)
             
         
         computeCommandEncoder.endEncoding()
