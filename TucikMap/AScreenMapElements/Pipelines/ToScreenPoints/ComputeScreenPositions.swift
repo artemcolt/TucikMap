@@ -46,14 +46,70 @@ class ComputeScreenPositions {
     init(metalDevice: MTLDevice, library: MTLLibrary) {
         self.metalDevice            = metalDevice
     }
+}
+
+
+
+
+class ComputeScreenPositionsGlobe: ComputeScreenPositions {
+    struct CalculationBlockGlobe {
+        let base: CalculationBlock
+        let globeParams: DrawGlobeLabels.GlobeParams
+    }
     
-    func compute(uniforms: MTLBuffer,
-                 computeEncoder: MTLComputeCommandEncoder,
-                 calculationBlock: CalculationBlock) {  }
+    private let globeParamsBuffer: MTLBuffer
+    private let computeScreenGlobePipeline: CompScreenGlobePipe   // Это для глобуса
     
-    fileprivate func _compute(uniforms: MTLBuffer,
-                             computeEncoder: MTLComputeCommandEncoder,
-                             calculationBlock: CalculationBlock) {
+    override init(metalDevice: MTLDevice, library: MTLLibrary) {
+        globeParamsBuffer = metalDevice.makeBuffer(length: MemoryLayout<DrawGlobeLabels.GlobeParams>.stride)!
+        computeScreenGlobePipeline = CompScreenGlobePipe(metalDevice: metalDevice, library: library)
+        super.init(metalDevice: metalDevice, library: library)
+    }
+    
+    // uniforms - текущее состояние камеры, экранная проекция считается в зависимости от текущей видимой области
+    // calculationBlock - входные данные для рассчета и отсюда же брать результаты
+    func computeGlobe(uniforms: MTLBuffer,
+                      computeEncoder: MTLComputeCommandEncoder,
+                      calculationBlockGlobe: CalculationBlockGlobe) {
+        computeScreenGlobePipeline.selectComputePipeline(computeEncoder: computeEncoder)
+        let calculationBlock                = calculationBlockGlobe.base
+        let inputBuffer                     = calculationBlock.inputBuffer
+        let outputBuffer                    = calculationBlock.outputBuffer
+        let vertexCount                     = calculationBlock.vertexCount
+        let inputParametersBuffer           = calculationBlock.inputParametersBuffer
+        var globeParams                     = calculationBlockGlobe.globeParams
+        
+        globeParamsBuffer.contents().copyMemory(from: &globeParams, byteCount: MemoryLayout<DrawGlobeLabels.GlobeParams>.stride)
+        
+        computeEncoder.setBuffer(inputBuffer,               offset: 0, index: 0)
+        computeEncoder.setBuffer(outputBuffer,              offset: 0, index: 1)
+        computeEncoder.setBuffer(uniforms,                  offset: 0, index: 2)
+        computeEncoder.setBuffer(inputParametersBuffer,     offset: 0, index: 3)
+        computeEncoder.setBuffer(globeParamsBuffer,         offset: 0, index: 4)
+        
+        let threadGroupsWidth = (vertexCount + threadsPerGroup.width - 1) / threadsPerGroup.width
+        let threadGroups      = MTLSize(width: threadGroupsWidth, height: 1, depth: 1)
+        computeEncoder.dispatchThreadgroups(threadGroups, threadsPerThreadgroup: threadsPerGroup)
+    }
+}
+
+
+
+
+class ComputeScreenPositionsFlat: ComputeScreenPositions {
+    
+    let computeScreenPipeline: ComputeScreenPipeline // Пайплайн для отправки данных на gpu для параллельного рассчета
+    
+    override init(metalDevice: MTLDevice, library: MTLLibrary) {
+        computeScreenPipeline = ComputeScreenPipeline(metalDevice: metalDevice, library: library)
+        super.init(metalDevice: metalDevice, library: library)
+    }
+    
+    func computeFlat(uniforms: MTLBuffer,
+                     computeEncoder: MTLComputeCommandEncoder,
+                     calculationBlock: CalculationBlock,
+                     ) {
+        computeScreenPipeline.selectComputePipeline(computeEncoder: computeEncoder)
         let inputBuffer                     = calculationBlock.inputBuffer
         let outputBuffer                    = calculationBlock.outputBuffer
         let vertexCount                     = calculationBlock.vertexCount
@@ -67,44 +123,6 @@ class ComputeScreenPositions {
         let threadGroupsWidth = (vertexCount + threadsPerGroup.width - 1) / threadsPerGroup.width
         let threadGroups      = MTLSize(width: threadGroupsWidth, height: 1, depth: 1)
         computeEncoder.dispatchThreadgroups(threadGroups, threadsPerThreadgroup: threadsPerGroup)
-    }
-}
-
-
-
-class ComputeScreenPositionsGlobe: ComputeScreenPositions {
-    let computeScreenGlobePipeline: CompScreenGlobePipe   // Это для глобуса
-    
-    override init(metalDevice: MTLDevice, library: MTLLibrary) {
-        computeScreenGlobePipeline = CompScreenGlobePipe(metalDevice: metalDevice, library: library)
-        super.init(metalDevice: metalDevice, library: library)
-    }
-    
-    // uniforms - текущее состояние камеры, экранная проекция считается в зависимости от текущей видимой области
-    // calculationBlock - входные данные для рассчета и отсюда же брать результаты
-    override func compute(uniforms                                : MTLBuffer,
-                          computeEncoder                          : MTLComputeCommandEncoder,
-                          calculationBlock                        : CalculationBlock) {
-        computeScreenGlobePipeline.selectComputePipeline(computeEncoder: computeEncoder)
-        _compute(uniforms: uniforms, computeEncoder: computeEncoder, calculationBlock: calculationBlock)
-    }
-}
-
-
-
-class ComputeScreenPositionsFlat: ComputeScreenPositions {
-    let computeScreenPipeline: ComputeScreenPipeline // Пайплайн для отправки данных на gpu для параллельного рассчета
-    
-    override init(metalDevice: MTLDevice, library: MTLLibrary) {
-        computeScreenPipeline = ComputeScreenPipeline(metalDevice: metalDevice, library: library)
-        super.init(metalDevice: metalDevice, library: library)
-    }
-    
-    override func compute(uniforms                                : MTLBuffer,
-                          computeEncoder                          : MTLComputeCommandEncoder,
-                          calculationBlock                        : CalculationBlock) {
-        computeScreenPipeline.selectComputePipeline(computeEncoder: computeEncoder)
-        _compute(uniforms: uniforms, computeEncoder: computeEncoder, calculationBlock: calculationBlock)
     }
 }
 

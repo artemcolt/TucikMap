@@ -21,7 +21,7 @@ class PrepareToScreenData {
 }
 
 class PrepareToScreenDataGlobe : PrepareToScreenData {
-    private(set) var parameters: [CompScreenGlobePipe.Parmeters] = []
+    private(set) var parameters: [DrawGlobeLabels.GlobeLabelsParams] = []
     private(set) var latitude: Float
     private(set) var longitude: Float
     private(set) var globeRadius: Float
@@ -48,12 +48,8 @@ class PrepareToScreenDataGlobe : PrepareToScreenData {
             let centerX = -1.0 + (centerTileX / tilesNum) * 2.0
             let centerY = (1.0 - (centerTileY / tilesNum) * 2.0)
             
-            let param = CompScreenGlobePipe.Parmeters(latitude: latitude,
-                                                      longitude: longitude,
-                                                      globeRadius: globeRadius,
-                                                      centerX: centerX,
-                                                      centerY: centerY,
-                                                      factor: factor)
+            let param = DrawGlobeLabels.GlobeLabelsParams(centerX: centerX, centerY: centerY, factor: factor)
+            
             indexTo = parameters.count
             tileToIndex[tile] = indexTo
             parameters.append(param)

@@ -41,10 +41,15 @@ kernel void computeScreens(
     output[gid] = screenPos;
 }
 
-struct GlobeLabelsParams {
+// на всю карту общие парметры
+struct GlobeParams {
     float latitude;
     float longitude;
     float globeRadius;
+};
+
+// это данные для одного тайла
+struct GlobeLabelsParams {
     float centerX;
     float centerY;
     float factor;
@@ -55,6 +60,7 @@ kernel void computeScreensGlobe(
     device float2* output [[buffer(1)]],
     constant Uniforms& uniforms [[buffer(2)]],
     constant GlobeLabelsParams* globeLabelsParamsArray [[buffer(3)]],
+    constant GlobeParams& globeParams [[buffer(4)]],
     uint gid [[thread_position_in_grid]]
 ) {
     InputComputeScreenVertex inputVertex = vertices[gid];
@@ -76,7 +82,7 @@ kernel void computeScreensGlobe(
     float y = labelCoord.y * PI;
     float phi = 2.0 * atan(exp(y)) - HALF_PI;
 
-    float radius = globeLabelsParams.globeRadius;
+    float radius = globeParams.globeRadius;
     float4 spherePos;
     spherePos.x = radius * cos(phi) * cos(theta);
     spherePos.y = radius * sin(phi);
@@ -84,8 +90,8 @@ kernel void computeScreensGlobe(
     spherePos.w = 1;
     
     float4x4 globeTranslate = translation_matrix(float3(0, 0, -radius));
-    float4x4 globeLongitude = rotation_matrix(-globeLabelsParams.longitude, float3(0, 1, 0));
-    float4x4 globeLatitude = rotation_matrix(globeLabelsParams.latitude, float3(1, 0, 0));
+    float4x4 globeLongitude = rotation_matrix(-globeParams.longitude, float3(0, 1, 0));
+    float4x4 globeLatitude = rotation_matrix(globeParams.latitude, float3(1, 0, 0));
     float4x4 globeRotation = globeLatitude * globeLongitude;
     float4 worldLabelPos = globeTranslate * globeRotation * spherePos;
     

@@ -8,15 +8,6 @@
 import MetalKit
 
 class CompScreenGlobePipe {
-    struct Parmeters {
-        let latitude: Float
-        let longitude: Float
-        let globeRadius: Float
-        let centerX: Float
-        let centerY: Float
-        let factor: Float
-    }
-    
     private(set) var pipelineState: MTLComputePipelineState
     
     init(metalDevice: MTLDevice, library: MTLLibrary) {

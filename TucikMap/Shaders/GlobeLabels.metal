@@ -49,15 +49,18 @@ struct MapLabelIntersection {
     float createdTime;
 };
 
-struct GlobeLabelsParams {
+// на всю карту общие парметры
+struct GlobeParams {
     float latitude;
     float longitude;
     float globeRadius;
+};
+
+struct GlobeLabelsParams {
     float centerX;
     float centerY;
     float factor;
 };
-
 
 vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
                                          constant Uniforms &screenUniforms [[buffer(1)]],
@@ -67,6 +70,7 @@ vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
                                          constant MapLabelIntersection* intersections [[buffer(5)]],
                                          constant float& animationDuration [[buffer(6)]],
                                          constant GlobeLabelsParams& globeLabelsParams [[buffer(7)]],
+                                         constant GlobeParams& globeParams [[buffer(8)]],
                                          uint vertexID [[vertex_id]]
                                          ) {
     int symbolIndex = vertexID / 6;
@@ -91,7 +95,7 @@ vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
     float y = labelCoord.y * PI;
     float phi = 2.0 * atan(exp(y)) - HALF_PI;
 
-    float radius = globeLabelsParams.globeRadius;
+    float radius = globeParams.globeRadius;
     float4 spherePos;
     spherePos.x = radius * cos(phi) * cos(theta);
     spherePos.y = radius * sin(phi);
@@ -100,11 +104,34 @@ vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
     
     
     float4x4 globeTranslate = translation_matrix(float3(0, 0, -radius));
-    float4x4 globeLongitude = rotation_matrix(-globeLabelsParams.longitude, float3(0, 1, 0));
-    float4x4 globeLatitude = rotation_matrix(globeLabelsParams.latitude, float3(1, 0, 0));
+    float4x4 globeLongitude = rotation_matrix(-globeParams.longitude, float3(0, 1, 0));
+    float4x4 globeLatitude = rotation_matrix(globeParams.latitude, float3(1, 0, 0));
     float4x4 globeRotation = globeLatitude * globeLongitude;
     
     float4 worldLabelPos = globeTranslate * globeRotation * spherePos;
+    
+    
+    // Вычисляем центр глобуса в world space
+//    float3 center = float3(0.0, 0.0, -globeLabelsParams.globeRadius);
+//    
+//    // Вычисляем позицию камеры в world space (инвертируем viewMatrix)
+//    float4x4 invView = inverse(worldUniforms.viewMatrix);  // Нужно включить <metal_matrix> если не включено
+//    float3 eye = invView[3].xyz;  // Позиция камеры (4-й столбец инверсной матрицы)
+//    
+//    // Нормаль в позиции метки (от центра к точке, нормализованная)
+//    float3 normal = normalize(worldLabelPos.xyz - center);
+//    
+//    // Направление от центра к камере, нормализованное
+//    float3 viewDir = normalize(eye - center);
+//    
+//    // Скалярное произведение
+//    float visibilityDot = dot(normal, viewDir);
+//    
+//    // Видимость: true если на видимой стороне
+//    bool isVisible = (visibilityDot > 0.0);
+    
+    
+    
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
    
@@ -129,7 +156,7 @@ vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
     float4 position = translationMatrix * float4(vertexPos - textOffset, 0.0, 1.0);
     out.position = screenUniforms.projectionMatrix * screenUniforms.viewMatrix * position;
     out.texCoord = in.texCoord;
-    out.show = intersection.intersect == false;
+    out.show = (intersection.intersect == false);
     out.progress = (worldUniforms.elapsedTimeSeconds - intersection.createdTime) / animationDuration;
     return out;
 }

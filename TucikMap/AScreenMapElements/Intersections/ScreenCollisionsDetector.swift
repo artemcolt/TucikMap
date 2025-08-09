@@ -183,7 +183,11 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
             return false // Слишком много точек для преобразования, пропускаем рендринг
         }
         
-        let inputGlobe = CombinedCompSPGlobe.InputGlobe(input: input, parameters: prepareToScreenData.parameters)
+        let inputGlobe = CombinedCompSPGlobe.InputGlobe(input: input,
+                                                        parameters: prepareToScreenData.parameters,
+                                                        latitude: latitude,
+                                                        longitude: longitude,
+                                                        globeRadius: globeRadius)
         projectPointsGlobe.projectGlobe(inputGlobe: inputGlobe)
         
         return false

@@ -13,10 +13,15 @@ class DrawGlobeLabels {
     private let metalDevice: MTLDevice
     private let camera: Camera
     
-    struct GlobeLabelsParams {
+    // на всю карту общие парметры
+    struct GlobeParams {
         let latitude: Float
         let longitude: Float
         let globeRadius: Float
+    }
+    
+    // параметры под один тайл
+    struct GlobeLabelsParams {
         let centerX: Float
         let centerY: Float
         let factor: Float
@@ -46,7 +51,9 @@ class DrawGlobeLabels {
         var animationTime = Settings.labelsFadeAnimationTimeSeconds
         let latitude = camera.latitude
         let longitude = camera.longitude
+        var globeParams = GlobeParams(latitude: latitude, longitude: longitude, globeRadius: globeRadius)
         
+        renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobeParams>.stride, index: 8)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 1)
         renderEncoder.setVertexBuffer(uniformsBuffer,                           offset: 0, index: 4)
@@ -78,13 +85,9 @@ class DrawGlobeLabels {
             let centerX = -1.0 + (centerTileX / tilesNum) * 2.0
             let centerY = (1.0 - (centerTileY / tilesNum) * 2.0)
             
-            var globeLabelsParams = GlobeLabelsParams(latitude: latitude,
-                                                      longitude: longitude,
-                                                      globeRadius: globeRadius,
-                                                      centerX: centerX,
+            var globeLabelsParams = GlobeLabelsParams(centerX: centerX,
                                                       centerY: centerY,
                                                       factor: factor)
-            // print("centerX:\(centerX) centerY:\(centerY) factor:\(factor)")
             
             renderEncoder.setVertexBytes(&globeLabelsParams, length: MemoryLayout<GlobeLabelsParams>.stride, index: 7)
             renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verticesCount)
