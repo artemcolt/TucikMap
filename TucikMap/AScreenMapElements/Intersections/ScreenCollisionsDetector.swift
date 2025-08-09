@@ -52,10 +52,10 @@ class ScreenCollisionsDetector {
     fileprivate let mapZoomState                : MapZoomState
     fileprivate let drawingFrameRequester       : DrawingFrameRequester
     fileprivate let frameCounter                : FrameCounter
-    fileprivate var projectPoints               : CombinedCompSP!
+    fileprivate var projectPoints               : CombinedCompSP
     
     fileprivate let handleGeoLabels             : HandleGeoLabels
-    fileprivate var handleRoadLabels            : HandleRoadLabels!
+    fileprivate var handleRoadLabels            : HandleRoadLabels
     
     fileprivate var viewportSize                : SIMD2<Float> = SIMD2<Float>()
     
@@ -75,28 +75,28 @@ class ScreenCollisionsDetector {
         mapZoomState: MapZoomState,
         drawingFrameRequester: DrawingFrameRequester,
         frameCounter: FrameCounter,
+        computeScreenPositions: ComputeScreenPositions,
+        handleGeoLabels: HandleGeoLabels,
+        handleRoadLabels: HandleRoadLabels,
+        onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
+        onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat
     ) {
-        handleGeoLabels = HandleGeoLabels(
-            frameCounter: frameCounter,
-            mapZoomState: mapZoomState,
-        )
-        handleRoadLabels = HandleRoadLabels(mapZoomState: mapZoomState, frameCounter: frameCounter)
+        self.handleGeoLabels = handleGeoLabels
+        self.handleRoadLabels = handleRoadLabels
         
-        computeScreenPositions = ComputeScreenPositions(metalDevice: metalDevice, library: library)
+        self.computeScreenPositions = computeScreenPositions
         self.metalDevice = metalDevice
         self.metalCommandQueue = metalCommandQueue
         self.mapZoomState = mapZoomState
         self.drawingFrameRequester = drawingFrameRequester
         self.frameCounter = frameCounter
+        
         self.projectPoints = CombinedCompSP(
             computeScreenPositions: computeScreenPositions,
             metalDevice: metalDevice,
             metalCommandQueue: metalCommandQueue,
-            onPointsReadyGlobe: OnPointsReadyHandlerGlobe(drawingFrameRequester: drawingFrameRequester,
-                                                          handleGeoLabels: handleGeoLabels),
-            onPointsReadyFlat: OnPointsReadyHandlerFlat(drawingFrameRequester: drawingFrameRequester,
-                                                        handleGeoLabels: handleGeoLabels,
-                                                        handleRoadLabels: handleRoadLabels)
+            onPointsReadyGlobe: onPointsReadyHandlerGlobe,
+            onPointsReadyFlat: onPointsReadyHandlerFlat
         )
     }
     
@@ -110,8 +110,8 @@ class ScreenCollisionsDetector {
             textLabels.append(tile.texts)
         }
         
-        self.handleRoadLabels.setRoadLabels(roadLabels: roadLabels)
-        self.handleGeoLabels.setGeoLabels(geoLabels: textLabels)
+        handleRoadLabels.setRoadLabels(roadLabels: roadLabels)
+        handleGeoLabels.setGeoLabels(geoLabels: textLabels)
         viewportSize = SIMD2<Float>(Float(view.drawableSize.width), Float(view.drawableSize.height))
     }
 }

@@ -163,7 +163,7 @@ class CombinedCompSP {
         computeScreenPositions.compute(uniforms: uniformBuffer,
                                        computeEncoder: computeCommandEncoder,
                                        calculationBlock: calculationBlock,
-                                       mode: .globe)
+                                       mode: .flat)
             
         
         computeCommandEncoder.endEncoding()

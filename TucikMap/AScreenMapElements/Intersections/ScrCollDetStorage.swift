@@ -10,13 +10,13 @@ import MetalKit
 class ScrCollDetStorage {
     var flat: ScreenCollisionsDetectorFlat {
         get {
-            return _flat!
+            return _flat
         }
     }
     
     var globe: ScreenCollisionsDetectorGlobe {
         get {
-            return _globe!
+            return _globe
         }
     }
     
@@ -31,8 +31,8 @@ class ScrCollDetStorage {
         }
     }
     
-    private var _flat               : ScreenCollisionsDetectorFlat?
-    private var _globe              : ScreenCollisionsDetectorGlobe?
+    private let _flat               : ScreenCollisionsDetectorFlat
+    private let _globe              : ScreenCollisionsDetectorGlobe
     private let mapModeStorage      : MapModeStorage
     
     init(mapModeStorage: MapModeStorage,
@@ -44,18 +44,40 @@ class ScrCollDetStorage {
          frameCounter: FrameCounter) {
         self.mapModeStorage = mapModeStorage
         
+        let computeScreenPositions = ComputeScreenPositions(metalDevice: metalDevice, library: library)
+        let handleGeoLabels = HandleGeoLabels(frameCounter: frameCounter,
+                                              mapZoomState: mapZoomState)
+        let handleRoadLabels = HandleRoadLabels(mapZoomState: mapZoomState, frameCounter: frameCounter)
+        
+        let onPointsReadyHandlerGlobe = OnPointsReadyHandlerGlobe(drawingFrameRequester: drawingFrameRequester,
+                                                                  handleGeoLabels: handleGeoLabels)
+        
+        let onPointsReadyHandlerFlat = OnPointsReadyHandlerFlat(drawingFrameRequester: drawingFrameRequester,
+                                                                handleGeoLabels: handleGeoLabels,
+                                                                handleRoadLabels: handleRoadLabels)
+        
         _flat = ScreenCollisionsDetectorFlat(metalDevice: metalDevice,
                                              library: library,
                                              metalCommandQueue: metalCommandQueue,
                                              mapZoomState: mapZoomState,
                                              drawingFrameRequester: drawingFrameRequester,
-                                             frameCounter: frameCounter)
+                                             frameCounter: frameCounter,
+                                             computeScreenPositions: computeScreenPositions,
+                                             handleGeoLabels: handleGeoLabels,
+                                             handleRoadLabels: handleRoadLabels,
+                                             onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
+                                             onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
         
         _globe = ScreenCollisionsDetectorGlobe(metalDevice: metalDevice,
                                                library: library,
                                                metalCommandQueue: metalCommandQueue,
                                                mapZoomState: mapZoomState,
                                                drawingFrameRequester: drawingFrameRequester,
-                                               frameCounter: frameCounter)
+                                               frameCounter: frameCounter,
+                                               computeScreenPositions: computeScreenPositions,
+                                               handleGeoLabels: handleGeoLabels,
+                                               handleRoadLabels: handleRoadLabels,
+                                               onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
+                                               onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
     }
 }
