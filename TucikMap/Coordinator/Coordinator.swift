@@ -189,15 +189,13 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         if (mapCadDisplayLoop.checkEvaluateScreenData()) {
             switch mapModeStorage.mapMode {
-            case .flat: let _ = scrCollDetStorage.flat.evaluate(lastUniforms: lastUniforms,
-                                                                mapPanning: mapPanning,
-                                                                mapSize: mapSize)
-            case .globe: let _ = scrCollDetStorage.globe.evaluate(lastUniforms: lastUniforms,
-                                                                  mapPanning: mapPanning,
-                                                                  mapSize: mapSize,
-                                                                  latitude: camera.latitude,
-                                                                  longitude: camera.longitude,
-                                                                  globeRadius: camera.globeRadius)
+            case .flat: let _ = scrCollDetStorage.flat.evaluateFlat(lastUniforms: lastUniforms,
+                                                                    mapPanning: mapPanning,
+                                                                    mapSize: mapSize)
+            case .globe: let _ = scrCollDetStorage.globe.evaluateGlobe(lastUniforms: lastUniforms,
+                                                                       latitude: camera.latitude,
+                                                                       longitude: camera.longitude,
+                                                                       globeRadius: camera.globeRadius)
             }
         }
         // Применяем если есть актуальные данные меток для свежего кадра

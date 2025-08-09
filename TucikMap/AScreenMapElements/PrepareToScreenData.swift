@@ -27,7 +27,6 @@ class PrepareToScreenDataGlobe : PrepareToScreenData {
     private(set) var globeRadius: Float
     
     init(mapZoomState: MapZoomState,
-         mapPanning: SIMD3<Double>,
          latitude: Float,
          longitude: Float,
          globeRadius: Float) {

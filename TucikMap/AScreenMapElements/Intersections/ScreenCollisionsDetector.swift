@@ -140,12 +140,15 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
                    onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
     }
     
-    func evaluate(lastUniforms: Uniforms,
-                  mapPanning: SIMD3<Double>,
-                  mapSize: Float,
-                  latitude: Float,
-                  longitude: Float,
-                  globeRadius: Float) -> Bool {
+    func evaluateGlobe(lastUniforms: Uniforms,
+                       latitude: Float,
+                       longitude: Float,
+                       globeRadius: Float) -> Bool {
+        let prepareToScreenData = PrepareToScreenDataGlobe(mapZoomState: mapZoomState,
+                                                           latitude: latitude,
+                                                           longitude: longitude,
+                                                           globeRadius: globeRadius)
+        
         var pipeline = ForEvaluationResult(
             inputComputeScreenVertices: [],
             mapLabelLineCollisionsMeta: [],
@@ -154,13 +157,6 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
             geoLabelsSize: 0,
             startRoadResultsIndex: 0
         )
-        
-        let prepareToScreenData = PrepareToScreenDataGlobe(mapZoomState: mapZoomState,
-                                                          mapPanning: mapPanning,
-                                                          latitude: latitude,
-                                                          longitude: longitude,
-                                                          globeRadius: globeRadius)
-        
         
         handleGeoLabels.forEvaluateCollisions(pipeline: &pipeline,
                                               prepareToScreenData: prepareToScreenData)
@@ -227,9 +223,13 @@ class ScreenCollisionsDetectorFlat: ScreenCollisionsDetector {
                    onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
     }
     
-    func evaluate(lastUniforms: Uniforms,
-                  mapPanning: SIMD3<Double>,
-                  mapSize: Float) -> Bool {
+    func evaluateFlat(lastUniforms: Uniforms,
+                      mapPanning: SIMD3<Double>,
+                      mapSize: Float) -> Bool {
+        let prepareToScreenData = PrepareToScreenDataFlat(mapZoomState: mapZoomState,
+                                                          mapPanning: mapPanning,
+                                                          mapSize: mapSize)
+        
         var pipeline = ForEvaluationResult(
             inputComputeScreenVertices: [],
             mapLabelLineCollisionsMeta: [],
@@ -238,9 +238,6 @@ class ScreenCollisionsDetectorFlat: ScreenCollisionsDetector {
             geoLabelsSize: 0,
             startRoadResultsIndex: 0
         )
-        
-        let prepareToScreenData = PrepareToScreenDataFlat(mapZoomState: mapZoomState, mapPanning: mapPanning, mapSize: mapSize)
-        
         
         handleGeoLabels.forEvaluateCollisions(pipeline: &pipeline,
                                               prepareToScreenData: prepareToScreenData)
