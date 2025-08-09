@@ -18,9 +18,10 @@ class OnPointsReadyHandler {
 
 class OnPointsReadyHandlerGlobe : OnPointsReadyHandler {
     func onPointsReadyGlobe(resultGlobe: CombinedCompSPGlobe.ResultGlobe) {
-        let result = resultGlobe.result
+        let result = resultGlobe
         let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
-        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: result.output,
+        let output = result.output.map { pos in HandleGeoLabels.Position(screenPos: pos.screenCoord, visible: pos.visibleGlobeSide) }
+        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: output,
                                                            metalGeoLabels: result.metalGeoLabels,
                                                            mapLabelLineCollisionsMeta: result.mapLabelLineCollisionsMeta,
                                                            actualLabelsIds: result.actualLabelsIds,
@@ -45,7 +46,8 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
         let result = resultFlat.result
         let viewportSize = resultFlat.viewportSize
         let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
-        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: result.output,
+        let output = result.output.map { pos in HandleGeoLabels.Position(screenPos: pos, visible: true) }
+        let handleGeoInput = HandleGeoLabels.OnPointsReady(output: output,
                                                            metalGeoLabels: result.metalGeoLabels,
                                                            mapLabelLineCollisionsMeta: result.mapLabelLineCollisionsMeta,
                                                            actualLabelsIds: result.actualLabelsIds,

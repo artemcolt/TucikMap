@@ -29,16 +29,6 @@ class CombinedCompSP {
         let geoLabelsSize                   : Int
     }
     
-    // Результат работы класса для дальнейших вычислений
-    struct Result {
-        let output                          : [SIMD2<Float>]
-        let uniforms                        : Uniforms
-        
-        let metalGeoLabels                  : [MetalTile.TextLabels]
-        let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
-        let actualLabelsIds                 : Set<UInt>
-        let geoLabelsSize                   : Int
-    }
     
     fileprivate let metalCommandQueue               : MTLCommandQueue
     fileprivate let uniformBuffer                   : MTLBuffer
@@ -87,9 +77,17 @@ class CombinedCompSPGlobe: CombinedCompSP {
         let globeRadius                     : Float
     }
     
+    // Результат работы класса для дальнейших вычислений
     struct ResultGlobe {
-        let result                          : Result
+        let output                          : [ComputeScreenPositionsGlobe.GlobeComputeScreenOutput]
+        let uniforms                        : Uniforms
+        
+        let metalGeoLabels                  : [MetalTile.TextLabels]
+        let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
+        let actualLabelsIds                 : Set<UInt>
+        let geoLabelsSize                   : Int
     }
+    
     
     fileprivate let onPointsReadyGlobe: OnPointsReadyHandlerGlobe
     fileprivate var computeScreenPositionsGlobe: ComputeScreenPositionsGlobe
@@ -134,16 +132,14 @@ class CombinedCompSPGlobe: CombinedCompSP {
               let computeCommandEncoder     = commandBuffer.makeComputeCommandEncoder() else { return }
         
         
-        let calculationBlock                = ComputeScreenPositions.CalculationBlock(inputParametersBuffer: inputParametersBuffer,
-                                                                                      inputBuffer: inputScreenPositionsBuffer,
-                                                                                      outputBuffer: outputWorldPositionsBuffer,
-                                                                                      vertexCount: inputBufferWorldPostionsSize,
-                                                                                      readVerticesCount: inputComputeScreenVertices.count)
-        
         let globeParams                     = DrawGlobeLabels.GlobeParams(latitude: latitude,
                                                                           longitude: longitude,
                                                                           globeRadius: globeRadius)
-        let calcBlockGlobe                  = ComputeScreenPositionsGlobe.CalculationBlockGlobe(base: calculationBlock,
+        let calcBlockGlobe                  = ComputeScreenPositionsGlobe.CalculationBlockGlobe(inputParametersBuffer: inputParametersBuffer,
+                                                                                                inputBuffer: inputScreenPositionsBuffer,
+                                                                                                outputBuffer: outputWorldPositionsBuffer,
+                                                                                                vertexCount: inputBufferWorldPostionsSize,
+                                                                                                readVerticesCount: inputComputeScreenVertices.count,
                                                                                                 globeParams: globeParams)
         
         computeScreenPositionsGlobe.computeGlobe(uniforms: uniformBuffer,
@@ -154,17 +150,16 @@ class CombinedCompSPGlobe: CombinedCompSP {
         commandBuffer.addCompletedHandler { buffer in
             DispatchQueue.main.async {
                 // Вычислили экранные координаты на gpu
-                let output  = calculationBlock.readOutput()
+                let output = calcBlockGlobe.readOutput()
                 
-                let result = Result(output: output,
-                                    uniforms: uniforms,
-                                    metalGeoLabels: metalGeoLabels,
-                                    mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
-                                    actualLabelsIds: actualLabelsIds,
-                                    geoLabelsSize: geoLabelsSize)
+                let result = ResultGlobe(output: output,
+                                         uniforms: uniforms,
+                                         metalGeoLabels: metalGeoLabels,
+                                         mapLabelLineCollisionsMeta: mapLabelLineCollisionsMeta,
+                                         actualLabelsIds: actualLabelsIds,
+                                         geoLabelsSize: geoLabelsSize)
                 
-                let resultGlobe = ResultGlobe(result: result)
-                onPointsReadyGlobe.onPointsReadyGlobe(resultGlobe: resultGlobe)
+                onPointsReadyGlobe.onPointsReadyGlobe(resultGlobe: result)
             }
         }
         commandBuffer.commit()
@@ -186,6 +181,17 @@ class CombinedCompSPFlat: CombinedCompSP {
         let startRoadResultsIndex           : Int
         let roadLabels                      : [MetalTile.RoadLabels]
         let actualRoadLabelsIds             : Set<UInt>
+    }
+    
+    // Результат работы класса для дальнейших вычислений
+    struct Result {
+        let output                          : [SIMD2<Float>]
+        let uniforms                        : Uniforms
+        
+        let metalGeoLabels                  : [MetalTile.TextLabels]
+        let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
+        let actualLabelsIds                 : Set<UInt>
+        let geoLabelsSize                   : Int
     }
     
     struct ResultFlat {
@@ -247,11 +253,11 @@ class CombinedCompSPFlat: CombinedCompSP {
               let computeCommandEncoder     = commandBuffer.makeComputeCommandEncoder() else { return }
         
         
-        let calculationBlock                = ComputeScreenPositions.CalculationBlock(inputParametersBuffer: inputParametersBuffer,
-                                                                                      inputBuffer: inputScreenPositionsBuffer,
-                                                                                      outputBuffer: outputWorldPositionsBuffer,
-                                                                                      vertexCount: inputBufferWorldPostionsSize,
-                                                                                      readVerticesCount: inputComputeScreenVertices.count)
+        let calculationBlock                = ComputeScreenPositionsFlat.CalculationBlock(inputParametersBuffer: inputParametersBuffer,
+                                                                                          inputBuffer: inputScreenPositionsBuffer,
+                                                                                          outputBuffer: outputWorldPositionsBuffer,
+                                                                                          vertexCount: inputBufferWorldPostionsSize,
+                                                                                          readVerticesCount: inputComputeScreenVertices.count)
         
         
         computeScreenPositionsFlat.computeFlat(uniforms: uniformBuffer,

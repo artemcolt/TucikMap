@@ -143,7 +143,8 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
     func evaluateGlobe(lastUniforms: Uniforms,
                        latitude: Float,
                        longitude: Float,
-                       globeRadius: Float) -> Bool {
+                       globeRadius: Float,
+                       cameraPosition: SIMD3<Float>) -> Bool {
         let prepareToScreenData = PrepareToScreenDataGlobe(mapZoomState: mapZoomState,
                                                            latitude: latitude,
                                                            longitude: longitude,

@@ -28,21 +28,6 @@ class ComputeScreenPositions {
         let matrixId: simd_short1  // индекс матрицы модели чтобы преобразовать окончательно мировую точку
     }
     
-    // Содержит все данные для рассчета и получения результата
-    struct CalculationBlock {
-        let inputParametersBuffer           : MTLBuffer
-        let inputBuffer                     : MTLBuffer
-        let outputBuffer                    : MTLBuffer
-        let vertexCount                     : Int // полный размер выделенного буффера
-        let readVerticesCount               : Int // сколько в inputBuffer записали вертексов сттолько и нужно прочитать на выходе
-        
-        func readOutput() -> [SIMD2<Float>] {
-            let outputPtr = outputBuffer.contents().bindMemory(to: SIMD2<Float>.self, capacity: readVerticesCount)
-            let output = Array(UnsafeBufferPointer(start: outputPtr, count: readVerticesCount))
-            return output
-        }
-    }
-    
     init(metalDevice: MTLDevice, library: MTLLibrary) {
         self.metalDevice            = metalDevice
     }
@@ -53,9 +38,24 @@ class ComputeScreenPositions {
 
 class ComputeScreenPositionsGlobe: ComputeScreenPositions {
     struct CalculationBlockGlobe {
-        let base: CalculationBlock
-        let globeParams: DrawGlobeLabels.GlobeParams
+        let inputParametersBuffer           : MTLBuffer
+        let inputBuffer                     : MTLBuffer
+        let outputBuffer                    : MTLBuffer
+        let vertexCount                     : Int // полный размер выделенного буффера
+        let readVerticesCount               : Int // сколько в inputBuffer записали вертексов сттолько и нужно прочитать на выходе
+        let globeParams                     : DrawGlobeLabels.GlobeParams
+        
+        func readOutput() -> [GlobeComputeScreenOutput] {
+            let outputPtr = outputBuffer.contents().bindMemory(to: GlobeComputeScreenOutput.self, capacity: readVerticesCount)
+            let output = Array(UnsafeBufferPointer(start: outputPtr, count: readVerticesCount))
+            return output
+        }
     }
+    
+    struct GlobeComputeScreenOutput {
+        let screenCoord: SIMD2<Float>
+        let visibleGlobeSide: Bool
+    };
     
     private let globeParamsBuffer: MTLBuffer
     private let computeScreenGlobePipeline: CompScreenGlobePipe   // Это для глобуса
@@ -72,11 +72,10 @@ class ComputeScreenPositionsGlobe: ComputeScreenPositions {
                       computeEncoder: MTLComputeCommandEncoder,
                       calculationBlockGlobe: CalculationBlockGlobe) {
         computeScreenGlobePipeline.selectComputePipeline(computeEncoder: computeEncoder)
-        let calculationBlock                = calculationBlockGlobe.base
-        let inputBuffer                     = calculationBlock.inputBuffer
-        let outputBuffer                    = calculationBlock.outputBuffer
-        let vertexCount                     = calculationBlock.vertexCount
-        let inputParametersBuffer           = calculationBlock.inputParametersBuffer
+        let inputBuffer                     = calculationBlockGlobe.inputBuffer
+        let outputBuffer                    = calculationBlockGlobe.outputBuffer
+        let vertexCount                     = calculationBlockGlobe.vertexCount
+        let inputParametersBuffer           = calculationBlockGlobe.inputParametersBuffer
         var globeParams                     = calculationBlockGlobe.globeParams
         
         globeParamsBuffer.contents().copyMemory(from: &globeParams, byteCount: MemoryLayout<DrawGlobeLabels.GlobeParams>.stride)
@@ -97,6 +96,20 @@ class ComputeScreenPositionsGlobe: ComputeScreenPositions {
 
 
 class ComputeScreenPositionsFlat: ComputeScreenPositions {
+    // Содержит все данные для рассчета и получения результата
+    struct CalculationBlock {
+        let inputParametersBuffer           : MTLBuffer
+        let inputBuffer                     : MTLBuffer
+        let outputBuffer                    : MTLBuffer
+        let vertexCount                     : Int // полный размер выделенного буффера
+        let readVerticesCount               : Int // сколько в inputBuffer записали вертексов сттолько и нужно прочитать на выходе
+        
+        func readOutput() -> [SIMD2<Float>] {
+            let outputPtr = outputBuffer.contents().bindMemory(to: SIMD2<Float>.self, capacity: readVerticesCount)
+            let output = Array(UnsafeBufferPointer(start: outputPtr, count: readVerticesCount))
+            return output
+        }
+    }
     
     let computeScreenPipeline: ComputeScreenPipeline // Пайплайн для отправки данных на gpu для параллельного рассчета
     

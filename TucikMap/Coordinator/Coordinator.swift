@@ -195,7 +195,8 @@ class Coordinator: NSObject, MTKViewDelegate {
             case .globe: let _ = scrCollDetStorage.globe.evaluateGlobe(lastUniforms: lastUniforms,
                                                                        latitude: camera.latitude,
                                                                        longitude: camera.longitude,
-                                                                       globeRadius: camera.globeRadius)
+                                                                       globeRadius: camera.globeRadius,
+                                                                       cameraPosition: camera.cameraPosition)
             }
         }
         // Применяем если есть актуальные данные меток для свежего кадра

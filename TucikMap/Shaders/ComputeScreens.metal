@@ -55,9 +55,14 @@ struct GlobeLabelsParams {
     float factor;
 };
 
+struct GlobeComputeScreenOutput {
+    float2 screenCoord;
+    bool visibleGlobeSide;
+};
+
 kernel void computeScreensGlobe(
     device const InputComputeScreenVertex* vertices [[buffer(0)]],
-    device float2* output [[buffer(1)]],
+    device GlobeComputeScreenOutput* output [[buffer(1)]],
     constant Uniforms& uniforms [[buffer(2)]],
     constant GlobeLabelsParams* globeLabelsParamsArray [[buffer(3)]],
     constant GlobeParams& globeParams [[buffer(4)]],
@@ -95,6 +100,8 @@ kernel void computeScreensGlobe(
     float4x4 globeRotation = globeLatitude * globeLongitude;
     float4 worldLabelPos = globeTranslate * globeRotation * spherePos;
     
+    bool visible = worldLabelPos.z > -radius;
+    
     float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
     float2 viewportSize = uniforms.viewportSize;
@@ -103,5 +110,8 @@ kernel void computeScreensGlobe(
     float screenX = ((ndc.x + 1) / 2) * viewportWidth;
     float screenY = ((ndc.y + 1) / 2) * viewportHeight;
     float2 screenPos = float2(screenX, screenY);
-    output[gid] = screenPos;
+    GlobeComputeScreenOutput result;
+    result.screenCoord = screenPos;
+    result.visibleGlobeSide = visible;
+    output[gid] = result;
 }

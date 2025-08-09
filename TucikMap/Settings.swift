@@ -95,7 +95,7 @@ class Settings {
     static let showOnlyTiles            : [Tile] = []
     static let allowOnlyTiles           : [Tile] = []
     
-    static let useGoToAtStart = true
+    static let useGoToAtStart = false
     static let goToAtStartZ: Float = 1.3
     static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(0, 0) // 55.74958790780624, 37.62346867711091
     

@@ -13,8 +13,13 @@ import MetalKit
 // определяет сколько хранить метки тайла,а какие удалить
 // определяет пересечения меток
 class HandleGeoLabels {
+    struct Position {
+        let screenPos: SIMD2<Float>
+        let visible: Bool
+    }
+    
     struct OnPointsReady {
-        let output                          : [SIMD2<Float>]
+        let output                          : [Position]
         let metalGeoLabels                  : [MetalTile.TextLabels]
         let mapLabelLineCollisionsMeta      : [MapLabelsAssembler.MapLabelCpuMeta]
         let actualLabelsIds                 : Set<UInt>
@@ -23,7 +28,7 @@ class HandleGeoLabels {
     
     private struct SortedGeoLabel {
         let i: Int
-        let screenPositions: SIMD2<Float>
+        let position: Position
         let mapLabelCpuMeta: MapLabelsAssembler.MapLabelCpuMeta
     }
     
@@ -58,11 +63,11 @@ class HandleGeoLabels {
         var sortedGeoLabels: [SortedGeoLabel] = []
         sortedGeoLabels.reserveCapacity(geoLabelsSize)
         for i in 0..<geoLabelsSize {
-            let screenPositions = output[i]
+            let screenPosition = output[i]
             let mapLabelLineCollisionsMeta = mapLabelLineCollisionsMeta[i]
             sortedGeoLabels.append(SortedGeoLabel(
                 i: i,
-                screenPositions: screenPositions,
+                position: screenPosition,
                 mapLabelCpuMeta: mapLabelLineCollisionsMeta,
             ))
         }
@@ -73,9 +78,11 @@ class HandleGeoLabels {
         var labelIntersections = [LabelIntersection] (repeating: LabelIntersection(hide: false, createdTime: 0), count: geoLabelsSize)
         var handledActualGeoLabels: Set<UInt> = []
         for sorted in sortedGeoLabels {
-            let screenPositions     = sorted.screenPositions
+            let screenPosition      = sorted.position.screenPos
             let metaLine            = sorted.mapLabelCpuMeta
             let labelId             = metaLine.id
+            // С предыдущего этапа обработки
+            let visible             = sorted.position.visible
             
             let isActualLabel       = actualLabelsIdsCaching.contains(labelId)
             if isActualLabel == false {
@@ -99,11 +106,16 @@ class HandleGeoLabels {
             }
             handledActualGeoLabels.insert(labelId)
             
-            let added = spaceDiscretisation.addAgent(agent: CollisionAgent(
-                location: SIMD2<Float>(Float(screenPositions.x), Float(screenPositions.y)),
-                height: Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale),
-                width: Float(metaLine.measuredText.width * metaLine.scale)
-            ))
+            // Если предыдущая обработка уже отбросила лейбл то не проверяем коллизии
+            // например если лейбл на другой стороне глобуса то он невидим
+            var added = false
+            if (visible) {
+                added = spaceDiscretisation.addAgent(agent: CollisionAgent(
+                    location: SIMD2<Float>(Float(screenPosition.x), Float(screenPosition.y)),
+                    height: Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale),
+                    width: Float(metaLine.measuredText.width * metaLine.scale)
+                ))
+            }
             
             let hide = added == false
             let labelIntersection: LabelIntersection

@@ -51,7 +51,9 @@ class DrawGlobeLabels {
         var animationTime = Settings.labelsFadeAnimationTimeSeconds
         let latitude = camera.latitude
         let longitude = camera.longitude
-        var globeParams = GlobeParams(latitude: latitude, longitude: longitude, globeRadius: globeRadius)
+        var globeParams = GlobeParams(latitude: latitude,
+                                      longitude: longitude,
+                                      globeRadius: globeRadius)
         
         renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobeParams>.stride, index: 8)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)

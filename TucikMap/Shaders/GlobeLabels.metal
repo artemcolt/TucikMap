@@ -110,28 +110,6 @@ vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
     
     float4 worldLabelPos = globeTranslate * globeRotation * spherePos;
     
-    
-    // Вычисляем центр глобуса в world space
-//    float3 center = float3(0.0, 0.0, -globeLabelsParams.globeRadius);
-//    
-//    // Вычисляем позицию камеры в world space (инвертируем viewMatrix)
-//    float4x4 invView = inverse(worldUniforms.viewMatrix);  // Нужно включить <metal_matrix> если не включено
-//    float3 eye = invView[3].xyz;  // Позиция камеры (4-й столбец инверсной матрицы)
-//    
-//    // Нормаль в позиции метки (от центра к точке, нормализованная)
-//    float3 normal = normalize(worldLabelPos.xyz - center);
-//    
-//    // Направление от центра к камере, нормализованное
-//    float3 viewDir = normalize(eye - center);
-//    
-//    // Скалярное произведение
-//    float visibilityDot = dot(normal, viewDir);
-//    
-//    // Видимость: true если на видимой стороне
-//    bool isVisible = (visibilityDot > 0.0);
-    
-    
-    
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldLabelPos;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
    
