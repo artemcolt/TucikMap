@@ -96,10 +96,6 @@ class Settings {
     static let showOnlyTiles            : [Tile] = []
     static let allowOnlyTiles           : [Tile] = []
     
-    static let useGoToAtStart = true
-    static let goToAtStartZ: Float = 17
-    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(55.74958790780624, 37.62346867711091) // 55.74958790780624, 37.62346867711091
-    
     static let maxRoadLabelsDivision = 1
     static let roadLabelScreenSpacing = Float(0)
     
@@ -119,7 +115,6 @@ class Settings {
     
     static let addTestBorders = false
     static let drawHelpGridOnTexture = false
-    static let drawGlobeTexture = true
     
     static let globeTextureSize: Int = 4096 * 2
     

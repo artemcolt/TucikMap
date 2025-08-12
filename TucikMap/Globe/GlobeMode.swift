@@ -41,6 +41,7 @@ class GlobeMode {
     private let globeCaps               : GlobeCaps
     private let drawGlobeGeom           : DrawGlobeGeom
     private let textureAdder            : TextureAdder
+    private let mapSettings             : MapSettings
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
@@ -68,7 +69,8 @@ class GlobeMode {
          switchMapMode: SwitchMapMode,
          drawSpace: DrawSpace,
          drawGlobeGlowing: DrawGlobeGlowing,
-         textureAdder: TextureAdder) {
+         textureAdder: TextureAdder,
+         mapSettings: MapSettings) {
         
         self.drawGlobeLabels        = DrawGlobeLabels(screenUniforms: screenUniforms,
                                                       metalDevice: metalDevice,
@@ -89,6 +91,7 @@ class GlobeMode {
         self.metalTilesStorage      = metalTilesStorage
         self.pipelines              = pipelines
         self.mapUpdater             = mapUpdater
+        self.mapSettings            = mapSettings
         self.globeCaps              = GlobeCaps(metalDevice: metalDevice)
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
@@ -224,11 +227,12 @@ class GlobeMode {
             renderEncoder.endEncoding()
             
             
-            let blurKernel = MPSImageGaussianBlur(device: metalDevice, sigma: 150)
+            let blurKernel = MPSImageGaussianBlur(device: metalDevice, sigma: 20)
             blurKernel.encode(commandBuffer: renderPassWrapper.commandBuffer,
                               sourceTexture: renderPassWrapper.ur8Texture0,
                               destinationTexture: renderPassWrapper.ur8Texture1)
             
+            //TODO 
             textureAdder.addTextures(sceneTex: renderPassWrapper.texture0,
                                      bluredTex: renderPassWrapper.ur8Texture1,
                                      maskedTex: renderPassWrapper.ur8Texture0,
@@ -250,7 +254,7 @@ class GlobeMode {
             globeRadius: globeRadius
         )
         
-        if Settings.drawGlobeTexture {
+        if mapSettings.mapDebugSettings?.enabled == true {
             pipelines.texturePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
             drawTexture.draw(textureEncoder: labelsRenderEncoder, texture: texture, sideWidth: 500)
             pipelines.basePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)

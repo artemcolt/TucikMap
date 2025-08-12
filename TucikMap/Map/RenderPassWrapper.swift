@@ -49,6 +49,13 @@ class RenderPassWrapper {
         ur8Texture1 = metalDevice.makeTexture(descriptor: descriptor)!
     }
     
+    func createUIEncoder() -> MTLRenderCommandEncoder {
+        renderPassDescriptor.colorAttachments[0].loadAction = .load
+        renderPassDescriptor.depthAttachment.texture = nil
+        renderPassDescriptor.stencilAttachment.texture = nil
+        return encoder(renderPassDescriptor)
+    }
+    
     func createLabelsFlatEncoder() -> MTLRenderCommandEncoder {
         renderPassDescriptor.depthAttachment = nil
         renderPassDescriptor.stencilAttachment = nil

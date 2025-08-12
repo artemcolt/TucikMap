@@ -17,14 +17,14 @@ class Coordinator: NSObject, MTKViewDelegate {
     private var metalCommandQueue           : MTLCommandQueue
     private var semaphore                   : DispatchSemaphore
     
+    private let mapSettings                 : MapSettings
     private var determineFeatureStyle       : DetermineFeatureStyle
     private var frameCounter                : FrameCounter
-    private var drawingFrameRequester       : DrawingFrameRequester!
+    private var drawingFrameRequester       : DrawingFrameRequester
     private var textTools                   : TextTools
     private var mapCadDisplayLoop           : MapCADisplayLoop
     private var mapZoomState                : MapZoomState
     private var drawPoint                   : DrawPoint
-    private var drawAxes                    : DrawAxes
     private let drawSpace                   : DrawSpace
     private let drawGlobeGlowing            : DrawGlobeGlowing
     private let drawTextureOnScreen         : DrawTextureOnScreen
@@ -33,9 +33,10 @@ class Coordinator: NSObject, MTKViewDelegate {
     
     private var metalTilesStorage           : MetalTilesStorage
     private var renderFrameControl          : RenderFrameControl
-    private var drawUI                      : DrawUI!
-    private var screenUniforms              : ScreenUniforms!
-    private var pipelines                   : Pipelines!
+    private var drawUI                      : DrawUI
+    private var drawDebugData               : DrawDebugData
+    private var screenUniforms              : ScreenUniforms
+    private var pipelines                   : Pipelines
     private var updateBufferedUniform       : UpdateBufferedUniform
     private let mapModeStorage              : MapModeStorage
     private let mapUpdaterStorage           : MapUpdaterStorage
@@ -47,8 +48,9 @@ class Coordinator: NSObject, MTKViewDelegate {
     var flatMode: FlatMode
     var globeMode: GlobeMode
     
-    init(_ parent: TucikMapView) {
-        self.parent = parent
+    init(_ parent: TucikMapView, mapSettings: MapSettings) {
+        self.parent             = parent
+        self.mapSettings        = mapSettings
         
         let device              = MTLCreateSystemDefaultDevice()!
         metalDevice             = device
@@ -58,7 +60,6 @@ class Coordinator: NSObject, MTKViewDelegate {
         mapZoomState            = MapZoomState()
         screenUniforms          = ScreenUniforms(metalDevice: metalDevice)
         drawPoint               = DrawPoint(metalDevice: metalDevice)
-        drawAxes                = DrawAxes(metalDevice: metalDevice)
         drawSpace               = DrawSpace(metalDevice: metalDevice)
         drawGlobeGlowing        = DrawGlobeGlowing(metalDevice: metalDevice)
         drawingFrameRequester   = DrawingFrameRequester()
@@ -83,6 +84,13 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                      drawingFrameRequester: drawingFrameRequester)
         drawUI                  = DrawUI(device: metalDevice, textTools: textTools, screenUniforms: screenUniforms)
         renderPassWrapper       = RenderPassWrapper(metalDevice: metalDevice)
+        drawDebugData           = DrawDebugData(basePipeline: pipelines.basePipeline,
+                                                metalDevice: metalDevice,
+                                                cameraStorage: cameraStorage,
+                                                textPipeline: pipelines.textPipeline,
+                                                drawUI: drawUI,
+                                                drawPoint: drawPoint,
+                                                mapZoomState: mapZoomState)
         
         updateBufferedUniform   = UpdateBufferedUniform(device: metalDevice,
                                                         mapZoomState: mapZoomState,
@@ -148,7 +156,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             switchMapMode: switchMapMode,
                                             drawSpace: drawSpace,
                                             drawGlobeGlowing: drawGlobeGlowing,
-                                            textureAdder: textureAdder)
+                                            textureAdder: textureAdder,
+                                            mapSettings: mapSettings)
         super.init()
     }
     
@@ -160,12 +169,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         flatMode.mtkView(view, drawableSizeWillChange: size)
         
-        if Settings.useGoToAtStart {
-            let camera = cameraStorage.currentView
-            let goToLocationAtStart = Settings.goToLocationAtStart
-            let zoom = Settings.goToAtStartZ
-            camera.moveTo(lat: goToLocationAtStart.x, lon: goToLocationAtStart.y, zoom: zoom, view: view, size: size)
-        }
+        let moveSettings = mapSettings.mapMoveSettings
+        moveSettings.initMove(camera: cameraStorage.currentView, view: view, size: size)
     }
     
     func draw(in view: MTKView) {
@@ -231,29 +236,11 @@ class Coordinator: NSObject, MTKViewDelegate {
             globeMode.draw(in: view, renderPassWrapper: renderPassWrapper)
         }
         
-        renderPassDescriptor.colorAttachments[0].loadAction = .load
-        renderPassDescriptor.depthAttachment.texture = nil
-        renderPassDescriptor.stencilAttachment.texture = nil
-        let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
-        pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
-        drawPoint.draw(
-            renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer,
-            pointSize: Settings.cameraCenterPointSize,
-            position: cameraStorage.currentView.targetPosition,
-            color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
-        )
-        drawAxes.draw(renderEncoder: renderEncoder,
-                      uniformsBuffer: uniformsBuffer,
-                      lineLength: 1.0,
-                      position: SIMD3<Float>(0, 0, 0)
-        )
+        if mapSettings.mapDebugSettings?.enabled == true {
+            drawDebugData.draw(renderPassWrapper: renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
+        }
         
-        pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)
-        drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder, size: view.drawableSize, mapZoomState: mapZoomState)
-        renderEncoder.endEncoding()
-        
-        
+        // Вывести на экран, на основную текстуру отрисованную текстуру 
         drawTextureOnScreen.draw(currentRenderPassDescriptor: view.currentRenderPassDescriptor,
                                  commandBuffer: commandBuffer,
                                  sceneTexture: renderPassWrapper.getScreenTexture())

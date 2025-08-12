@@ -10,6 +10,12 @@ import SwiftUI
 import MetalKit
 
 struct TucikMapView: UIViewRepresentable {
+    private let mapSettings: MapSettings
+    
+    init(mapSettings: MapSettings) {
+        self.mapSettings = mapSettings
+    }
+    
     func makeUIView(context: Context) -> MTKView {
         let bgColor = Settings.backgroundColor
         let mtkView = MTKView()
@@ -54,11 +60,9 @@ struct TucikMapView: UIViewRepresentable {
         return mtkView
     }
     
-    func updateUIView(_ uiView: MTKView, context: Context) {
-
-    }
+    func updateUIView(_ uiView: MTKView, context: Context) { }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        Coordinator(self, mapSettings: mapSettings)
     }
 }
