@@ -9,29 +9,20 @@ import SwiftUI
 import MetalKit
 
 class FlatMode {
-    private var metalDevice                 : MTLDevice!
-    private var metalCommandQueue           : MTLCommandQueue!
-    private var updateBufferedUniform       : UpdateBufferedUniform!
+    private var metalDevice                 : MTLDevice
+    private var metalCommandQueue           : MTLCommandQueue
+    private var updateBufferedUniform       : UpdateBufferedUniform
     private var mapUpdaterFlat              : MapUpdaterFlat
     private var mapCadDisplayLoop           : MapCADisplayLoop
-    
-    var depthStencilStatePrePass        : MTLDepthStencilState!
-    var depthStencilStateColorPass      : MTLDepthStencilState!
+    private let draw3dBuildings             : Draw3dBuildings
+    private let pipelines                   : Pipelines
+    private let drawAssembledMap            : DrawAssembledMap
+    private let camera                      : CameraFlatView
+    private let mapZoomState                : MapZoomState
     
     // Helpers
-    var drawPoint: DrawPoint
-    
-    // Tile
-    var drawAssembledMap: DrawAssembledMap!
-    
-    // Map
-    var camera: CameraFlatView!
-    var applyLabelsState: ApplyLabelsState!
-    var mapZoomState: MapZoomState
-    
-    // UI
-    var pipelines: Pipelines
-    
+    private let drawPoint: DrawPoint
+    private var colors: [String: SIMD4<Float>] = [:]
     
     init(metalDevice: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
@@ -58,25 +49,6 @@ class FlatMode {
         self.updateBufferedUniform      = updateBufferedUniform
         self.mapUpdaterFlat             = mapUpdaterFlat
         
-        let depthPrePassDescriptor  = MTLDepthStencilDescriptor()
-        depthPrePassDescriptor.depthCompareFunction = .less
-        depthPrePassDescriptor.isDepthWriteEnabled = true
-        depthStencilStatePrePass = metalDevice.makeDepthStencilState(descriptor: depthPrePassDescriptor)
-        
-        let depthColorPassDescriptor = MTLDepthStencilDescriptor()
-        depthColorPassDescriptor.depthCompareFunction = .equal  // Key change: only equal depths pass
-        depthColorPassDescriptor.isDepthWriteEnabled = false   // No need to write depth again
-        // Настройка stencil-теста
-        let stencilDescriptor = MTLStencilDescriptor()
-        stencilDescriptor.stencilCompareFunction = .equal
-        stencilDescriptor.stencilFailureOperation = .keep
-        stencilDescriptor.depthFailureOperation = .keep
-        stencilDescriptor.depthStencilPassOperation = .incrementClamp // Увеличиваем stencil при рендеринге
-        stencilDescriptor.readMask = 0xFF
-        stencilDescriptor.writeMask = 0xFF
-        depthColorPassDescriptor.frontFaceStencil = stencilDescriptor
-        depthStencilStateColorPass = metalDevice.makeDepthStencilState(descriptor: depthColorPassDescriptor)!
-        
         camera                      = cameraStorage.flatView
         
         drawAssembledMap            = DrawAssembledMap(metalDevice: metalDevice,
@@ -84,18 +56,18 @@ class FlatMode {
                                                        camera: camera,
                                                        mapZoomState: mapZoomState)
         
+        draw3dBuildings             = Draw3dBuildings(polygon3dPipeline: pipelines.polygon3dPipeline,
+                                                      drawAssembledMap: drawAssembledMap,
+                                                      metalDevice: metalDevice)
+        
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        
         //let panningPoint = Tile(x: 9904, y: 5122, z: 14).getTilePointPanningCoordinates(normalizedX: -1, normalizedY: 0)
         //camera.moveToPanningPoint(point: panningPoint, zoom: 14, view: view, size: size)
     }
     
-    // Three-step rendering process
-    func draw(in view: MTKView,
-              renderPassDescriptor: MTLRenderPassDescriptor,
-              commandBuffer: MTLCommandBuffer) {
+    func draw(in view: MTKView, renderPassWrapper: RenderPassWrapper) {
         
         let currentFBIdx            = updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer          = updateBufferedUniform.getCurrentFrameBuffer()
@@ -111,10 +83,7 @@ class FlatMode {
                                                      cameraFlatView: camera)
         
         
-        renderPassDescriptor.colorAttachments[0].loadAction = .clear
-        renderPassDescriptor.depthAttachment.texture = nil
-        renderPassDescriptor.stencilAttachment.texture = nil
-        let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        let renderEncoder = renderPassWrapper.createFlatEncoder()
         pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawAssembledMap.drawTiles(
             renderEncoder: renderEncoder,
@@ -125,9 +94,8 @@ class FlatMode {
         )
         renderEncoder.endEncoding()
         
-        renderPassDescriptor.colorAttachments[0].loadAction = .load
         
-        let roadLabelsEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        let roadLabelsEncoder = renderPassWrapper.createRoadLabelsEncoder()
         pipelines.roadLabelPipeline.selectPipeline(renderEncoder: roadLabelsEncoder)
         drawAssembledMap.drawRoadLabels(
             renderEncoder: roadLabelsEncoder,
@@ -139,51 +107,13 @@ class FlatMode {
         roadLabelsEncoder.endEncoding()
         
         
-        // First: Depth pre-pass (populate min depths, no color)
-        let depthPrePassDescriptor = renderPassDescriptor.copy() as! MTLRenderPassDescriptor  // Copy the original
-        depthPrePassDescriptor.depthAttachment.texture = view.depthStencilTexture
-        depthPrePassDescriptor.stencilAttachment.texture = view.depthStencilTexture
-        depthPrePassDescriptor.colorAttachments[0].loadAction = .dontCare  // No color load needed
-        depthPrePassDescriptor.colorAttachments[0].storeAction = .dontCare // Disable color writes
-        depthPrePassDescriptor.depthAttachment.loadAction = .clear         // Clear depth
-        depthPrePassDescriptor.depthAttachment.storeAction = .store        // Keep depth for next pass
-        depthPrePassDescriptor.depthAttachment.clearDepth = 1.0
-        let depthPrePassEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: depthPrePassDescriptor)!
-        pipelines.polygon3dPipeline.selectPipeline(renderEncoder: depthPrePassEncoder)
-        depthPrePassEncoder.setDepthStencilState(depthStencilStatePrePass)
-        depthPrePassEncoder.setCullMode(.back)
-        drawAssembledMap.draw3dTiles(
-            renderEncoder: depthPrePassEncoder,
-            uniformsBuffer: uniformsBuffer,
-            tiles: assembledTiles,
-            tileFrameProps: tileFrameProps
-        )
-        depthPrePassEncoder.endEncoding()
-        
-        // Second: Color pass (draw only frontmost, with blending)
-        let colorPassDescriptor = renderPassDescriptor.copy() as! MTLRenderPassDescriptor  // Copy again
-        colorPassDescriptor.depthAttachment.texture = view.depthStencilTexture
-        colorPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
-        colorPassDescriptor.colorAttachments[0].loadAction = .load  // Or .load if you have prior content
-        colorPassDescriptor.colorAttachments[0].storeAction = .store // Write colors
-        colorPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1) // Background color
-        colorPassDescriptor.depthAttachment.loadAction = .load       // Use pre-pass depths
-        colorPassDescriptor.depthAttachment.storeAction = .dontCare  // No need after
-        let colorPassEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: colorPassDescriptor)!
-        pipelines.polygon3dPipeline.selectPipeline(renderEncoder: colorPassEncoder)
-        colorPassEncoder.setDepthStencilState(depthStencilStateColorPass)
-        colorPassEncoder.setStencilReferenceValue(0)
-        colorPassEncoder.setCullMode(.back)
-        drawAssembledMap.draw3dTiles(
-            renderEncoder: colorPassEncoder,
-            uniformsBuffer: uniformsBuffer,
-            tiles: assembledTiles,
-            tileFrameProps: tileFrameProps
-        )
-        colorPassEncoder.endEncoding()
+        draw3dBuildings.draw(renderPassWrapper: renderPassWrapper,
+                             uniformsBuffer: uniformsBuffer,
+                             assembledTiles: assembledTiles,
+                             tileFrameProps: tileFrameProps)
         
         
-        let basicRenderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
+        let basicRenderEncoder = renderPassWrapper.createLabelsFlatEncoder()
         pipelines.labelsPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
         drawAssembledMap.drawMapLabels(
             renderEncoder: basicRenderEncoder,
@@ -192,19 +122,6 @@ class FlatMode {
             currentFBIndex: currentFBIdx,
             tileFrameProps: tileFrameProps
         )
-        
-//        let testPoints = screenCollisionsDetector.testPoints
-//        for point in testPoints {
-//            let color = SIMD4<Float>(0.0, 1.0, 0.0, 1.0)
-//            drawPoint.draw(
-//                renderEncoder: basicRenderEncoder,
-//                uniformsBuffer: screenUniforms.screenUniformBuffer,
-//                pointSize: 15,
-//                position: SIMD3<Float>(point.x, point.y, 0),
-//                color: color
-//            )
-//        }
-        
         
         if Settings.drawRoadPointsDebug {
             drawRoadPoints(assembledMap: assembledMap,
@@ -216,8 +133,6 @@ class FlatMode {
         basicRenderEncoder.endEncoding()
     }
     
-    
-    private var colors: [String: SIMD4<Float>] = [:]
     private func drawRoadPoints(
         assembledMap: AssembledMap,
         tileFrameProps: TileFrameProps,

@@ -6,6 +6,7 @@
 //
 import GISTools
 import Foundation
+import simd
 
 class Settings {
     static var forceRenderOnDisplayUpdate   : Bool = false
@@ -27,7 +28,7 @@ class Settings {
     static let nullZoomCameraDistance: Float = 1.0 / (2 * tan(fov / 2))
     static let minCameraDistance: Float = nullZoomCameraDistance / pow(2, 18)
     static let farPlaneIncreaseFactor: Float = 2.0
-    static let nullZoomGlobeRadius: Float = 0.3
+    static let nullZoomGlobeRadius: Float = 0.2
     
     static let globeMapSize: Float = 1.0
     static let baseFlatMapSize: Float = 2 * Float.pi * nullZoomGlobeRadius
@@ -95,9 +96,9 @@ class Settings {
     static let showOnlyTiles            : [Tile] = []
     static let allowOnlyTiles           : [Tile] = []
     
-    static let useGoToAtStart = false
-    static let goToAtStartZ: Float = 1.3
-    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(0, 0) // 55.74958790780624, 37.62346867711091
+    static let useGoToAtStart = true
+    static let goToAtStartZ: Float = 17
+    static let goToLocationAtStart: SIMD2<Double> = SIMD2<Double>(55.74958790780624, 37.62346867711091) // 55.74958790780624, 37.62346867711091
     
     static let maxRoadLabelsDivision = 1
     static let roadLabelScreenSpacing = Float(0)
@@ -116,12 +117,37 @@ class Settings {
     static let printVisibleTiles: Bool = false
     static let printVisibleAreaRange: Bool = false
     
-    static let addTestBorders = true
-    static let drawHelpGridOnTexture = true
+    static let addTestBorders = false
+    static let drawHelpGridOnTexture = false
     static let drawGlobeTexture = true
     
     static let globeTextureSize: Int = 4096 * 2
     
     static let globeToPlaneZoomStart: Float = 4
     static let globeToPlaneZoomEnd: Float = 5
+    
+    static let tileBgColor: SIMD4<Float> = SIMD4<Float>(1.0, 1.0, 1.0, 1.0)
+    static let backgroundColor: SIMD4<Double> = SIMD4<Double>(0.0039, 0.0431, 0.0980, 1.0) // Тёмно-синий "deep space" для атмосферы космоса
+    static let waterColor: SIMD4<Float> = SIMD4<Float>(0.3, 0.6, 0.9, 1.0) // Light blue
+    static let landCoverColor: SIMD4<Float> = SIMD4<Float>(0.4, 0.7, 0.4, 0.7)  // Grass green
+    
+    static let northPoleColor: SIMD4<Float> = waterColor
+    static let southPoleColor: SIMD4<Float> = blend(source: landCoverColor, destination: tileBgColor)
+    
+    static func blend(source: SIMD4<Float>, destination: SIMD4<Float>) -> SIMD4<Float> {
+        let sourceAlpha = source.w
+        let oneMinusSourceAlpha = 1 - sourceAlpha
+        
+        let sourceXYZ = SIMD3<Float>(source.x, source.y, source.z)
+        let destinationXYZ = SIMD3<Float>(destination.x, destination.y, destination.z)
+        
+        // Blended RGB: (source.rgb * sourceAlpha) + (destination.rgb * oneMinusSourceAlpha)
+        let blendedRGB = (sourceXYZ * sourceAlpha) + (destinationXYZ * oneMinusSourceAlpha)
+
+        // Blended Alpha: (sourceAlpha * sourceAlpha) + (destination.w * oneMinusSourceAlpha)
+        let blendedAlpha = (sourceAlpha * sourceAlpha) + (destination.w * oneMinusSourceAlpha)
+
+        let resultingColor = SIMD4<Float>(blendedRGB.x, blendedRGB.y, blendedRGB.z, blendedAlpha)
+        return resultingColor
+    }
 }

@@ -92,10 +92,18 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     return out;
 }
 
-fragment float4 fragmentShaderGlobe(VertexOut in [[stage_in]],
+struct FragmentOut {
+    float4 color0 [[color(0)]];  // Основная сцена
+    float color1 [[color(1)]];  // Основная сцена
+};
+
+fragment FragmentOut fragmentShaderGlobe(VertexOut in [[stage_in]],
                                     texture2d<float> colorTexture [[texture(0)]],
                                     sampler textureSampler[[sampler(0)]]) {
     float4 color = colorTexture.sample(textureSampler, in.texCoord);
-    return color;
+    FragmentOut out;
+    out.color0 = color;
+    out.color1 = float(1);
+    return out;
 }
 

@@ -16,8 +16,14 @@ class Pipelines {
     private(set) var labelsPipeline: LabelsPipeline!
     private(set) var roadLabelPipeline: RoadLabelPipeline!
     private(set) var globePipeline: GlobePipeline!
+    private(set) var spacePipeline: SpacePipeline!
     private(set) var texturePipeline: TexturePipeline!
     private(set) var globeLabelsPipeline: GlobeLabelsPipeline!
+    private(set) var globeGlowingPipeline: GlobeGlowingPipeline!
+    private(set) var globeCapsPipeline: GlobeCapsPipeline!
+    private(set) var globeGeomPipeline: GlobeGeomPipeline!
+    private(set) var postProcessing: DrawTextureOnScreenPipeline!
+    private(set) var textureAdderPipeline: TextureAdderPipeline!
  
     init(metalDevice: MTLDevice) {
         // Create the render pipeline
@@ -32,5 +38,11 @@ class Pipelines {
         globePipeline = GlobePipeline(metalDevice: metalDevice, library: library)
         texturePipeline = TexturePipeline(metalDevice: metalDevice, library: library)
         globeLabelsPipeline = GlobeLabelsPipeline(metalDevice: metalDevice, library: library)
+        spacePipeline = SpacePipeline(metalDevice: metalDevice, library: library)
+        globeGlowingPipeline = GlobeGlowingPipeline(metalDevice: metalDevice, library: library)
+        globeCapsPipeline = GlobeCapsPipeline(metalDevice: metalDevice, library: library)
+        globeGeomPipeline = GlobeGeomPipeline(metalDevice: metalDevice, library: library)
+        postProcessing = DrawTextureOnScreenPipeline(metalDevice: metalDevice, library: library)
+        textureAdderPipeline = TextureAdderPipeline(metalDevice: metalDevice, library: library)
     }
 }

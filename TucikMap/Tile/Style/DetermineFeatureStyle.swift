@@ -81,14 +81,14 @@ class DetermineFeatureStyle {
         let colors = [
             "admin_boundary": SIMD4<Float>(0.65, 0.65, 0.75, 1.0), // Soft purple-gray
             "admin_level_1": SIMD4<Float>(0.45, 0.55, 0.85, 1.0), // Deeper blue
-            "water": SIMD4<Float>(0.3, 0.6, 0.9, 1.0),           // Light blue
+            "water": Settings.waterColor,
             "river": SIMD4<Float>(0.2, 0.5, 0.8, 1.0),           // Slightly darker blue
             "landcover_forest": SIMD4<Float>(0.2, 0.6, 0.4, 0.7), // Forest green
-            "landcover_grass": SIMD4<Float>(0.4, 0.7, 0.4, 0.7),  // Grass green
+            "landcover_grass": Settings.landCoverColor,  
             "road_major": SIMD4<Float>(0.9, 0.9, 0.9, 1.0),       // Near-white
             "road_minor": SIMD4<Float>(0.7, 0.7, 0.7, 1.0),       // Light gray
             "fallback": SIMD4<Float>(0.5, 0.5, 0.5, 0.5),          // Neutral gray
-            "background": SIMD4<Float>(1.0, 1.0, 1.0, 1.0),
+            "background": Settings.tileBgColor,
             "border": SIMD4<Float>(0.0, 0.0, 0.0, 1.0),
             
             "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.7),         // Warm beige

@@ -8,7 +8,7 @@
 import MetalKit
 
 class Camera {
-    var cameraContext       : CameraContext
+    fileprivate var cameraContext       : CameraContext
     
     var mapSize : Float { get { return 0 } }
     var mapZoom : Float {
@@ -44,26 +44,26 @@ class Camera {
         set { cameraContext.rotationYaw = newValue }
     }
     
-    var globeRadius                 : Float = 0
-    var latitude                    : Float = 0
-    var longitude                   : Float = 0
-    var mapPanning                  : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
-    var pinchDeltaDistance          : Float = 0
-    var twoFingerDeltaPitch         : Float = 0
-    var panDeltaX                   : Float = 0
-    var panDeltaY                   : Float = 0
-    var rotationDeltaYaw            : Float = 0
+    var mapPanning                              : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
+    private(set) var globeRadius                : Float = 0
+    private(set) var latitude                   : Float = 0
+    private(set) var longitude                  : Float = 0
+    fileprivate var pinchDeltaDistance          : Float = 0
+    fileprivate var twoFingerDeltaPitch         : Float = 0
+    fileprivate var panDeltaX                   : Float = 0
+    fileprivate var panDeltaY                   : Float = 0
+    fileprivate var rotationDeltaYaw            : Float = 0
     
-    var previousBorderedZoomLevel   : Int = -1
-    var centerTileX                 : Float = 0
-    var centerTileY                 : Float = 0
-    var previousCenterTileX         : Int = -1
-    var previousCenterTileY         : Int = -1
-    var mapStateUpdatedOnCenter     : SIMD3<Int> = SIMD3(-1, -1, -1)
+    fileprivate var previousBorderedZoomLevel   : Int = -1
+    private(set) var centerTileX                : Float = 0
+    private(set) var centerTileY                : Float = 0
+    fileprivate var previousCenterTileX         : Int = -1
+    fileprivate var previousCenterTileY         : Int = -1
+    fileprivate var mapStateUpdatedOnCenter     : SIMD3<Int> = SIMD3(-1, -1, -1)
     
-    let mapZoomState                : MapZoomState
-    let drawingFrameRequester       : DrawingFrameRequester
-    let mapCadDisplayLoop           : MapCADisplayLoop
+    fileprivate let mapZoomState                : MapZoomState
+    fileprivate let drawingFrameRequester       : DrawingFrameRequester
+    fileprivate let mapCadDisplayLoop           : MapCADisplayLoop
 
     init(mapZoomState: MapZoomState,
          drawingFrameRequester: DrawingFrameRequester,
@@ -284,4 +284,56 @@ class Camera {
         previousBorderedZoomLevel = borderedZoomLevel
         return changed
     }
+}
+
+
+
+
+class CameraGlobeView : Camera {
+    override var mapSize: Float { get { return Settings.globeMapSize } }
+    
+    override func nearAndFar() -> SIMD2<Float> {
+        let near: Float         = 0.1
+        let far: Float          = 20.0
+        return SIMD2<Float>(near, far)
+    }
+}
+
+
+
+
+class CameraFlatView : Camera {
+    override var mapSize: Float { get { return flatMapSize } }
+    
+    private var flatMapSize: Float = Settings.baseFlatMapSize
+    
+    func applyDistortion(distortion: Float) {
+        flatMapSize = Settings.baseFlatMapSize * distortion
+    }
+    
+    override func nearAndFar() -> SIMD2<Float> {
+        let halfPi              = Float.pi / 2
+        let pitchAngle: Float   = cameraPitch
+        let pitchNormalized     = pitchAngle / halfPi
+        let nearFactor          = sqrt(pitchNormalized)
+        let farFactor           = pitchAngle * Settings.farPlaneIncreaseFactor
+        
+        let delta: Float        = 1.0
+        let near: Float         = cameraDistance - delta - nearFactor * cameraDistance
+        var far: Float          = cameraDistance + delta + farFactor  * cameraDistance
+        far += 5
+        
+        return SIMD2<Float>(near, far)
+    }
+    
+    // Вернуть в допустимую зону камеру
+//        let zoomFactor = Double(pow(2.0, floor(mapZoom)))
+//        let visibleHeight = 2.0 * Double(cameraDistance) * Double(tan(Settings.fov / 2.0)) / zoomFactor
+//        let targetPositionYMin = Double(-Settings.mapSize) / 2.0 + visibleHeight / 2.0
+//        let targetPositionYMax = Double(Settings.mapSize) / 2.0  - visibleHeight / 2.0
+//        if (mapPanning.y < targetPositionYMin) {
+//            mapPanning.y = targetPositionYMin
+//        } else if (mapPanning.y > targetPositionYMax) {
+//            mapPanning.y = targetPositionYMax
+//        }
 }

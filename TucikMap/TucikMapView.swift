@@ -9,12 +9,13 @@
 import SwiftUI
 import MetalKit
 
-struct MetalView: UIViewRepresentable {
+struct TucikMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MTKView {
+        let bgColor = Settings.backgroundColor
         let mtkView = MTKView()
         mtkView.device = MTLCreateSystemDefaultDevice()
         mtkView.delegate = context.coordinator
-        mtkView.clearColor = MTLClearColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
+        mtkView.clearColor = MTLClearColor(red: bgColor[0], green: bgColor[1], blue: bgColor[2], alpha: bgColor[3])
         mtkView.depthStencilPixelFormat = .depth32Float_stencil8
         mtkView.colorPixelFormat = .bgra8Unorm
         mtkView.enableSetNeedsDisplay = true

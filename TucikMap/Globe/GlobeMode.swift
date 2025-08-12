@@ -7,6 +7,7 @@
 
 import MetalKit
 import SwiftUI
+import MetalPerformanceShaders
 
 class GlobeMode {
     struct GlobePlane {
@@ -22,8 +23,7 @@ class GlobeMode {
     }
     
     private var planesBuffered          : [GlobePlane] = []
-    
-    private var metalDevice             : MTLDevice
+    private let metalDevice             : MTLDevice
     private var globeTexturing          : GlobeTexturing
     private var metalTilesStorage       : MetalTilesStorage
     private var pipelines               : Pipelines
@@ -36,6 +36,11 @@ class GlobeMode {
     private let mapUpdater              : MapUpdaterGlobe
     private let switchMapMode           : SwitchMapMode
     private let drawGlobeLabels         : DrawGlobeLabels
+    private let drawSpace               : DrawSpace
+    private let drawGlobeGlowing        : DrawGlobeGlowing
+    private let globeCaps               : GlobeCaps
+    private let drawGlobeGeom           : DrawGlobeGeom
+    private let textureAdder            : TextureAdder
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
@@ -60,11 +65,18 @@ class GlobeMode {
          globeTexturing: GlobeTexturing,
          screenUniforms: ScreenUniforms,
          mapUpdater: MapUpdaterGlobe,
-         switchMapMode: SwitchMapMode) {
+         switchMapMode: SwitchMapMode,
+         drawSpace: DrawSpace,
+         drawGlobeGlowing: DrawGlobeGlowing,
+         textureAdder: TextureAdder) {
         
         self.drawGlobeLabels        = DrawGlobeLabels(screenUniforms: screenUniforms,
                                                       metalDevice: metalDevice,
                                                       camera: cameraStorage.currentView)
+        self.drawGlobeGeom          = DrawGlobeGeom(metalDevice: metalDevice)
+        self.textureAdder           = textureAdder
+        self.drawGlobeGlowing       = drawGlobeGlowing
+        self.drawSpace              = drawSpace
         self.switchMapMode          = switchMapMode
         self.drawTexture            = DrawTexture(screenUniforms: screenUniforms)
         self.screenUniforms         = screenUniforms
@@ -77,6 +89,7 @@ class GlobeMode {
         self.metalTilesStorage      = metalTilesStorage
         self.pipelines              = pipelines
         self.mapUpdater             = mapUpdater
+        self.globeCaps              = GlobeCaps(metalDevice: metalDevice)
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
         depthStencilDescriptor.depthCompareFunction = .less
@@ -115,9 +128,7 @@ class GlobeMode {
         planesBuffered[bufferIndex].indicesCount = newPlane.indices.count
     }
     
-    func draw(in view: MTKView,
-              renderPassDescriptor: MTLRenderPassDescriptor,
-              commandBuffer: MTLCommandBuffer) {
+    func draw(in view: MTKView, renderPassWrapper: RenderPassWrapper) {
         
         let assembledMap    = mapUpdater.assembledMap
         let areaRange       = assembledMap.areaRange
@@ -125,9 +136,8 @@ class GlobeMode {
         let currentFbIndex  = updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer  = updateBufferedUniform.getCurrentFrameBuffer()
         let z               = areaRange.z
-        
-        let tilesCount = mapZoomState.tilesCount
-        let panX = Float(camera.mapPanning.x)
+        let tilesCount      = mapZoomState.tilesCount
+        let panX            = Float(camera.mapPanning.x)
         
         var uShiftMap = panX
         if z > 1 {
@@ -158,7 +168,7 @@ class GlobeMode {
         
         if generateTextureCount > 0 {
             globeTexturing.render(currentFBIndex: currentFbIndex,
-                                  commandBuffer: commandBuffer,
+                                  commandBuffer: renderPassWrapper.commandBuffer,
                                   metalTiles: metalTiles,
                                   areaRange: areaRange)
             generateTextureCount -= 1
@@ -178,12 +188,31 @@ class GlobeMode {
         let indicesCount    = buffered.indicesCount
         
         if buffered.isEmpty() == false {
-            let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
-            renderEncoder.setCullMode(.front)
-            pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
+            
+            // Рисуем окружение планеты
+            let renderEncoderSpace = renderPassWrapper.createSpaceEnvEncoder()
+            pipelines.spacePipeline.selectPipeline(renderEncoder: renderEncoderSpace)
+            drawSpace.draw(renderEncoder: renderEncoderSpace,
+                           uniformsBuffer: uniformsBuffer,
+                           mapParams: DrawSpace.MapParams(latitude: camera.latitude, longitude: camera.longitude, scale: mapZoomState.powZoomLevel))
+            renderEncoderSpace.endEncoding()
+            
+            
+            
+            let renderEncoder = renderPassWrapper.createGlobeEncoder()
             renderEncoder.setDepthStencilState(depthStencilState)
-            renderEncoder.setVertexBuffer(verticesBuffer,     offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(uniformsBuffer,  offset: 0, index: 1)
+            renderEncoder.setCullMode(.front)
+            pipelines.globeCapsPipeline.selectPipeline(renderEncoder: renderEncoder)
+            globeCaps.drawCaps(renderEncoder: renderEncoder,
+                               uniformsBuffer: uniformsBuffer,
+                               mapParams: GlobeCaps.MapParams(latitude: camera.latitude,
+                                                              globeRadius: camera.globeRadius,
+                                                              factor: mapZoomState.powZoomLevel))
+            
+            
+            pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
+            renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
+            renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
             renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)
             renderEncoder.setFragmentTexture(texture, index: 0)
             renderEncoder.setFragmentSamplerState(samplerState, index: 0)
@@ -193,37 +222,40 @@ class GlobeMode {
                                                 indexBuffer: indicesBuffer,
                                                 indexBufferOffset: 0)
             renderEncoder.endEncoding()
+            
+            
+            let blurKernel = MPSImageGaussianBlur(device: metalDevice, sigma: 150)
+            blurKernel.encode(commandBuffer: renderPassWrapper.commandBuffer,
+                              sourceTexture: renderPassWrapper.ur8Texture0,
+                              destinationTexture: renderPassWrapper.ur8Texture1)
+            
+            textureAdder.addTextures(sceneTex: renderPassWrapper.texture0,
+                                     bluredTex: renderPassWrapper.ur8Texture1,
+                                     maskedTex: renderPassWrapper.ur8Texture0,
+                                     outTexture: renderPassWrapper.texture1,
+                                     commandBuffer: renderPassWrapper.commandBuffer)
+            
+            renderPassWrapper.changeScreenTexture(texture: renderPassWrapper.texture1)
         }
         
-        renderPassDescriptor.colorAttachments[0].loadAction = .load
-        renderPassDescriptor.depthAttachment = nil
-        renderPassDescriptor.stencilAttachment = nil
         
         // На глобусе рисуем названия стран, городов, рек, морей
-        let basicRenderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
-        pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
+        let labelsRenderEncoder = renderPassWrapper.createLabelsEncoder()
+        pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
         drawGlobeLabels.draw(
-            renderEncoder: basicRenderEncoder,
+            renderEncoder: labelsRenderEncoder,
             uniformsBuffer: uniformsBuffer,
             geoLabels: assembledMap.tileGeoLabels,
             currentFBIndex: currentFbIndex,
             globeRadius: globeRadius
         )
-        basicRenderEncoder.endEncoding()
-        
         
         if Settings.drawGlobeTexture {
-            // draw texture
-            let textureEncoder   = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
-            pipelines.texturePipeline.selectPipeline(renderEncoder: textureEncoder)
-            drawTexture.draw(textureEncoder: textureEncoder, texture: texture, sideWidth: 500)
-            pipelines.basePipeline.selectPipeline(renderEncoder: textureEncoder)
-            drawTexture.drawBorders(textureEncoder: textureEncoder, sideWidth: 500)
-            textureEncoder.endEncoding()
+            pipelines.texturePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
+            drawTexture.draw(textureEncoder: labelsRenderEncoder, texture: texture, sideWidth: 500)
+            pipelines.basePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
+            drawTexture.drawBorders(textureEncoder: labelsRenderEncoder, sideWidth: 500)
         }
-    }
-    
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        
+        labelsRenderEncoder.endEncoding()
     }
 }

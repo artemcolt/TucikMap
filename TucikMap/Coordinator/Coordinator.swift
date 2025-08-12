@@ -7,9 +7,10 @@
 
 import SwiftUI
 import MetalKit
+import MetalPerformanceShaders
 
 class Coordinator: NSObject, MTKViewDelegate {
-    var parent                              : MetalView
+    var parent                              : TucikMapView
     var cameraStorage                       : CameraStorage
     
     private var metalDevice                 : MTLDevice
@@ -24,7 +25,12 @@ class Coordinator: NSObject, MTKViewDelegate {
     private var mapZoomState                : MapZoomState
     private var drawPoint                   : DrawPoint
     private var drawAxes                    : DrawAxes
-        
+    private let drawSpace                   : DrawSpace
+    private let drawGlobeGlowing            : DrawGlobeGlowing
+    private let drawTextureOnScreen         : DrawTextureOnScreen
+    private let textureAdder                : TextureAdder
+    private let renderPassWrapper           : RenderPassWrapper
+    
     private var metalTilesStorage           : MetalTilesStorage
     private var renderFrameControl          : RenderFrameControl
     private var drawUI                      : DrawUI!
@@ -41,21 +47,25 @@ class Coordinator: NSObject, MTKViewDelegate {
     var flatMode: FlatMode
     var globeMode: GlobeMode
     
-    init(_ parent: MetalView) {
+    init(_ parent: TucikMapView) {
         self.parent = parent
         
         let device              = MTLCreateSystemDefaultDevice()!
         metalDevice             = device
         metalCommandQueue       = device.makeCommandQueue()!
         semaphore               = DispatchSemaphore(value: Settings.maxBuffersInFlight)
-        
+
         mapZoomState            = MapZoomState()
         screenUniforms          = ScreenUniforms(metalDevice: metalDevice)
         drawPoint               = DrawPoint(metalDevice: metalDevice)
         drawAxes                = DrawAxes(metalDevice: metalDevice)
+        drawSpace               = DrawSpace(metalDevice: metalDevice)
+        drawGlobeGlowing        = DrawGlobeGlowing(metalDevice: metalDevice)
         drawingFrameRequester   = DrawingFrameRequester()
         frameCounter            = FrameCounter()
         pipelines               = Pipelines(metalDevice: metalDevice)
+        textureAdder            = TextureAdder(metalDevice: metalDevice, textureAdderPipeline: pipelines.textureAdderPipeline)
+        drawTextureOnScreen     = DrawTextureOnScreen(metalDevice: metalDevice, postProcessingPipeline: pipelines.postProcessing)
         mapModeStorage          = MapModeStorage()
         mapCadDisplayLoop       = MapCADisplayLoop(frameCounter: frameCounter,
                                                    drawingFrameRequester: drawingFrameRequester)
@@ -72,6 +82,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         renderFrameControl      = RenderFrameControl(mapCADisplayLoop: mapCadDisplayLoop,
                                                      drawingFrameRequester: drawingFrameRequester)
         drawUI                  = DrawUI(device: metalDevice, textTools: textTools, screenUniforms: screenUniforms)
+        renderPassWrapper       = RenderPassWrapper(metalDevice: metalDevice)
         
         updateBufferedUniform   = UpdateBufferedUniform(device: metalDevice,
                                                         mapZoomState: mapZoomState,
@@ -134,16 +145,20 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             globeTexturing: globeTexturing,
                                             screenUniforms: screenUniforms,
                                             mapUpdater: mapUpdaterStorage.globe,
-                                            switchMapMode: switchMapMode)
+                                            switchMapMode: switchMapMode,
+                                            drawSpace: drawSpace,
+                                            drawGlobeGlowing: drawGlobeGlowing,
+                                            textureAdder: textureAdder)
         super.init()
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        renderPassWrapper.mtkView(view: view, drawableSizeWillChange: size)
+        
         cameraStorage.currentView.updateMap(view: view, size: size)
         renderFrameControl.updateView(view: view)
         screenUniforms.update(size: size)
         flatMode.mtkView(view, drawableSizeWillChange: size)
-        globeMode.mtkView(view, drawableSizeWillChange: size)
         
         if Settings.useGoToAtStart {
             let camera = cameraStorage.currentView
@@ -160,10 +175,12 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
-              let renderPassDescriptor = view.currentRenderPassDescriptor else {
+              let renderPassDescriptor = view.currentRenderPassDescriptor?.copy() as? MTLRenderPassDescriptor else {
             self.semaphore.signal()
             return
         }
+        
+        renderPassWrapper.startFrame(renderPassDescriptor: renderPassDescriptor, commandBuffer: commandBuffer)
         
         // Add completion handler to signal the semaphore when GPU work is done
         commandBuffer.addCompletedHandler { [weak self] _ in
@@ -173,7 +190,9 @@ class Coordinator: NSObject, MTKViewDelegate {
         // Поменять режим рендринга когда нужно
         // Глобус / Плоскость
         let switched = switchMapMode.switchingMapMode(view: view)
+        renderPassWrapper.updateClearColor(switchMapMode: switchMapMode)
         
+        // Юниформ для трансформации сцены в clip
         updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
         let uniformsBuffer = updateBufferedUniform.getCurrentFrameBuffer()
@@ -183,10 +202,12 @@ class Coordinator: NSObject, MTKViewDelegate {
         let mapPanning = camera.mapPanning
         let mapSize = camera.mapSize
         
+        // Если камера поменяла состояние то нужно обновить саму карту, тайлы
         if cameraStorage.currentView.isMapStateUpdated() || switched {
             mapUpdaterStorage.currentView.update(view: view, useOnlyCached: false)
         }
         
+        // Расчет экранной UI информации, пересечения текста например
         if (mapCadDisplayLoop.checkEvaluateScreenData()) {
             switch mapModeStorage.mapMode {
             case .flat: let _ = scrCollDetStorage.flat.evaluateFlat(lastUniforms: lastUniforms,
@@ -199,18 +220,15 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                                        cameraPosition: camera.cameraPosition)
             }
         }
+        
         // Применяем если есть актуальные данные меток для свежего кадра
         applyLabelsState.apply(currentFBIdx: currentFBIdx)
         
         switch mapModeStorage.mapMode {
         case .flat:
-            flatMode.draw(in: view,
-                          renderPassDescriptor: renderPassDescriptor,
-                          commandBuffer: commandBuffer)
+            flatMode.draw(in: view, renderPassWrapper: renderPassWrapper)
         case .globe:
-            globeMode.draw(in: view,
-                           renderPassDescriptor: renderPassDescriptor,
-                           commandBuffer: commandBuffer)
+            globeMode.draw(in: view, renderPassWrapper: renderPassWrapper)
         }
         
         renderPassDescriptor.colorAttachments[0].loadAction = .load
@@ -233,8 +251,14 @@ class Coordinator: NSObject, MTKViewDelegate {
         
         pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder, size: view.drawableSize, mapZoomState: mapZoomState)
-        
         renderEncoder.endEncoding()
+        
+        
+        drawTextureOnScreen.draw(currentRenderPassDescriptor: view.currentRenderPassDescriptor,
+                                 commandBuffer: commandBuffer,
+                                 sceneTexture: renderPassWrapper.getScreenTexture())
+        
+        
         
         commandBuffer.present(drawable)
         frameCounter.update(with: commandBuffer)

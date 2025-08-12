@@ -21,6 +21,8 @@ class TileMvtParser {
     let parseLine: ParseLine = ParseLine()
     let parseBuilding: ParseBuilding = ParseBuilding()
     
+    private var parsedCountTest = 0
+    
     
     init(determineFeatureStyle: DetermineFeatureStyle) {
         self.determineFeatureStyle = determineFeatureStyle
@@ -287,7 +289,6 @@ class TileMvtParser {
         styles[style.key] = style
     }
     
-    var parsedCountTest = 0
     func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) async -> ReadingStageResult {
         var polygon3dByStyle: [UInt8: [Parsed3dPolygon]] = [:]
         
