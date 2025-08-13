@@ -49,10 +49,6 @@ class Settings {
     static let spaceUnicodeNumber: Int = 32
     static let spaceSize: Float = 0.2
     
-    // tile titles
-    static let tileTitleRootSize: Float = 100.0
-    static let tileTitleOffset: Float = 20.0
-    
     static var drawAxis: Bool = false
     static var drawGrid: Bool = false
     static var drawTileCoordinates: Bool = false
@@ -78,18 +74,12 @@ class Settings {
     static let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 10
     
     
-    static var horizontalGridDivisionSize   : Float = 500
-    static var verticalGridDivisionSize     : Float = 500
     static var maxInputComputeScreenPoints  : Int = 3000
     
     static var labelsFadeAnimationTimeSeconds: Float = 0.3 // 0.3
     static let buildingsFactor = 0.006
     
     static let zoomLevelMax             : Float = 20.9
-    
-    static let gridCollisionSize        : Float = 1000
-    static let worldCollisionSize       : Float = 12_000
-    static let shiftCollisionLocation   : Float = 5_000
     
     static let printCenterLatLon        : Bool = false
     static let printCenterTile          : Bool = false
@@ -113,8 +103,6 @@ class Settings {
     static let printVisibleTiles: Bool = false
     static let printVisibleAreaRange: Bool = false
     
-    static let addTestBorders = false
-    static let drawHelpGridOnTexture = false
     
     static let globeTextureSize: Int = 4096 * 2
     

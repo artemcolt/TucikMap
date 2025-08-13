@@ -13,10 +13,10 @@ struct ContentView: View {
                                           z: 17,
                                           latLon: SIMD2<Double>(55.74958790780624, 37.62346867711091))
     
-    let mapDebugSettings = MapDebugSettings(enabled: true)
+    let mapDebugSettings = MapDebugSettings(enabled: true, addTestBorders: true)
     
     var body: some View {
-        TucikMapView(mapSettings: MapSettings(mapMoveSettings: mapMoveSettings))
+        TucikMapView(mapSettings: MapSettings(mapMoveSettings: mapMoveSettings, mapDebugSettings: mapDebugSettings))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
     }

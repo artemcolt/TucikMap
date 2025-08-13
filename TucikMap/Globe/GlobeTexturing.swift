@@ -15,15 +15,17 @@ class GlobeTexturing {
     private let uniformsBuffer      : MTLBuffer
     private let textureSize         : Int = Settings.globeTextureSize
     private var texturesBuffered    : [MTLTexture] = []
+    private let mapDebugSettings    : MapDebugSettings
     
     func getTexture(frameBufferIndex: Int) -> MTLTexture {
         return texturesBuffered[frameBufferIndex]
     }
     
-    init(metalDevide: MTLDevice, metalCommandQueue: MTLCommandQueue, pipelines: Pipelines) {
+    init(metalDevide: MTLDevice, metalCommandQueue: MTLCommandQueue, pipelines: Pipelines, mapDebugSettings: MapDebugSettings) {
         self.metalDevide        = metalDevide
         self.metalCommandQueue  = metalCommandQueue
         self.pipelines          = pipelines
+        self.mapDebugSettings   = mapDebugSettings
         
         let projectionMatrix    = MatrixUtils.orthographicMatrix(left: -1, right: 1, bottom: -1, top: 1, near: -1, far: 1)
         var uniforms            = Uniforms(projectionMatrix: projectionMatrix,
@@ -138,7 +140,7 @@ class GlobeTexturing {
             }
         }
         
-        if Settings.drawHelpGridOnTexture {
+        if mapDebugSettings.addTestBorders {
             pipelines.basePipeline.selectPipeline(renderEncoder: commandEncoder)
             if currentZ > 1 {
                 drawHelpGrid3(commandEncoder: commandEncoder)

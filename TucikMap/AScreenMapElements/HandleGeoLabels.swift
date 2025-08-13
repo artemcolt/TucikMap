@@ -53,7 +53,7 @@ class HandleGeoLabels {
         self.mapZoomState = mapZoomState
     }
     
-    func onPointsReady(input: OnPointsReady, spaceDiscretisation: SpaceDiscretisation) {
+    func onPointsReady(input: OnPointsReady, spaceIntersections: SpaceIntersectionsProtocol) {
         let output                          = input.output
         let mapLabelLineCollisionsMeta      = input.mapLabelLineCollisionsMeta
         let actualLabelsIdsCaching          = input.actualLabelsIds
@@ -110,11 +110,11 @@ class HandleGeoLabels {
             // например если лейбл на другой стороне глобуса то он невидим
             var added = false
             if (visible) {
-                added = spaceDiscretisation.addAgent(agent: CollisionAgent(
-                    location: SIMD2<Float>(Float(screenPosition.x), Float(screenPosition.y)),
-                    height: Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale),
-                    width: Float(metaLine.measuredText.width * metaLine.scale)
-                ))
+                let location = SIMD2<Float>(Float(screenPosition.x), Float(screenPosition.y))
+                let height = Float((abs(metaLine.measuredText.top) + abs(metaLine.measuredText.bottom)) * metaLine.scale)
+                let width = Float(metaLine.measuredText.width * metaLine.scale)
+                let bound = LTRBBounds.from(location: location, height: height, width: width)
+                added = spaceIntersections.add(shape: Shape.rect(bound))
             }
             
             let hide = added == false

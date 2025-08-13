@@ -13,19 +13,20 @@ import MetalKit
 
 
 class TileMvtParser {
-    let giveMeId: GiveMeId = GiveMeId()
-    let determineFeatureStyle: DetermineFeatureStyle
+    private let giveMeId                    : GiveMeId = GiveMeId()
+    private let determineFeatureStyle       : DetermineFeatureStyle
+    private let mapDebugSettings            : MapDebugSettings
     
-    // Parse
-    let parsePolygon: ParsePolygon = ParsePolygon()
-    let parseLine: ParseLine = ParseLine()
-    let parseBuilding: ParseBuilding = ParseBuilding()
+    private let parsePolygon                : ParsePolygon = ParsePolygon()
+    private let parseLine                   : ParseLine = ParseLine()
+    private let parseBuilding               : ParseBuilding = ParseBuilding()
     
-    private var parsedCountTest = 0
+    private var parsedCountTest             = 0
     
     
-    init(determineFeatureStyle: DetermineFeatureStyle) {
+    init(determineFeatureStyle: DetermineFeatureStyle, mapDebugSettings: MapDebugSettings) {
         self.determineFeatureStyle = determineFeatureStyle
+        self.mapDebugSettings = mapDebugSettings
     }
     
     func parse(
@@ -393,7 +394,7 @@ class TileMvtParser {
         
         addBackground(polygonByStyle: &polygonByStyle, styles: &styles)
         
-        if Settings.addTestBorders {
+        if mapDebugSettings.addTestBorders {
             addBorders(polygonByStyle: &polygonByStyle, styles: &styles)
         }
         

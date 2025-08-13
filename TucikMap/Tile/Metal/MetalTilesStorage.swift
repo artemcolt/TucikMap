@@ -21,11 +21,12 @@ class MetalTilesStorage {
         determineStyle: DetermineFeatureStyle,
         metalDevice: MTLDevice,
         textTools: TextTools,
+        mapSettings: MapSettings
     ) {
         self.textTools = textTools
         self.metalDevice = metalDevice
         memoryMetalTile = MemoryMetalTileCache(maxCacheSizeInBytes: Settings.maxCachedTilesMemory)
-        tileParser = TileMvtParser(determineFeatureStyle: determineStyle)
+        tileParser = TileMvtParser(determineFeatureStyle: determineStyle, mapDebugSettings: mapSettings.mapDebugSettings)
         mapNeedsTile = MapNeedsTile(onComplete: onTileComplete)
     }
     

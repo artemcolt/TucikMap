@@ -232,7 +232,7 @@ class GlobeMode {
                               sourceTexture: renderPassWrapper.ur8Texture0,
                               destinationTexture: renderPassWrapper.ur8Texture1)
             
-            //TODO 
+            //TODO Это не "textureAdder"
             textureAdder.addTextures(sceneTex: renderPassWrapper.texture0,
                                      bluredTex: renderPassWrapper.ur8Texture1,
                                      maskedTex: renderPassWrapper.ur8Texture0,
@@ -254,7 +254,7 @@ class GlobeMode {
             globeRadius: globeRadius
         )
         
-        if mapSettings.mapDebugSettings?.enabled == true {
+        if mapSettings.mapDebugSettings.enabled == true {
             pipelines.texturePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
             drawTexture.draw(textureEncoder: labelsRenderEncoder, texture: texture, sideWidth: 500)
             pipelines.basePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)

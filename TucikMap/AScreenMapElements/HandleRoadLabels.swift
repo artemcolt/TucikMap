@@ -106,7 +106,7 @@ class HandleRoadLabels {
         pipeline.inputComputeScreenVertices.append(contentsOf: forCompute)
     }
     
-    func onPointsReady(result: OnPointsReady, spaceDiscretisation: SpaceDiscretisation, viewportSize: SIMD2<Float>) {
+    func onPointsReady(result: OnPointsReady, spaceIntersections: SpaceIntersectionsProtocol, viewportSize: SIMD2<Float>) {
         let uniforms                    = result.uniforms
         let mapPanning                  = result.mapPanning
         let mapSize                     = result.mapSize
@@ -214,8 +214,8 @@ class HandleRoadLabels {
                 // Учитываем пересечения, коллизии
                 if factors.isEmpty == false {
                     // TODO оптимизировать
-                    var agents: [CollisionAgent] = []
-                    agents.reserveCapacity(glyphShifts.count)
+                    var shapes: [Shape] = []
+                    shapes.reserveCapacity(glyphShifts.count)
                     for glyphShift in glyphShifts {
                         var startScreen = textStartScreenShift + glyphShift * scale
                         for i in 0..<count-1 {
@@ -226,14 +226,16 @@ class HandleRoadLabels {
                                 let direction = normalize(screenNext - screenCurrent)
                                 let screenPoint = screenCurrent + direction * startScreen
                                 //testPoints.append(screenPoint + SIMD2<Float>(halfScale, halfScale))
-                                agents.append(CollisionAgent(location: screenPoint, height: scale, width: scale))
+                                let bound = LTRBBounds.from(location: screenPoint, height: scale, width: scale)
+                                shapes.append(Shape.rect(bound))
                                 break;
                             }
                             startScreen -= len
                         }
                     }
                     
-                    let contains = spaceDiscretisation.addAgentsAsSingle(agents: agents)
+                    
+                    let contains = spaceIntersections.addAsSingle(shapes: shapes)
                     if contains == false {
                         //factors = []
                         show = false

@@ -7,4 +7,5 @@
 
 struct MapDebugSettings {
     let enabled: Bool
+    let addTestBorders: Bool
 }

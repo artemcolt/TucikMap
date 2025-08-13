@@ -6,12 +6,21 @@
 //
 
 class MapSettings {
+    var mapDebugSettings: MapDebugSettings {
+        get {
+            if _mapDebugSettings == nil {
+                return MapDebugSettings(enabled: false, addTestBorders: false)
+            }
+            return _mapDebugSettings!
+        }
+    }
+    
     let mapMoveSettings: MapMoveSettings
-    let mapDebugSettings: MapDebugSettings?
+    let _mapDebugSettings: MapDebugSettings?
     
     init(mapMoveSettings: MapMoveSettings,
          mapDebugSettings: MapDebugSettings? = nil) {
         self.mapMoveSettings = mapMoveSettings
-        self.mapDebugSettings = mapDebugSettings
+        self._mapDebugSettings = mapDebugSettings
     }
 }

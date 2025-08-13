@@ -5,6 +5,8 @@
 //  Created by Artem on 8/9/25.
 //
 
+import Foundation
+
 class OnPointsReadyHandler {
     fileprivate let drawingFrameRequester   : DrawingFrameRequester
     fileprivate let handleGeoLabels         : HandleGeoLabels
@@ -18,17 +20,23 @@ class OnPointsReadyHandler {
 
 class OnPointsReadyHandlerGlobe : OnPointsReadyHandler {
     func onPointsReadyGlobe(resultGlobe: CombinedCompSPGlobe.ResultGlobe) {
+        let start = CFAbsoluteTimeGetCurrent()
         let result = resultGlobe
-        let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
         let output = result.output.map { pos in HandleGeoLabels.Position(screenPos: pos.screenCoord, visible: pos.visibleGlobeSide) }
         let handleGeoInput = HandleGeoLabels.OnPointsReady(output: output,
                                                            metalGeoLabels: result.metalGeoLabels,
                                                            mapLabelLineCollisionsMeta: result.mapLabelLineCollisionsMeta,
                                                            actualLabelsIds: result.actualLabelsIds,
                                                            geoLabelsSize: result.geoLabelsSize)
-        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceDiscretisation: spaceDiscretisation)
+        
+        let spaceIntersections = SpaceIntersections()
+        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceIntersections: spaceIntersections)
         
         drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
+        
+        let end = CFAbsoluteTimeGetCurrent()
+        let timeInterval = end - start
+        //print(String(format: "Время выполнения: %.6f секунд", timeInterval))
     }
 }
 
@@ -43,9 +51,9 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
     }
     
     func onPointsReadyFlat(resultFlat: CombinedCompSPFlat.ResultFlat) {
+        let start = CFAbsoluteTimeGetCurrent()
         let result = resultFlat.result
         let viewportSize = resultFlat.viewportSize
-        let spaceDiscretisation = SpaceDiscretisation(clusterSize: 50, count: 300)
         let output = result.output.map { pos in HandleGeoLabels.Position(screenPos: pos, visible: true) }
         let handleGeoInput = HandleGeoLabels.OnPointsReady(output: output,
                                                            metalGeoLabels: result.metalGeoLabels,
@@ -53,7 +61,8 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
                                                            actualLabelsIds: result.actualLabelsIds,
                                                            geoLabelsSize: result.geoLabelsSize)
         
-        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceDiscretisation: spaceDiscretisation)
+        let spaceIntersections = SpaceIntersections()
+        handleGeoLabels.onPointsReady(input: handleGeoInput, spaceIntersections: spaceIntersections)
         
         let handleRoadInput = HandleRoadLabels.OnPointsReady(output: result.output,
                                                              uniforms: result.uniforms,
@@ -63,9 +72,13 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
                                                              metalRoadLabelsTiles: resultFlat.metalRoadLabelsTiles,
                                                              actualRoadLabelsIds: resultFlat.actualRoadLabelsIds)
         
-        handleRoadLabels.onPointsReady(result: handleRoadInput, spaceDiscretisation: spaceDiscretisation, viewportSize: viewportSize)
+        handleRoadLabels.onPointsReady(result: handleRoadInput, spaceIntersections: spaceIntersections, viewportSize: viewportSize)
         
         
         drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
+        
+        let end = CFAbsoluteTimeGetCurrent()
+        let timeInterval = end - start
+        //print(String(format: "Время выполнения: %.6f секунд", timeInterval))
     }
 }

@@ -78,7 +78,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         textTools               = TextTools(metalDevice: metalDevice, frameCounter: frameCounter)
         metalTilesStorage       = MetalTilesStorage(determineStyle: determineFeatureStyle,
                                                     metalDevice: metalDevice,
-                                                    textTools: textTools)
+                                                    textTools: textTools,
+                                                    mapSettings: mapSettings)
         switchMapMode           = SwitchMapMode(mapModeStorage: mapModeStorage, cameraStorage: cameraStorage, mapZoomState: mapZoomState)
         renderFrameControl      = RenderFrameControl(mapCADisplayLoop: mapCadDisplayLoop,
                                                      drawingFrameRequester: drawingFrameRequester)
@@ -106,7 +107,10 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                     frameCounter: frameCounter)
         
         
-        globeTexturing          = GlobeTexturing(metalDevide: metalDevice, metalCommandQueue: metalCommandQueue, pipelines: pipelines)
+        globeTexturing          = GlobeTexturing(metalDevide: metalDevice,
+                                                 metalCommandQueue: metalCommandQueue,
+                                                 pipelines: pipelines,
+                                                 mapDebugSettings: mapSettings.mapDebugSettings)
         
         let mapUpdaterContext   = MapUpdaterContext()
         mapUpdaterStorage       = MapUpdaterStorage(mapModeStorage: mapModeStorage,
@@ -236,7 +240,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             globeMode.draw(in: view, renderPassWrapper: renderPassWrapper)
         }
         
-        if mapSettings.mapDebugSettings?.enabled == true {
+        if mapSettings.mapDebugSettings.enabled == true {
             drawDebugData.draw(renderPassWrapper: renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
         }
         
