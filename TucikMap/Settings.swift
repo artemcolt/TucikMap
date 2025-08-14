@@ -13,7 +13,7 @@ class Settings {
     
     
     static let seeTileInDirection: Float = 1
-    static let fetchTilesQueueCapacity: Int = 10 // can't be lesser than visible tiles count
+    static let fetchTilesQueueCapacity: Int = 40 // can't be lesser than visible tiles count
     
     
     static let maxBuffersInFlight: Int = 3

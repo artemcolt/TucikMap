@@ -53,20 +53,21 @@ class DetermineVisibleTiles {
     
     private func determineRealArea() -> (tiles: [Tile], areaRange: AreaRange)  {
         var visibleTiles: Set<Tile> = []
-        let zoomLevel = mapZoomState.zoomLevel
+        var zoomLevel = mapZoomState.zoomLevel
         
-        let centerTileX = camera.centerTileX
-        let centerTileY = camera.centerTileY
+        var centerTileX = camera.centerTileX
+        var centerTileY = camera.centerTileY
         if Settings.printCenterTile {
             print("centerTileX: \(centerTileX) centerTileY: \(centerTileY) zoomLevel: \(zoomLevel)")
         }
         
-//        if zoomLevel > Settings.maxTileZoom {
-//            let parent = Tile(x: centerTileX, y: centerTileY, z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
-//            centerTileX = parent.x
-//            centerTileY = parent.y
-//            zoomLevel = parent.z
-//        }
+        // на больших зумах перестаем уже загружайть тайлы с большим зумом и берем лимитный зум
+        if zoomLevel > Settings.maxTileZoom {
+            let parent = Tile(x: Int(centerTileX), y: Int(centerTileY), z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
+            centerTileX = Float(parent.x)
+            centerTileY = Float(parent.y)
+            zoomLevel = parent.z
+        }
         
         let tilesCount = 1 << zoomLevel
         let halfTiles = Settings.seeTileInDirection
@@ -116,7 +117,7 @@ class DetermineVisibleTiles {
                                   tileXCount: tileXCount.count,
                                   isFullMap: tileXCount.count == tilesCount)
         
-        print(areaRange)
+        //print(areaRange)
         
         return (tiles: Array(visibleTiles), areaRange: areaRange)
     }

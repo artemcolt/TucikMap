@@ -256,7 +256,8 @@ class GlobeMode {
             uniformsBuffer: uniformsBuffer,
             geoLabels: assembledMap.tileGeoLabels,
             currentFBIndex: currentFbIndex,
-            globeRadius: globeRadius
+            globeRadius: globeRadius,
+            transition: transition
         )
         
         if mapSettings.mapDebugSettings.enabled == true {

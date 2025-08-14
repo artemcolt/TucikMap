@@ -226,7 +226,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                                        latitude: camera.latitude,
                                                                        longitude: camera.longitude,
                                                                        globeRadius: camera.globeRadius,
-                                                                       cameraPosition: camera.cameraPosition)
+                                                                       cameraPosition: camera.cameraPosition,
+                                                                       transition: switchMapMode.transition)
             }
         }
         

@@ -75,6 +75,7 @@ class CombinedCompSPGlobe: CombinedCompSP {
         let latitude                        : Float
         let longitude                       : Float
         let globeRadius                     : Float
+        let transition                      : Float
     }
     
     // Результат работы класса для дальнейших вычислений
@@ -113,6 +114,7 @@ class CombinedCompSPGlobe: CombinedCompSP {
         let latitude            = inputGlobe.latitude
         let longitude           = inputGlobe.longitude
         let globeRadius         = inputGlobe.globeRadius
+        let transition          = inputGlobe.transition
         let onPointsReadyGlobe  = onPointsReadyGlobe
         
         var uniforms                        = input.uniforms
@@ -134,7 +136,8 @@ class CombinedCompSPGlobe: CombinedCompSP {
         
         let globeParams                     = DrawGlobeLabels.GlobeParams(latitude: latitude,
                                                                           longitude: longitude,
-                                                                          globeRadius: globeRadius)
+                                                                          globeRadius: globeRadius,
+                                                                          transition: transition)
         let calcBlockGlobe                  = ComputeScreenPositionsGlobe.CalculationBlockGlobe(inputParametersBuffer: inputParametersBuffer,
                                                                                                 inputBuffer: inputScreenPositionsBuffer,
                                                                                                 outputBuffer: outputWorldPositionsBuffer,

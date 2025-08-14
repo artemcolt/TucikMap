@@ -67,3 +67,14 @@ float4x4 scale_matrix(float3 scale) {
         float4(0.0f, 0.0f, 0.0f, 1.0f)
     );
 }
+
+
+float latToMercatorY(float latitudeRadians) {
+    float sin_phi = sin(latitudeRadians);
+    // Обработка крайних случаев: если |sin_phi| близко к 1, ограничить, чтобы избежать NaN/inf
+    sin_phi = clamp(sin_phi, -0.999999f, 0.999999f);
+    float log_term = log((1.0f + sin_phi) / (1.0f - sin_phi));
+    float y_proj = 0.5f * log_term;
+    float y_norm = y_proj / M_PI_F;
+    return y_norm;
+}

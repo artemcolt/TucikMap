@@ -10,7 +10,7 @@ import SwiftUI
 struct ContentView: View {
     
     let mapMoveSettings = MapMoveSettings(enabled: true,
-                                          z: 2,
+                                          z: 4,
                                           latLon: SIMD2<Double>(0, 0)) //55.74958790780624, 37.62346867711091
     
     let mapDebugSettings = MapDebugSettings(enabled: true, addTestBorders: true)

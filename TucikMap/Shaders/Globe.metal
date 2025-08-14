@@ -34,16 +34,6 @@ struct GlobeParams {
     float transition;
 };
 
-float latToMercatorY(float latitudeRadians) {
-    float sin_phi = sin(latitudeRadians);
-    // Обработка крайних случаев: если |sin_phi| близко к 1, ограничить, чтобы избежать NaN/inf
-    sin_phi = clamp(sin_phi, -0.999999f, 0.999999f);
-    float log_term = log((1.0f + sin_phi) / (1.0f - sin_phi));
-    float y_proj = 0.5f * log_term;
-    float y_norm = y_proj / M_PI_F;
-    return y_norm;
-}
-
 vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
                                    constant Uniforms& uniforms [[buffer(1)]],
                                    constant GlobeParams& globeParams [[buffer(2)]]) {
@@ -61,23 +51,22 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     spherePos.z = radius * cos(phi) * sin(theta);
     spherePos.w = 1;
     
-    float perimeter           = 2.0 * PI * radius;
-    float halfPerimeter       = perimeter / 2.0;
     
     float rotation            = globeParams.globeRotation;
     float4x4 translation      = translation_matrix(float3(0, 0, -radius));
     float4x4 globeRotation    = rotation_matrix(rotation, float3(1, 0, 0));
     float4 globeWorldPosition = translation * globeRotation * spherePos;
     
+    // plane position
     float distortion          = cos(rotation);
     float planeShiftY         = -latToMercatorY(rotation);
-    
-    float planeFactor = distortion * halfPerimeter;
+    float perimeter           = 2.0 * PI * radius;
+    float halfPerimeter       = perimeter / 2.0;
+    float planeFactor         = distortion * halfPerimeter;
     float4 planeWorldPosition = float4(-vertexIn.xCoord * planeFactor, vertexIn.yCoord * planeFactor + planeShiftY * planeFactor, 0, 1);
     
 
-    float transition          = (cos(uniforms.elapsedTimeSeconds * 0.5) + 1) / 2;
-    transition                = globeParams.transition;
+    float transition          = globeParams.transition;
     
     //transition = 1;
     float4 worldPosition      = mix(globeWorldPosition, planeWorldPosition, transition);

@@ -46,6 +46,7 @@ struct GlobeParams {
     float latitude;
     float longitude;
     float globeRadius;
+    float transition;
 };
 
 // это данные для одного тайла
@@ -98,11 +99,28 @@ kernel void computeScreensGlobe(
     float4x4 globeLongitude = rotation_matrix(-globeParams.longitude, float3(0, 1, 0));
     float4x4 globeLatitude = rotation_matrix(globeParams.latitude, float3(1, 0, 0));
     float4x4 globeRotation = globeLatitude * globeLongitude;
-    float4 worldLabelPos = globeTranslate * globeRotation * spherePos;
+    float4 globeWorldLabelPos = globeTranslate * globeRotation * spherePos;
     
-    bool visible = worldLabelPos.z > -radius;
     
-    float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldLabelPos;
+    // plane position of label
+    float distortion          = cos(globeParams.latitude);
+    float planeShiftY         = -latToMercatorY(globeParams.latitude);
+    float perimeter           = 2.0 * PI * radius;
+    float halfPerimeter       = perimeter / 2.0;
+    float planeFactor         = distortion * halfPerimeter;
+    float2 planeCoord         = float2(labelCoord.x - globeParams.longitude / PI, labelCoord.y);
+    float4 planeWorldPosition = float4(planeCoord.x * planeFactor, planeCoord.y * planeFactor + planeShiftY * planeFactor, 0, 1);
+    
+    
+    // transit plane to globe and globe to plane
+    float transition          = globeParams.transition;
+    float4 worldPosition      = mix(globeWorldLabelPos, planeWorldPosition, transition);
+    
+    
+    // visiblity detection code
+    bool visible = worldPosition.z > -radius;
+    
+    float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldPosition;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
     float2 viewportSize = uniforms.viewportSize;
     float viewportWidth = viewportSize.x;

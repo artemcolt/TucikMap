@@ -18,6 +18,7 @@ class DrawGlobeLabels {
         let latitude: Float
         let longitude: Float
         let globeRadius: Float
+        let transition: Float
     }
     
     // параметры под один тайл
@@ -44,7 +45,8 @@ class DrawGlobeLabels {
         uniformsBuffer: MTLBuffer,
         geoLabels: [MetalTile.TextLabels],
         currentFBIndex: Int,
-        globeRadius: Float
+        globeRadius: Float,
+        transition: Float
     ) {
         guard geoLabels.isEmpty == false else { return }
         
@@ -53,7 +55,8 @@ class DrawGlobeLabels {
         let longitude = camera.longitude
         var globeParams = GlobeParams(latitude: latitude,
                                       longitude: longitude,
-                                      globeRadius: globeRadius)
+                                      globeRadius: globeRadius,
+                                      transition: transition)
         
         renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobeParams>.stride, index: 8)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)
