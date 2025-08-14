@@ -140,15 +140,15 @@ class GlobeTexturing {
             }
         }
         
-        if mapDebugSettings.addTestBorders {
-            pipelines.basePipeline.selectPipeline(renderEncoder: commandEncoder)
-            if currentZ > 1 {
-                drawHelpGrid3(commandEncoder: commandEncoder)
-            }
-            if currentZ == 1 {
-                drawHelpGrid2(commandEncoder: commandEncoder)
-            }
-        }
+//        if mapDebugSettings.addTestBorders {
+//            pipelines.basePipeline.selectPipeline(renderEncoder: commandEncoder)
+//            if currentZ > 1 {
+//                drawHelpGrid3(commandEncoder: commandEncoder)
+//            }
+//            if currentZ == 1 {
+//                drawHelpGrid2(commandEncoder: commandEncoder)
+//            }
+//        }
         
         commandEncoder.endEncoding()
     }

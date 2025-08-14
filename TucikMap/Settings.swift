@@ -12,6 +12,11 @@ class Settings {
     static var forceRenderOnDisplayUpdate   : Bool = false
     
     
+    static let visibleTilesBorder: Int = 3
+    static let visibleTilesCount: Int = visibleTilesBorder * visibleTilesBorder
+    
+    
+    
     static let maxBuffersInFlight: Int = 3
     
     static let rotationSensitivity: Float = 0.2
@@ -34,9 +39,6 @@ class Settings {
     static let baseFlatMapSize: Float = 2 * Float.pi * nullZoomGlobeRadius
     
     static let maxTileZoom: Int = 16
-    static let visibleTilesCount: Int = 9
-    static let visibleTilesX: Int = 3
-    static let visibleTilesY: Int = 3
     
     static let gridThickness: Float = 20
     static let cameraCenterPointSize: Float = 0.01

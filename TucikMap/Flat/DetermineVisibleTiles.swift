@@ -10,8 +10,7 @@ import simd
 
 class DetermineVisibleTiles {
     // Настройки количества видимых тайлов по горизонтали и вертикали
-    let visibleTilesX: Int = Settings.visibleTilesX
-    let visibleTilesY: Int = Settings.visibleTilesY
+    let visibleTilesBorder: Int = Settings.visibleTilesBorder
     private let mapZoomState: MapZoomState
     private let camera: Camera
     
@@ -75,11 +74,10 @@ class DetermineVisibleTiles {
         let maxTileCoord = tilesCount - 1
         
         // Определяем диапазон видимых тайлов
-        let halfTilesX = visibleTilesX / 2
-        let halfTilesY = visibleTilesY / 2
+        let halfTiles = visibleTilesBorder / 2
         
-        var startY = centerTileY - halfTilesY
-        var endY = centerTileY + halfTilesY
+        var startY = centerTileY - halfTiles
+        var endY = centerTileY + halfTiles
         if startY < 0 {
             let shiftY = abs(startY)
             startY += shiftY
@@ -93,8 +91,8 @@ class DetermineVisibleTiles {
         startY = min(max(startY, 0), maxTileCoord)
         endY = min(max(endY, 0), maxTileCoord)
         
-        var startX = centerTileX - halfTilesX
-        var endX = centerTileX + halfTilesX
+        var startX = centerTileX - halfTiles
+        var endX = centerTileX + halfTiles
         
         // Кастомно настраиваем видимую область для малых зумов
         switch zoomLevel {
