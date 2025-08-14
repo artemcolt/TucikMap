@@ -9,12 +9,11 @@ import Foundation
 import simd
 
 class Settings {
-    static var forceRenderOnDisplayUpdate   : Bool = false
+    static var forceRenderOnDisplayUpdate: Bool = false
     
     
-    static let visibleTilesBorder: Int = 3
-    static let visibleTilesCount: Int = visibleTilesBorder * visibleTilesBorder
-    
+    static let seeTileInDirection: Float = 1
+    static let fetchTilesQueueCapacity: Int = 10 // can't be lesser than visible tiles count
     
     
     static let maxBuffersInFlight: Int = 3
@@ -62,7 +61,6 @@ class Settings {
     static var debugIntersectionsLabels: Bool = false
     
     static let maxConcurrentFetchs = 3
-    static let fetchTilesQueueCapacity = Settings.visibleTilesCount // can't be lesser than visible tiles count
     
     static let maxCachedTilesCount = 100
     static let maxCachedTilesMemory = 500 * 1024 * 1024

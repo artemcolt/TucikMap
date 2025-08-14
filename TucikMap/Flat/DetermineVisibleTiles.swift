@@ -10,7 +10,6 @@ import simd
 
 class DetermineVisibleTiles {
     // Настройки количества видимых тайлов по горизонтали и вертикали
-    let visibleTilesBorder: Int = Settings.visibleTilesBorder
     private let mapZoomState: MapZoomState
     private let camera: Camera
     
@@ -54,30 +53,27 @@ class DetermineVisibleTiles {
     
     private func determineRealArea() -> (tiles: [Tile], areaRange: AreaRange)  {
         var visibleTiles: Set<Tile> = []
-        var zoomLevel = mapZoomState.zoomLevel
+        let zoomLevel = mapZoomState.zoomLevel
         
-        var centerTileX = Int(camera.centerTileX)
-        var centerTileY = Int(camera.centerTileY)
+        let centerTileX = camera.centerTileX
+        let centerTileY = camera.centerTileY
         if Settings.printCenterTile {
             print("centerTileX: \(centerTileX) centerTileY: \(centerTileY) zoomLevel: \(zoomLevel)")
         }
         
-        if zoomLevel > Settings.maxTileZoom {
-            let parent = Tile(x: centerTileX, y: centerTileY, z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
-            centerTileX = parent.x
-            centerTileY = parent.y
-            zoomLevel = parent.z
-        }
+//        if zoomLevel > Settings.maxTileZoom {
+//            let parent = Tile(x: centerTileX, y: centerTileY, z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
+//            centerTileX = parent.x
+//            centerTileY = parent.y
+//            zoomLevel = parent.z
+//        }
         
-        let powZoomLevel = pow(2.0, Float(zoomLevel))
-        let tilesCount = Int(powZoomLevel)
+        let tilesCount = 1 << zoomLevel
+        let halfTiles = Settings.seeTileInDirection
         let maxTileCoord = tilesCount - 1
         
-        // Определяем диапазон видимых тайлов
-        let halfTiles = visibleTilesBorder / 2
-        
-        var startY = centerTileY - halfTiles
-        var endY = centerTileY + halfTiles
+        var startY = Int(floor(centerTileY - halfTiles))
+        var endY = Int(centerTileY + halfTiles)
         if startY < 0 {
             let shiftY = abs(startY)
             startY += shiftY
@@ -91,18 +87,8 @@ class DetermineVisibleTiles {
         startY = min(max(startY, 0), maxTileCoord)
         endY = min(max(endY, 0), maxTileCoord)
         
-        var startX = centerTileX - halfTiles
-        var endX = centerTileX + halfTiles
-        
-        // Кастомно настраиваем видимую область для малых зумов
-        switch zoomLevel {
-        case 1:
-            startX = 0
-            endX = 1
-            startY = 0
-            endY = 1
-        default: break
-        }
+        let startX = Int(floor(centerTileX - halfTiles))
+        let endX = Int(centerTileX + halfTiles)
         
         var tileXCount: Set<Int> = []
         
@@ -127,7 +113,10 @@ class DetermineVisibleTiles {
                                   minY: startY,
                                   maxY: endY,
                                   z: zoomLevel,
-                                  tileXCount: tileXCount.count)
+                                  tileXCount: tileXCount.count,
+                                  isFullMap: tileXCount.count == tilesCount)
+        
+        print(areaRange)
         
         return (tiles: Array(visibleTiles), areaRange: areaRange)
     }

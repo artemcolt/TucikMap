@@ -138,16 +138,21 @@ class GlobeMode {
         let metalTiles      = assembledMap.tiles
         let currentFbIndex  = updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer  = updateBufferedUniform.getCurrentFrameBuffer()
-        let z               = areaRange.z
         let tilesCount      = mapZoomState.tilesCount
         let panX            = Float(camera.mapPanning.x)
         
         var uShiftMap = panX
-        if z > 1 {
-            let uTileSize = Float(1.0 / 3.0)
+        if areaRange.isFullMap == false {
+            let uTileSize = Float(1.0) / Float(areaRange.tileXCount)
             let halfTilesCount = Float(tilesCount) / 2.0
             let uShift = (panX * 2.0) * halfTilesCount * uTileSize
-            uShiftMap = uTileSize - uTileSize / 2 + uShift.truncatingRemainder(dividingBy: uTileSize)
+            
+            var additional = Float(0)
+            if areaRange.tileXCount % 2 == 1 {
+                additional = uTileSize / 2
+            }
+            
+            uShiftMap = additional + uShift.truncatingRemainder(dividingBy: uTileSize)
             if uShift > 0 {
                 uShiftMap -= uTileSize
             }

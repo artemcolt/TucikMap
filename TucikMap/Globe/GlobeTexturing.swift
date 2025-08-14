@@ -58,18 +58,18 @@ class GlobeTexturing {
         let minTileY    = Float(areaRange.minY)
         let maxTileY    = Float(areaRange.maxY)
         let currentZ    = Float(areaRange.z)
-        let tilesNum    = pow(2, currentZ)
+        let tilesNum    = Float(1 << areaRange.z)
         
-        let visXCenter  = minTileX + (maxTileX - minTileX) / 2
-        let visYCenter  = minTileY + (maxTileY - minTileY) / 2
+        var visXCenter  = minTileX + (maxTileX - minTileX) / 2
+        var visYCenter  = minTileY + (maxTileY - minTileY) / 2
+        
+        if areaRange.isFullMap {
+            visXCenter = tilesNum / 2.0
+            visYCenter = tilesNum / 2.0
+        }
         
         let normalTileSize = Float(2.0)
-        var windowSize = Float(3.0)
-        switch currentZ {
-            case 0: windowSize = 1
-            case 1: windowSize = 2
-            default: windowSize = 3
-        }
+        let windowSize = Float(areaRange.tileXCount)
         let windowTileFraction = Float(1) / windowSize
         
         let texture                 = texturesBuffered[currentFBIndex]
@@ -83,6 +83,8 @@ class GlobeTexturing {
         guard let commandEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
         pipelines.polygonPipeline.selectPipeline(renderEncoder: commandEncoder)
         drawTile.setUniforms(renderEncoder: commandEncoder, uniformsBuffer: uniformsBuffer)
+        
+        let windowIsOdd = areaRange.tileXCount % 2 == 1
         
         for looping in -1...1 {
             for metalTile in metalTiles {
@@ -109,8 +111,10 @@ class GlobeTexturing {
                 var relativeTileDeltaX = Float(0)
                 var relativeTileDeltaY = Float(0)
                 
-                relativeTileDeltaX -= 0.5
-                relativeTileDeltaY += 0.5
+                if (windowIsOdd && areaRange.isFullMap == false) {
+                    relativeTileDeltaX -= 0.5
+                    relativeTileDeltaY += 0.5
+                }
                 
                 relativeTileDeltaX -= difXFromCenter
                 relativeTileDeltaY += difYFromCenter
