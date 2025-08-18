@@ -9,14 +9,12 @@ import SwiftUI
 
 struct ContentView: View {
     
-    let mapMoveSettings = MapMoveSettings(enabled: true,
-                                          z: 4,
-                                          latLon: SIMD2<Double>(0, 0)) //55.74958790780624, 37.62346867711091
-    
-    let mapDebugSettings = MapDebugSettings(enabled: true, addTestBorders: true)
+    let mapSettings = MapSettingsBuilder()
+        .initPosition(z: 0, latLon: SIMD2<Double>(0, 0))
+        .build()
     
     var body: some View {
-        TucikMapView(mapSettings: MapSettings(mapMoveSettings: mapMoveSettings, mapDebugSettings: mapDebugSettings))
+        TucikMapView(mapSettings: mapSettings)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
     }

@@ -6,8 +6,8 @@
 //
 
 class NormalizeLocalCoords {
-    static func normalize(flatCoords: [Double]) -> [SIMD2<Float>] {
-        let extent = Double(Settings.tileExtent)
+    static func normalize(flatCoords: [Double], tileExtent: Double) -> [SIMD2<Float>] {
+        let extent = tileExtent
         var vertices: [SIMD2<Float>] = []
         for i in stride(from: 0, to: flatCoords.count, by: 2) {
             let x = flatCoords[i] / extent * 2.0 - 1.0
@@ -17,8 +17,8 @@ class NormalizeLocalCoords {
         return vertices
     }
     
-    static func normalize(coord: SIMD2<Double>) -> SIMD2<Double> {
-        let extent = Double(Settings.tileExtent)
+    static func normalize(coord: SIMD2<Double>, tileExtent: Double) -> SIMD2<Double> {
+        let extent = tileExtent
         let x = coord.x / extent * 2.0 - 1.0
         let y = (1.0 - coord.y / extent) * 2.0 - 1.0
         return SIMD2<Double>(x, y)

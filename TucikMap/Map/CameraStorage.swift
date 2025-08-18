@@ -44,7 +44,7 @@ class CameraStorage {
     init(mapModeStorage: MapModeStorage,
          mapZoomState: MapZoomState,
          drawingFrameRequester: DrawingFrameRequester,
-         mapCadDisplayLoop: MapCADisplayLoop) {
+         mapCadDisplayLoop: MapCADisplayLoop, mapSettings: MapSettings) {
         self.controlsDelegate       = ControlsDelegate()
         self.mapModeStorage         = mapModeStorage
         self.mapZoomState           = mapZoomState
@@ -55,12 +55,14 @@ class CameraStorage {
         _flatView = CameraFlatView(mapZoomState: mapZoomState,
                                    drawingFrameRequester: drawingFrameRequester,
                                    mapCadDisplayLoop: mapCadDisplayLoop,
-                                   cameraContext: cameraContext)
+                                   cameraContext: cameraContext,
+                                   mapSettings: mapSettings)
         
         _globeView = CameraGlobeView(mapZoomState: mapZoomState,
                                      drawingFrameRequester: drawingFrameRequester,
                                      mapCadDisplayLoop: mapCadDisplayLoop,
-                                     cameraContext: cameraContext)
+                                     cameraContext: cameraContext,
+                                     mapSettings: mapSettings)
     }
     
     // Handle single-finger pan gesture for target translation

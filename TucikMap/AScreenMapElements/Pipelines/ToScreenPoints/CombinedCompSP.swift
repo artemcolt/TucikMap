@@ -37,12 +37,16 @@ class CombinedCompSP {
     fileprivate let outputWorldPositionsBuffer      : MTLBuffer
     
     // размер для входного буффера точек, максимально может быть столько точек
-    fileprivate let inputBufferWorldPostionsSize    = Settings.maxInputComputeScreenPoints
+    fileprivate let inputBufferWorldPostionsSize    : Int
     // размер для входного буффера матриц, макисмально может быть столько матриц
-    fileprivate let modelMatrixBufferSize           = Settings.geoLabelsParametersBufferSize
+    fileprivate let modelMatrixBufferSize           : Int
     
     init(metalDevice: MTLDevice,
-         metalCommandQueue: MTLCommandQueue) {
+         metalCommandQueue: MTLCommandQueue,
+         mapSettings: MapSettings) {
+        self.inputBufferWorldPostionsSize = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
+        self.modelMatrixBufferSize      = mapSettings.getMapCommonSettings().getGeoLabelsParametersBufferSize()
+        
         self.metalCommandQueue          = metalCommandQueue
         
         // этим значением запоним буффер входных вертексов
@@ -96,10 +100,11 @@ class CombinedCompSPGlobe: CombinedCompSP {
     init(metalDevice: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
          onPointsReadyGlobe: OnPointsReadyHandlerGlobe,
-         computeScreenPositionsGlobe: ComputeScreenPositionsGlobe) {
+         computeScreenPositionsGlobe: ComputeScreenPositionsGlobe,
+         mapSettings: MapSettings) {
         self.onPointsReadyGlobe = onPointsReadyGlobe
         self.computeScreenPositionsGlobe = computeScreenPositionsGlobe
-        super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue)
+        super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue, mapSettings: mapSettings)
     }
     
     func projectGlobe(inputGlobe: InputGlobe) {
@@ -214,10 +219,10 @@ class CombinedCompSPFlat: CombinedCompSP {
     init(metalDevice: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
          onPointsReadyFlat: OnPointsReadyHandlerFlat,
-         computeScreenPositionsFlat: ComputeScreenPositionsFlat) {
+         computeScreenPositionsFlat: ComputeScreenPositionsFlat, mapSettings: MapSettings) {
         self.onPointsReadyFlat = onPointsReadyFlat
         self.computeScreenPositionsFlat = computeScreenPositionsFlat
-        super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue)
+        super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue, mapSettings: mapSettings)
     }
     
     func projectFlat(inputFlat: InputFlat) {

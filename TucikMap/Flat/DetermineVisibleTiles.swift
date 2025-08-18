@@ -12,10 +12,12 @@ class DetermineVisibleTiles {
     // Настройки количества видимых тайлов по горизонтали и вертикали
     private let mapZoomState: MapZoomState
     private let camera: Camera
+    private let mapSettings: MapSettings
     
-    init(mapZoomState: MapZoomState, camera: Camera) {
+    init(mapZoomState: MapZoomState, camera: Camera, mapSettings: MapSettings) {
         self.mapZoomState = mapZoomState
         self.camera = camera
+        self.mapSettings = mapSettings
     }
     
     func determine() -> DetVisTilesResult {
@@ -23,18 +25,21 @@ class DetermineVisibleTiles {
         var visibleTiles = realArea.tiles
         let areaRange = realArea.areaRange
         
-        if Settings.printVisibleTiles {
+        let printVisibleTiles = mapSettings.getMapDebugSettings().getPrintVisibleTiles()
+        let showOnlyTiles = mapSettings.getMapDebugSettings().getShowOnlyTiles()
+        let printVisibleAreaRange = mapSettings.getMapDebugSettings().getPrintVisibleAreaRange()
+        if printVisibleTiles {
             print("------")
             for tile in visibleTiles {
                 print("x:\(tile.x) y:\(tile.y) z:\(tile.z)")
             }
         }
         
-        if Settings.showOnlyTiles.count > 0 {
+        if showOnlyTiles.count > 0 {
             visibleTiles = fixedTiles()
         }
         
-        if Settings.printVisibleAreaRange {
+        if printVisibleAreaRange {
             print("z: \(areaRange.z) startX:\(areaRange.startX) endX:\(areaRange.endX) minY:\(areaRange.minY) maxY:\(areaRange.maxY)")
         }
         
@@ -57,20 +62,24 @@ class DetermineVisibleTiles {
         
         var centerTileX = camera.centerTileX
         var centerTileY = camera.centerTileY
-        if Settings.printCenterTile {
+        let printCenterTile = mapSettings.getMapDebugSettings().getPrintCenterTile()
+        let maxTileZoom = mapSettings.getMapCameraSettings().getMaxTileZoom()
+        let seeTileInDirection = mapSettings.getMapCommonSettings().getSeeTileInDirection()
+        let allowOnlyTiles = mapSettings.getMapDebugSettings().getAllowOnlyTiles()
+        if printCenterTile {
             print("centerTileX: \(centerTileX) centerTileY: \(centerTileY) zoomLevel: \(zoomLevel)")
         }
         
         // на больших зумах перестаем уже загружайть тайлы с большим зумом и берем лимитный зум
-        if zoomLevel > Settings.maxTileZoom {
-            let parent = Tile(x: Int(centerTileX), y: Int(centerTileY), z: zoomLevel).findParentTile(atZoom: Settings.maxTileZoom)!
+        if zoomLevel > maxTileZoom {
+            let parent = Tile(x: Int(centerTileX), y: Int(centerTileY), z: zoomLevel).findParentTile(atZoom: maxTileZoom)!
             centerTileX = Float(parent.x)
             centerTileY = Float(parent.y)
             zoomLevel = parent.z
         }
         
         let tilesCount = 1 << zoomLevel
-        let halfTiles = Settings.seeTileInDirection
+        let halfTiles = Float(seeTileInDirection)
         let maxTileCoord = tilesCount - 1
         
         var startY = Int(floor(centerTileY - halfTiles))
@@ -101,9 +110,9 @@ class DetermineVisibleTiles {
                 
                 // Добавляем тайл с текущим уровнем зума
                 let tile = Tile(x: normTileX, y: tileY, z: zoomLevel)
-                if Settings.allowOnlyTiles.isEmpty {
+                if allowOnlyTiles.isEmpty {
                     visibleTiles.insert(tile)
-                } else if Settings.allowOnlyTiles.contains(tile) {
+                } else if allowOnlyTiles.contains(tile) {
                     visibleTiles.insert(tile)
                 }
             }
@@ -117,17 +126,19 @@ class DetermineVisibleTiles {
                                   tileXCount: tileXCount.count,
                                   isFullMap: tileXCount.count == tilesCount)
         
-        //print(areaRange)
+        print(areaRange)
         
         return (tiles: Array(visibleTiles), areaRange: areaRange)
     }
     
     private func fixedTiles() -> [Tile] {
+        let showOnlyTiles = mapSettings.getMapDebugSettings().getShowOnlyTiles()
+        let maxTileZoom = mapSettings.getMapCameraSettings().getMaxTileZoom()
         var visibleTiles: [Tile] = []
-        for tile in Settings.showOnlyTiles {
-            if tile.z > Settings.maxTileZoom {
+        for tile in showOnlyTiles {
+            if tile.z > maxTileZoom {
                 // Если показ этого тайла невозможен из за ограничений в зуме то нужно найти родительский тайл
-                visibleTiles.append(tile.findParentTile(atZoom: Settings.maxTileZoom)!)
+                visibleTiles.append(tile.findParentTile(atZoom: maxTileZoom)!)
             } else {
                 visibleTiles.append(tile)
             }

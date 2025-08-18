@@ -24,6 +24,7 @@ class MapUpdater {
     var metalDevice                     : MTLDevice
     var savedView                       : MTKView!
     var mapModeStorage                  : MapModeStorage
+    var mapSettings                     : MapSettings
     
     var assembledMap: AssembledMap {
         get { mapUpdaterContext.assembledMap }
@@ -41,7 +42,8 @@ class MapUpdater {
         mapModeStorage: MapModeStorage,
         mapUpdaterContext: MapUpdaterContext,
         updateBufferedUniform: UpdateBufferedUniform,
-        screenCollisionsDetector: ScreenCollisionsDetector
+        screenCollisionsDetector: ScreenCollisionsDetector,
+        mapSettings: MapSettings
     ) {
         self.screenCollisionsDetector   = screenCollisionsDetector
         self.metalDevice                = device
@@ -54,7 +56,8 @@ class MapUpdater {
         self.mapModeStorage             = mapModeStorage
         self.mapUpdaterContext          = mapUpdaterContext
         self.updateBufferedUniform      = updateBufferedUniform
-        determineVisibleTiles           = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera)
+        self.mapSettings                = mapSettings
+        determineVisibleTiles           = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera, mapSettings: mapSettings)
     }
     
     func update(view: MTKView, useOnlyCached: Bool) {
@@ -100,10 +103,12 @@ class MapUpdater {
             mapCadDisplayLoop.forceUpdateStates()
         }
         
-        if (Settings.debugAssemblingMap) {
+        let debugAssemblingMap = mapSettings.getMapDebugSettings().getDebugAssemblingMap()
+        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
+        if debugAssemblingMap {
             print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
         }
         
-        drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
+        drawingFrameRequester.renderNextNFrames(maxBuffersInFlight)
     }
 }

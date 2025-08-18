@@ -64,16 +64,19 @@ class Camera {
     fileprivate let mapZoomState                : MapZoomState
     fileprivate let drawingFrameRequester       : DrawingFrameRequester
     fileprivate let mapCadDisplayLoop           : MapCADisplayLoop
+    fileprivate let mapSettings                 : MapSettings
 
     init(mapZoomState: MapZoomState,
          drawingFrameRequester: DrawingFrameRequester,
          mapCadDisplayLoop: MapCADisplayLoop,
-         cameraContext: CameraContext) {
+         cameraContext: CameraContext,
+         mapSettings: MapSettings) {
         
         self.mapZoomState = mapZoomState
         self.drawingFrameRequester = drawingFrameRequester
         self.mapCadDisplayLoop = mapCadDisplayLoop
         self.cameraContext = cameraContext
+        self.mapSettings = mapSettings
     }
     
     func nearAndFar() -> SIMD2<Float> {
@@ -84,8 +87,9 @@ class Camera {
     func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view as? MTKView else { return }
         
+        let panSensitivity = mapSettings.getMapCameraSettings().getPanSensitivity()
         let translation = gesture.translation(in: view)
-        let sensitivity: Float = Settings.panSensitivity / pow(2.0, mapZoom)
+        let sensitivity: Float = panSensitivity / pow(2.0, mapZoom)
         
         panDeltaX = Float(translation.x) * sensitivity
         panDeltaY = -Float(translation.y) * sensitivity
@@ -99,7 +103,7 @@ class Camera {
         guard let view = gesture.view as? MTKView else { return }
         
         let rotation = Float(gesture.rotation)
-        let sensitivity: Float = Settings.rotationSensitivity
+        let sensitivity: Float = mapSettings.getMapCameraSettings().getRotationSensitivity()
         rotationDeltaYaw = -rotation * sensitivity // Negative for intuitive control
         gesture.rotation = 0
         
@@ -111,7 +115,7 @@ class Camera {
         guard let view = gesture.view as? MTKView else { return }
         
         let translation = gesture.translation(in: view)
-        let sensitivity: Float = Settings.twoFingerPanSensitivity
+        let sensitivity: Float = mapSettings.getMapCameraSettings().getTwoFingerPanSensitivity()
         twoFingerDeltaPitch = -Float(translation.y) * sensitivity
         gesture.setTranslation(.zero, in: view)
         
@@ -123,7 +127,7 @@ class Camera {
         guard let view = gesture.view as? MTKView else { return }
         
         let scale = Float(gesture.scale)
-        let sensitivity: Float = Settings.pinchSensitivity * abs(Float(gesture.velocity))
+        let sensitivity: Float = mapSettings.getMapCameraSettings().getPinchSensitivity() * abs(Float(gesture.velocity))
         pinchDeltaDistance = (1.0 - scale) * sensitivity // Negative for intuitive zoom: pinch in to zoom out, pinch out to zoom in
         gesture.scale = 1.0 // Reset scale for next event
         
@@ -135,8 +139,8 @@ class Camera {
     }
     
     func updateMap(view: MTKView, size: CGSize) {
-        mapZoom = max(0, min(mapZoom, Settings.zoomLevelMax))
-        cameraDistance = Settings.nullZoomCameraDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
+        mapZoom = max(0, min(mapZoom, mapSettings.getMapCameraSettings().getZoomLevelMax()))
+        cameraDistance = mapSettings.getMapCameraSettings().getNullZoomCameraDistance() / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
         mapZoomState.update(zoomLevelFloat: mapZoom, mapSize: mapSize)
         
         // Compute camera position based on distance and orientation
@@ -159,13 +163,13 @@ class Camera {
         let panX        = mapPanning.x
         longitude       = -Float(panX / (mapSize / 2.0)) * Float.pi
         
-        globeRadius     = Settings.nullZoomGlobeRadius * mapZoomState.powZoomLevel
+        globeRadius     = mapSettings.getMapCommonSettings().getNullZoomGlobeRadius() * mapZoomState.powZoomLevel
         
         let _ = updateCameraCenterTile()
         
-        drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
+        drawingFrameRequester.renderNextNFrames(mapSettings.getMapCommonSettings().getMaxBuffersInFlight())
         
-        if Settings.printCenterLatLon {
+        if mapSettings.getMapDebugSettings().getPrintCenterLatLon() {
             print(getCenterLatLon())
         }
         
@@ -179,7 +183,9 @@ class Camera {
         mapZoom -= pinchDeltaDistance
         
         // two finger
-        let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch, Settings.maxCameraPitch), Settings.minCameraPitch)
+        let maxCameraPitch = mapSettings.getMapCameraSettings().getMaxCameraPitch()
+        let minCameraPitch = mapSettings.getMapCameraSettings().getMinCameraPitch()
+        let newCameraPitch = max(min(cameraPitch + twoFingerDeltaPitch, maxCameraPitch), minCameraPitch)
         let quaternionDelta = newCameraPitch - cameraPitch
         // Rotate around local X-axis (pitch)
         if abs(quaternionDelta) > 0 {
@@ -290,7 +296,7 @@ class Camera {
 
 
 class CameraGlobeView : Camera {
-    override var mapSize: Float { get { return Settings.globeMapSize } }
+    override var mapSize: Float { get { return mapSettings.getMapCommonSettings().getGlobeMapSize() } }
     
     override func nearAndFar() -> SIMD2<Float> {
         let near: Float         = 0.1
@@ -305,10 +311,24 @@ class CameraGlobeView : Camera {
 class CameraFlatView : Camera {
     override var mapSize: Float { get { return flatMapSize } }
     
-    private var flatMapSize: Float = Settings.baseFlatMapSize
+    private var flatMapSize: Float
     
     func applyDistortion(distortion: Float) {
-        flatMapSize = Settings.baseFlatMapSize * distortion
+        flatMapSize = mapSettings.getMapCommonSettings().getBaseFlatMapSize() * distortion
+    }
+    
+    override init(mapZoomState: MapZoomState,
+         drawingFrameRequester: DrawingFrameRequester,
+         mapCadDisplayLoop: MapCADisplayLoop,
+         cameraContext: CameraContext,
+         mapSettings: MapSettings) {
+        
+        flatMapSize = mapSettings.getMapCommonSettings().getBaseFlatMapSize()
+        super.init(mapZoomState: mapZoomState,
+                   drawingFrameRequester: drawingFrameRequester,
+                   mapCadDisplayLoop: mapCadDisplayLoop,
+                   cameraContext: cameraContext,
+                   mapSettings: mapSettings)
     }
     
     override func nearAndFar() -> SIMD2<Float> {
@@ -316,7 +336,7 @@ class CameraFlatView : Camera {
         let pitchAngle: Float   = cameraPitch
         let pitchNormalized     = pitchAngle / halfPi
         let nearFactor          = sqrt(pitchNormalized)
-        let farFactor           = pitchAngle * Settings.farPlaneIncreaseFactor
+        let farFactor           = pitchAngle * mapSettings.getMapCameraSettings().getFarPlaneIncreaseFactor()
         
         let delta: Float        = 1.0
         let near: Float         = cameraDistance - delta - nearFactor * cameraDistance
@@ -325,15 +345,4 @@ class CameraFlatView : Camera {
         
         return SIMD2<Float>(near, far)
     }
-    
-    // Вернуть в допустимую зону камеру
-//        let zoomFactor = Double(pow(2.0, floor(mapZoom)))
-//        let visibleHeight = 2.0 * Double(cameraDistance) * Double(tan(Settings.fov / 2.0)) / zoomFactor
-//        let targetPositionYMin = Double(-Settings.mapSize) / 2.0 + visibleHeight / 2.0
-//        let targetPositionYMax = Double(Settings.mapSize) / 2.0  - visibleHeight / 2.0
-//        if (mapPanning.y < targetPositionYMin) {
-//            mapPanning.y = targetPositionYMin
-//        } else if (mapPanning.y > targetPositionYMax) {
-//            mapPanning.y = targetPositionYMax
-//        }
 }

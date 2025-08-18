@@ -16,8 +16,10 @@ struct FilterTextLabelsResult {
 class DetermineFeatureStyle {
     private let fallbackKey: UInt8 = 0
     private var fallbackStyle: FeatureStyle
+    private let mapSettings: MapSettings
 
-    init() {
+    init(mapSettings: MapSettings) {
+        self.mapSettings = mapSettings
         fallbackStyle = FeatureStyle(
             key: fallbackKey,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0),
@@ -27,8 +29,9 @@ class DetermineFeatureStyle {
     
     func filterTextLabels(properties: [String: Sendable], tile: Tile) -> FilterTextLabelsResult? {
         guard let nameEn = properties["name_en"] as? String else {return nil}
-        if Settings.getOnlySpecificMapLabels.isEmpty == false {
-            if Settings.getOnlySpecificMapLabels.contains(nameEn) == false {
+        let getOnlySpecificMapLabels = mapSettings.getMapDebugSettings().getGetOnlySpecificMapLabels()
+        if getOnlySpecificMapLabels.isEmpty == false {
+            if getOnlySpecificMapLabels.contains(nameEn) == false {
                 return nil
             }
         }
@@ -81,14 +84,14 @@ class DetermineFeatureStyle {
         let colors = [
             "admin_boundary": SIMD4<Float>(0.65, 0.65, 0.75, 1.0), // Soft purple-gray
             "admin_level_1": SIMD4<Float>(0.45, 0.55, 0.85, 1.0), // Deeper blue
-            "water": Settings.waterColor,
+            "water": mapSettings.getMapBaseColors().getWaterColor(),
             "river": SIMD4<Float>(0.2, 0.5, 0.8, 1.0),           // Slightly darker blue
             "landcover_forest": SIMD4<Float>(0.2, 0.6, 0.4, 0.7), // Forest green
-            "landcover_grass": Settings.landCoverColor,  
+            "landcover_grass": mapSettings.getMapBaseColors().getLandCoverColor(),
             "road_major": SIMD4<Float>(0.9, 0.9, 0.9, 1.0),       // Near-white
             "road_minor": SIMD4<Float>(0.7, 0.7, 0.7, 1.0),       // Light gray
             "fallback": SIMD4<Float>(0.5, 0.5, 0.5, 0.5),          // Neutral gray
-            "background": Settings.tileBgColor,
+            "background": mapSettings.getMapBaseColors().getTileBgColor(),
             "border": SIMD4<Float>(0.0, 0.0, 0.0, 1.0),
             
             "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.7),         // Warm beige

@@ -47,10 +47,12 @@ class HandleGeoLabels {
     
     private let frameCounter: FrameCounter
     private let mapZoomState: MapZoomState
+    private let mapSettings: MapSettings
     
-    init(frameCounter: FrameCounter, mapZoomState: MapZoomState) {
+    init(frameCounter: FrameCounter, mapZoomState: MapZoomState, mapSettings: MapSettings) {
         self.frameCounter = frameCounter
         self.mapZoomState = mapZoomState
+        self.mapSettings = mapSettings
     }
     
     func onPointsReady(input: OnPointsReady, spaceIntersections: SpaceIntersectionsProtocol) {
@@ -145,7 +147,8 @@ class HandleGeoLabels {
         
         self.geoLabelsWithIntersections = GeoLabelsWithIntersections(
             intersections: intersectionsResultByTiles,
-            geoLabels: metalGeoLabels
+            geoLabels: metalGeoLabels,
+            bufferingCounter: mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         )
     }
     
@@ -162,11 +165,12 @@ class HandleGeoLabels {
         pipeline: inout ScreenCollisionsDetector.ForEvaluationResult,
         prepareToScreenData: PrepareToScreenData
     ) {
+        let labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
         var metalGeoLabels: [MetalTile.TextLabels] = []
         // Удаляет стухшие тайлы с гео метками
         for geoLabel in self.geoLabels {
-            if geoLabel.timePoint == nil || elapsedTime - geoLabel.timePoint! < Settings.labelsFadeAnimationTimeSeconds {
+            if geoLabel.timePoint == nil || elapsedTime - geoLabel.timePoint! < labelsFadeAnimationTimeSeconds {
                 metalGeoLabels.append(geoLabel)
             }
         }

@@ -55,34 +55,40 @@ class Coordinator: NSObject, MTKViewDelegate {
         let device              = MTLCreateSystemDefaultDevice()!
         metalDevice             = device
         metalCommandQueue       = device.makeCommandQueue()!
-        semaphore               = DispatchSemaphore(value: Settings.maxBuffersInFlight)
+        semaphore               = DispatchSemaphore(value: mapSettings.getMapCommonSettings().getMaxBuffersInFlight())
 
-        mapZoomState            = MapZoomState()
+        mapZoomState            = MapZoomState(mapSettings: mapSettings)
         screenUniforms          = ScreenUniforms(metalDevice: metalDevice)
         drawPoint               = DrawPoint(metalDevice: metalDevice)
         drawSpace               = DrawSpace(metalDevice: metalDevice)
         drawGlobeGlowing        = DrawGlobeGlowing(metalDevice: metalDevice)
-        drawingFrameRequester   = DrawingFrameRequester()
+        drawingFrameRequester   = DrawingFrameRequester(mapSettings: mapSettings)
         frameCounter            = FrameCounter()
         pipelines               = Pipelines(metalDevice: metalDevice)
         textureAdder            = TextureAdder(metalDevice: metalDevice, textureAdderPipeline: pipelines.textureAdderPipeline)
         drawTextureOnScreen     = DrawTextureOnScreen(metalDevice: metalDevice, postProcessingPipeline: pipelines.postProcessing)
         mapModeStorage          = MapModeStorage()
         mapCadDisplayLoop       = MapCADisplayLoop(frameCounter: frameCounter,
-                                                   drawingFrameRequester: drawingFrameRequester)
+                                                   drawingFrameRequester: drawingFrameRequester,
+                                                   mapSettings: mapSettings)
         cameraStorage           = CameraStorage(mapModeStorage: mapModeStorage,
                                                 mapZoomState: mapZoomState,
                                                 drawingFrameRequester: drawingFrameRequester,
-                                                mapCadDisplayLoop: mapCadDisplayLoop)
-        determineFeatureStyle   = DetermineFeatureStyle()
-        textTools               = TextTools(metalDevice: metalDevice, frameCounter: frameCounter)
+                                                mapCadDisplayLoop: mapCadDisplayLoop,
+                                                mapSettings: mapSettings)
+        determineFeatureStyle   = DetermineFeatureStyle(mapSettings: mapSettings)
+        textTools               = TextTools(metalDevice: metalDevice, frameCounter: frameCounter, mapSettings: mapSettings)
         metalTilesStorage       = MetalTilesStorage(determineStyle: determineFeatureStyle,
                                                     metalDevice: metalDevice,
                                                     textTools: textTools,
                                                     mapSettings: mapSettings)
-        switchMapMode           = SwitchMapMode(mapModeStorage: mapModeStorage, cameraStorage: cameraStorage, mapZoomState: mapZoomState)
+        switchMapMode           = SwitchMapMode(mapModeStorage: mapModeStorage,
+                                                cameraStorage: cameraStorage,
+                                                mapZoomState: mapZoomState,
+                                                mapSettings: mapSettings)
         renderFrameControl      = RenderFrameControl(mapCADisplayLoop: mapCadDisplayLoop,
-                                                     drawingFrameRequester: drawingFrameRequester)
+                                                     drawingFrameRequester: drawingFrameRequester,
+                                                     mapSettings: mapSettings)
         drawUI                  = DrawUI(device: metalDevice, textTools: textTools, screenUniforms: screenUniforms)
         renderPassWrapper       = RenderPassWrapper(metalDevice: metalDevice)
         drawDebugData           = DrawDebugData(basePipeline: pipelines.basePipeline,
@@ -91,12 +97,14 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                 textPipeline: pipelines.textPipeline,
                                                 drawUI: drawUI,
                                                 drawPoint: drawPoint,
-                                                mapZoomState: mapZoomState)
+                                                mapZoomState: mapZoomState,
+                                                mapSettings: mapSettings)
         
         updateBufferedUniform   = UpdateBufferedUniform(device: metalDevice,
                                                         mapZoomState: mapZoomState,
                                                         cameraStorage: cameraStorage,
-                                                        frameCounter: frameCounter)
+                                                        frameCounter: frameCounter,
+                                                        mapSettings: mapSettings)
         
         scrCollDetStorage       = ScrCollDetStorage(mapModeStorage: mapModeStorage,
                                                     metalDevice: metalDevice,
@@ -104,13 +112,14 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                     metalCommandQueue: metalCommandQueue,
                                                     mapZoomState: mapZoomState,
                                                     drawingFrameRequester: drawingFrameRequester,
-                                                    frameCounter: frameCounter)
+                                                    frameCounter: frameCounter,
+                                                    mapSettings: mapSettings)
         
         
         globeTexturing          = GlobeTexturing(metalDevide: metalDevice,
                                                  metalCommandQueue: metalCommandQueue,
                                                  pipelines: pipelines,
-                                                 mapDebugSettings: mapSettings.mapDebugSettings)
+                                                 mapSettings: mapSettings)
         
         let mapUpdaterContext   = MapUpdaterContext()
         mapUpdaterStorage       = MapUpdaterStorage(mapModeStorage: mapModeStorage,
@@ -125,7 +134,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                     scrCollDetStorage: scrCollDetStorage,
                                                     updateBufferedUniform: updateBufferedUniform,
                                                     globeTexturing: globeTexturing,
-                                                    mapUpdaterContext: mapUpdaterContext)
+                                                    mapUpdaterContext: mapUpdaterContext,
+                                                    mapSettings: mapSettings)
         
         applyLabelsState        = ApplyLabelsState(scrCollDetStorage: scrCollDetStorage,
                                                    assembledMap: mapUpdaterContext.assembledMap)
@@ -144,7 +154,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                            updateBufferedUniform: updateBufferedUniform,
                                            mapModeStorage: mapModeStorage,
                                            drawPoint: drawPoint,
-                                           mapUpdaterFlat: mapUpdaterStorage.flat)
+                                           mapUpdaterFlat: mapUpdaterStorage.flat,
+                                           mapSettings: mapSettings)
         
         globeMode               = GlobeMode(metalDevice: metalDevice,
                                             pipelines: pipelines,
@@ -173,8 +184,14 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         flatMode.mtkView(view, drawableSizeWillChange: size)
         
-        let moveSettings = mapSettings.mapMoveSettings
-        moveSettings.initMove(camera: cameraStorage.currentView, view: view, size: size)
+        let moveSettings = mapSettings.getMapCameraSettings()
+        let latLon = moveSettings.getLatLon()
+        let z = moveSettings.getZ()
+        cameraStorage.currentView.moveTo(lat: latLon.x,
+                                         lon: latLon.y,
+                                         zoom: z,
+                                         view: view,
+                                         size: size)
     }
     
     func draw(in view: MTKView) {
@@ -241,7 +258,7 @@ class Coordinator: NSObject, MTKViewDelegate {
             globeMode.draw(in: view, renderPassWrapper: renderPassWrapper)
         }
         
-        if mapSettings.mapDebugSettings.enabled == true {
+        if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
             drawDebugData.draw(renderPassWrapper: renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
         }
         

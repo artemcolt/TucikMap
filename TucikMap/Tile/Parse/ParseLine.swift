@@ -9,7 +9,7 @@ import GISTools
 import MetalKit
 
 class ParseLine {
-    func parseRaw(line: [Coordinate3D], width: Double) -> ParsedLineRawVertices {
+    func parseRaw(line: [Coordinate3D], width: Double, tileExtent: Double) -> ParsedLineRawVertices {
         var vertices: [SIMD2<Float>] = []
         var indices: [UInt32] = []
         var normal: SIMD2<Double> = SIMD2<Double>(0, 0)
@@ -18,9 +18,9 @@ class ParseLine {
         let capSegments = 16
         
         // Helper function to add semicircular cap
-        func addSemicircularCap(center: SIMD2<Double>, direction: SIMD2<Double>, isStart: Bool, baseVertexIndex: inout UInt32) {
+        func addSemicircularCap(center: SIMD2<Double>, direction: SIMD2<Double>, isStart: Bool, tileExtent: Double, baseVertexIndex: inout UInt32) {
             let normal = normalize(SIMD2<Double>(-direction.y, direction.x))
-            let centerVertex = SIMD2<Float>(NormalizeLocalCoords.normalize(coord: center))
+            let centerVertex = SIMD2<Float>(NormalizeLocalCoords.normalize(coord: center, tileExtent: tileExtent))
             vertices.append(centerVertex)
             let centerIndex = baseVertexIndex
             baseVertexIndex += 1
@@ -34,7 +34,7 @@ class ParseLine {
                 let angle = startAngle + Double(i) * angleStep
                 let offset = SIMD2<Double>(cos(angle), sin(angle)) * width
                 let rotatedOffset = offset.x * normal + offset.y * (isStart ? -direction : direction)
-                let capVertex = SIMD2<Float>(NormalizeLocalCoords.normalize(coord: center + rotatedOffset))
+                let capVertex = SIMD2<Float>(NormalizeLocalCoords.normalize(coord: center + rotatedOffset, tileExtent: tileExtent))
                 vertices.append(capVertex)
                 
                 if i < capSegments {
@@ -52,7 +52,7 @@ class ParseLine {
             let start = SIMD2<Double>(line[0].x, line[0].y)
             let next = SIMD2<Double>(line[1].x, line[1].y)
             var direction = normalize(next - start)
-            addSemicircularCap(center: start, direction: direction, isStart: true, baseVertexIndex: &baseVertexIndex)
+            addSemicircularCap(center: start, direction: direction, isStart: true, tileExtent: tileExtent, baseVertexIndex: &baseVertexIndex)
             
             // Process line segments
             for i in 0..<line.count - 1 {
@@ -61,10 +61,10 @@ class ParseLine {
                 let direction = next - current
                 normal = normalize(SIMD2<Double>(-direction.y, direction.x))
                 
-                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: current + normal * width)))
-                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: current - normal * width)))
-                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: next + normal * width)))
-                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: next - normal * width)))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: current + normal * width, tileExtent: tileExtent)))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: current - normal * width, tileExtent: tileExtent)))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: next + normal * width, tileExtent: tileExtent)))
+                vertices.append(SIMD2<Float>(NormalizeLocalCoords.normalize(coord: next - normal * width, tileExtent: tileExtent)))
                 
                 let baseIndex = baseVertexIndex
                 indices.append(baseIndex)     // Top current
@@ -94,7 +94,7 @@ class ParseLine {
             let end = SIMD2<Double>(line[line.count - 1].x, line[line.count - 1].y)
             let prev = SIMD2<Double>(line[line.count - 2].x, line[line.count - 2].y)
             direction = normalize(end - prev)
-            addSemicircularCap(center: end, direction: direction, isStart: false, baseVertexIndex: &baseVertexIndex)
+            addSemicircularCap(center: end, direction: direction, isStart: false, tileExtent: tileExtent, baseVertexIndex: &baseVertexIndex)
         }
         
         return ParsedLineRawVertices(

@@ -18,13 +18,19 @@ class UpdateBufferedUniform {
     private(set) var lastViewportSize: SIMD2<Float>!
     
     private let frameCounter: FrameCounter
-    private let maxBuffersInFlight = Settings.maxBuffersInFlight
+    private let maxBuffersInFlight: Int
     private let device: MTLDevice
     private let mapZoomState: MapZoomState
     private let cameraStorage: CameraStorage
     private let halfPi = Float.pi / 2
     
-    init(device: MTLDevice, mapZoomState: MapZoomState, cameraStorage: CameraStorage, frameCounter: FrameCounter) {
+    init(device: MTLDevice,
+         mapZoomState: MapZoomState,
+         cameraStorage: CameraStorage,
+         frameCounter: FrameCounter,
+         mapSettings: MapSettings) {
+        
+        self.maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         self.device = device
         self.mapZoomState = mapZoomState
         self.cameraStorage = cameraStorage

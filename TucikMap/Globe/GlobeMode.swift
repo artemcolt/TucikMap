@@ -74,8 +74,9 @@ class GlobeMode {
         
         self.drawGlobeLabels        = DrawGlobeLabels(screenUniforms: screenUniforms,
                                                       metalDevice: metalDevice,
-                                                      camera: cameraStorage.currentView)
-        self.drawGlobeGeom          = DrawGlobeGeom(metalDevice: metalDevice)
+                                                      camera: cameraStorage.currentView,
+                                                      mapSettigns: mapSettings)
+        self.drawGlobeGeom          = DrawGlobeGeom(metalDevice: metalDevice, mapSettings: mapSettings)
         self.textureAdder           = textureAdder
         self.drawGlobeGlowing       = drawGlobeGlowing
         self.drawSpace              = drawSpace
@@ -92,7 +93,7 @@ class GlobeMode {
         self.pipelines              = pipelines
         self.mapUpdater             = mapUpdater
         self.mapSettings            = mapSettings
-        self.globeCaps              = GlobeCaps(metalDevice: metalDevice)
+        self.globeCaps              = GlobeCaps(metalDevice: metalDevice, mapSettings: mapSettings)
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
         depthStencilDescriptor.depthCompareFunction = .less
@@ -106,7 +107,8 @@ class GlobeMode {
         samplerDescriptor.tAddressMode = .clampToEdge
         samplerState = metalDevice.makeSamplerState(descriptor: samplerDescriptor)!
         
-        for _ in 0..<Settings.maxBuffersInFlight {
+        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
+        for _ in 0..<maxBuffersInFlight {
             // TODO адаптировать размеры буфферов
             let verticesBuffer = metalDevice.makeBuffer(length: MemoryLayout<GlobePipeline.Vertex>.stride * maxGeomVerticesCount)!
             let indicesBuffer  = metalDevice.makeBuffer(length: MemoryLayout<UInt32>.stride * maxGeomIndicesCount)!
@@ -147,24 +149,26 @@ class GlobeMode {
             let halfTilesCount = Float(tilesCount) / 2.0
             let uShift = (panX * 2.0) * halfTilesCount * uTileSize
             
+            let isOdd = areaRange.tileXCount % 2 == 1
             var additional = Float(0)
-            if areaRange.tileXCount % 2 == 1 {
+            if isOdd {
                 additional = uTileSize / 2
             }
             
             uShiftMap = additional + uShift.truncatingRemainder(dividingBy: uTileSize)
-            if uShift > 0 {
+            if uShift > 0 && isOdd {
                 uShiftMap -= uTileSize
             }
         }
         
+        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         if assembledMap.isAreaStateChanged(compareId: areaStateId) {
-            generatePlaneCount = Settings.maxBuffersInFlight
+            generatePlaneCount = maxBuffersInFlight
             areaStateId = assembledMap.setAreaId
         }
         
         if assembledMap.isTilesStateChanged(compareId: tilesStateId) {
-            generateTextureCount = Settings.maxBuffersInFlight
+            generateTextureCount = maxBuffersInFlight
             tilesStateId = assembledMap.setTilesId
         }
         
@@ -260,7 +264,7 @@ class GlobeMode {
             transition: transition
         )
         
-        if mapSettings.mapDebugSettings.enabled == true {
+        if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
             pipelines.texturePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
             drawTexture.draw(textureEncoder: labelsRenderEncoder, texture: texture, sideWidth: 500)
             pipelines.basePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)

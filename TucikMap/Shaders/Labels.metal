@@ -78,9 +78,10 @@ vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
     float screenX = ((ndc.x + 1) / 2) * viewportWidth;
     float screenY = ((ndc.y + 1) / 2) * viewportHeight;
     float2 screenPos = float2(screenX, screenY);
+    float2 snappedPos = floor(screenPos) + 0.5;
     
     VertexOut out;
-    float3 t = float3(screenPos.x, screenPos.y, 0);
+    float3 t = float3(snappedPos.x, snappedPos.y, 0);
     float4x4 translationMatrix = float4x4(scale, 0.0, 0.0, 0.0,
                                           0.0, scale, 0.0, 0.0,
                                           0.0, 0.0, 1.0, 0.0,
@@ -105,15 +106,16 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
     float sigDist = median(msdf.r, msdf.g, msdf.b);
     
-    float smoothing = 0.1;
+    // Адаптивная ширина сглаживания на основе производной
+    float w = fwidth(sigDist);
     
-    // Обводка (большая буква)
-    float outlineDist = sigDist - 0.1;
-    float outlineOpacity = clamp(outlineDist/smoothing + 0.5, 0.0, 1.0);
+    // Для обводки (outline)
+    float outlineDist = sigDist;
+    float outlineOpacity = smoothstep(-w, w, outlineDist);
     
-    // Основа
+    // Для текста
     float textDist = sigDist - 0.3;
-    float textOpacity = clamp(textDist/smoothing + 0.5, 0.0, 1.0);
+    float textOpacity = smoothstep(0.5 - w, 0.5 + w, textDist + 0.5);
     
     // Комбинируем обводку и текст
     float3 outlineColor = float3(1.0, 1.0, 1.0); // Цвет обводки (например, чёрный)

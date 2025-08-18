@@ -16,7 +16,7 @@ struct LabelIntersection {
 struct GeoLabelsWithIntersections {
     let intersections: [Int: [LabelIntersection]]
     let geoLabels: [MetalTile.TextLabels]
-    var bufferingCounter: Int = Settings.maxBuffersInFlight
+    var bufferingCounter: Int
 }
 
 struct DrawTileRoadLabelsPrep {
@@ -43,7 +43,8 @@ class ScreenCollisionsDetector {
         var startRoadResultsIndex: Int
     }
     
-    fileprivate let parametersBufferSize        = Settings.geoLabelsParametersBufferSize
+    fileprivate let mapSettings                 : MapSettings
+    fileprivate let parametersBufferSize        : Int
     
     fileprivate let computeScreenPositions      : ComputeScreenPositions
     fileprivate let metalDevice                 : MTLDevice
@@ -79,7 +80,10 @@ class ScreenCollisionsDetector {
         handleRoadLabels: HandleRoadLabels,
         onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
         onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat,
+        mapSettings: MapSettings
     ) {
+        parametersBufferSize = mapSettings.getMapCommonSettings().getGeoLabelsParametersBufferSize()
+        self.mapSettings = mapSettings
         self.handleGeoLabels = handleGeoLabels
         self.handleRoadLabels = handleRoadLabels
         
@@ -124,7 +128,8 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
         handleRoadLabels: HandleRoadLabels,
         onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
         onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat,
-        projectPointsGlobe: CombinedCompSPGlobe
+        projectPointsGlobe: CombinedCompSPGlobe,
+        mapSettings: MapSettings
     ) {
         self.projectPointsGlobe = projectPointsGlobe
         super.init(metalDevice: metalDevice,
@@ -137,7 +142,8 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
                    handleGeoLabels: handleGeoLabels,
                    handleRoadLabels: handleRoadLabels,
                    onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
-                   onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
+                   onPointsReadyHandlerFlat: onPointsReadyHandlerFlat,
+                   mapSettings: mapSettings)
     }
     
     func evaluateGlobe(lastUniforms: Uniforms,
@@ -181,7 +187,8 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
         }
         
         // TODO Как обработать случай когда точек для преобразования слишком много
-        if input.inputComputeScreenVertices.count > Settings.maxInputComputeScreenPoints {
+        let maxInputComputeScreenPoints = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
+        if input.inputComputeScreenVertices.count > maxInputComputeScreenPoints {
             return false // Слишком много точек для преобразования, пропускаем рендринг
         }
         
@@ -214,7 +221,8 @@ class ScreenCollisionsDetectorFlat: ScreenCollisionsDetector {
         handleRoadLabels: HandleRoadLabels,
         onPointsReadyHandlerGlobe: OnPointsReadyHandlerGlobe,
         onPointsReadyHandlerFlat: OnPointsReadyHandlerFlat,
-        projectPointsFlat: CombinedCompSPFlat
+        projectPointsFlat: CombinedCompSPFlat,
+        mapSettings: MapSettings
     ) {
         self.projectPointsFlat = projectPointsFlat
         super.init(metalDevice: metalDevice,
@@ -227,7 +235,8 @@ class ScreenCollisionsDetectorFlat: ScreenCollisionsDetector {
                    handleGeoLabels: handleGeoLabels,
                    handleRoadLabels: handleRoadLabels,
                    onPointsReadyHandlerGlobe: onPointsReadyHandlerGlobe,
-                   onPointsReadyHandlerFlat: onPointsReadyHandlerFlat)
+                   onPointsReadyHandlerFlat: onPointsReadyHandlerFlat,
+                   mapSettings: mapSettings)
     }
     
     func evaluateFlat(lastUniforms: Uniforms,
@@ -269,7 +278,8 @@ class ScreenCollisionsDetectorFlat: ScreenCollisionsDetector {
         }
         
         // TODO Как обработать случай когда точек для преобразования слишком много
-        if input.inputComputeScreenVertices.count > Settings.maxInputComputeScreenPoints {
+        let maxInputComputeScreenPoints = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
+        if input.inputComputeScreenVertices.count > maxInputComputeScreenPoints {
             return false // Слишком много точек для преобразования, пропускаем рендринг
         }
         

@@ -14,14 +14,22 @@ struct MeasuredText {
 }
 
 class CreateTextGeometry {
+    private let mapSettings: MapSettings
+    
+    init(mapSettings: MapSettings) {
+        self.mapSettings = mapSettings
+    }
+    
     func measureText(text: String, fontData: FontData) -> MeasuredText {
+        let spaceUnicodeNumber = mapSettings.getMapCommonSettings().getSpaceUnicodeNumber()
+        let spaceSize = mapSettings.getMapCommonSettings().getSpaceSize()
         var totalWidth: Float = 0
         var maxTop: Float = 0
         var maxBottom: Float = 0
         for char in text.unicodeScalars {
             let unicode = Int(char.value)
-            if unicode == Settings.spaceUnicodeNumber { // space unicode
-                totalWidth += Settings.spaceSize
+            if unicode == spaceUnicodeNumber { // space unicode
+                totalWidth += spaceSize
             }
             if let glyph = fontData.glyphs.first(where: { $0.unicode == unicode }) {
                 totalWidth += glyph.advance
@@ -39,13 +47,15 @@ class CreateTextGeometry {
     }
     
     func create(text: String, fontData: FontData, onGlyphCreated: ((_: Unicode.Scalar) -> Void)?) -> [TextVertex] {
+        let spaceUnicodeNumber = mapSettings.getMapCommonSettings().getSpaceUnicodeNumber()
+        let spaceSize = mapSettings.getMapCommonSettings().getSpaceSize()
         var vertices: [TextVertex] = []
         var shiftX: Float = 0
         
         for char in text.unicodeScalars {
             let unicode = Int(char.value)
-            if unicode == Settings.spaceUnicodeNumber { // space unicode
-                shiftX += Settings.spaceSize
+            if unicode == spaceUnicodeNumber { // space unicode
+                shiftX += spaceSize
             }
             if let glyph = fontData.glyphs.first(where: { $0.unicode == unicode }),
                let planeBounds = glyph.planeBounds,
@@ -82,13 +92,15 @@ class CreateTextGeometry {
     
     
     func createForRoadLabel(text: String, fontData: FontData, onGlyphCreated: ((_: Unicode.Scalar, _ shiftX: Float) -> Void)?) -> [TextVertex] {
+        let spaceUnicodeNumber = mapSettings.getMapCommonSettings().getSpaceUnicodeNumber()
+        let spaceSize = mapSettings.getMapCommonSettings().getSpaceSize()
         var vertices: [TextVertex] = []
         var shiftX: Float = 0
         
         for char in text.unicodeScalars {
             let unicode = Int(char.value)
-            if unicode == Settings.spaceUnicodeNumber { // space unicode
-                shiftX += Settings.spaceSize
+            if unicode == spaceUnicodeNumber { // space unicode
+                shiftX += spaceSize
             }
             if let glyph = fontData.glyphs.first(where: { $0.unicode == unicode }),
                let planeBounds = glyph.planeBounds,

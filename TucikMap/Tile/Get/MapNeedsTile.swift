@@ -13,33 +13,41 @@ class MapNeedsTile {
     private var tileDiskCaching: TileDiskCaching!
     private var onComplete: (Data?, Tile) -> Void
     private var ongoingTasks: [String: Task<Void, Never>] = [:]
-    private let maxConcurrentFetchs: Int = Settings.maxConcurrentFetchs
-    private let fifo: FIFOQueue<Tile> = FIFOQueue(capacity: Settings.fetchTilesQueueCapacity)
+    private let maxConcurrentFetchs: Int
+    private let fifo: FIFOQueue<Tile>
+    private let mapSettings: MapSettings
     
-    init(onComplete: @escaping (Data?, Tile) -> Void) {
+    init(mapSettings: MapSettings, onComplete: @escaping (Data?, Tile) -> Void) {
         self.onComplete = onComplete
+        self.maxConcurrentFetchs = mapSettings.getMapCommonSettings().getMaxConcurrentFetchs()
+        self.mapSettings = mapSettings
+        self.fifo = FIFOQueue(capacity: mapSettings.getMapCommonSettings().getFetchTilesQueueCapacity())
         
-        tileDiskCaching = TileDiskCaching()
-        tileDownloader = TileDownloader()
+        tileDiskCaching = TileDiskCaching(mapSettings: mapSettings)
+        tileDownloader = TileDownloader(mapSettings: mapSettings)
     }
     
     func please(tile: Tile) {
+        let debugAssemblingMap = mapSettings.getMapDebugSettings().getDebugAssemblingMap()
+        let enabledThrottling = mapSettings.getMapDebugSettings().getEnabledThrottling()
+        let throttlingNanoSeconds = mapSettings.getMapDebugSettings().getThrottlingNanoSeconds()
+        
         if ongoingTasks[tile.key()] != nil {
-            if Settings.debugAssemblingMap { print("Requested already tile \(tile)") }
+            if debugAssemblingMap { print("Requested already tile \(tile)") }
             return
         }
         
         if ongoingTasks.count >= maxConcurrentFetchs {
             fifo.enqueue(tile)
-            if Settings.debugAssemblingMap { print("Request fifo enque tile \(tile)") }
+            if debugAssemblingMap { print("Request fifo enque tile \(tile)") }
             return
         }
         
-        if Settings.debugAssemblingMap { print("Request tile \(tile)") }
+        if debugAssemblingMap { print("Request tile \(tile)") }
         let task = Task {
-            if Settings.enabledThrottling { try? await Task.sleep(nanoseconds: UInt64.random(in: 0...Settings.throttlingNanoSeconds))}
+            if enabledThrottling { try? await Task.sleep(nanoseconds: UInt64.random(in: 0...throttlingNanoSeconds))}
             if let data = await tileDiskCaching.requestDiskCached(tile: tile) {
-                if (Settings.debugAssemblingMap) {print("Fetched disk tile: \(tile.key())")}
+                if debugAssemblingMap {print("Fetched disk tile: \(tile.key())")}
                 await MainActor.run {
                     _onComplete(data: data, tile: tile)
                 }

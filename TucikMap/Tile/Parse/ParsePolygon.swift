@@ -11,7 +11,7 @@ import GISTools
 import SwiftEarcut
 
 class ParsePolygon {
-    func parse(polygon: [[Coordinate3D]]) -> ParsedPolygon? {
+    func parse(polygon: [[Coordinate3D]], tileExtent: Double) -> ParsedPolygon? {
         var flatCoords: [Double] = []
         var holeIndices: [Int] = []
         for (ringIndex, ring) in polygon.enumerated() {
@@ -25,7 +25,7 @@ class ParsePolygon {
         }
         
         let triangleIndices = SwiftEarcut.Earcut.tessellate(data: flatCoords, holeIndices: holeIndices, dim: 2)
-        let vertices: [SIMD2<Float>] = NormalizeLocalCoords.normalize(flatCoords: flatCoords)
+        let vertices: [SIMD2<Float>] = NormalizeLocalCoords.normalize(flatCoords: flatCoords, tileExtent: tileExtent)
         
         // Преобразуем индексы в UInt16
         let indices: [UInt32] = triangleIndices.map { UInt32($0) }

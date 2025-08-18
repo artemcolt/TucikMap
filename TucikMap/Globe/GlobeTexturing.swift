@@ -13,19 +13,23 @@ class GlobeTexturing {
     private let pipelines           : Pipelines
     private let drawTile            : DrawTile = DrawTile()
     private let uniformsBuffer      : MTLBuffer
-    private let textureSize         : Int = Settings.globeTextureSize
+    private let textureSize         : Int
     private var texturesBuffered    : [MTLTexture] = []
-    private let mapDebugSettings    : MapDebugSettings
+    private let mapSettings         : MapSettings
     
     func getTexture(frameBufferIndex: Int) -> MTLTexture {
         return texturesBuffered[frameBufferIndex]
     }
     
-    init(metalDevide: MTLDevice, metalCommandQueue: MTLCommandQueue, pipelines: Pipelines, mapDebugSettings: MapDebugSettings) {
+    init(metalDevide: MTLDevice,
+         metalCommandQueue: MTLCommandQueue,
+         pipelines: Pipelines,
+         mapSettings: MapSettings) {
+        self.textureSize        = mapSettings.getMapCommonSettings().getGlobeTextureSize()
         self.metalDevide        = metalDevide
         self.metalCommandQueue  = metalCommandQueue
         self.pipelines          = pipelines
-        self.mapDebugSettings   = mapDebugSettings
+        self.mapSettings        = mapSettings
         
         let projectionMatrix    = MatrixUtils.orthographicMatrix(left: -1, right: 1, bottom: -1, top: 1, near: -1, far: 1)
         var uniforms            = Uniforms(projectionMatrix: projectionMatrix,
@@ -41,8 +45,9 @@ class GlobeTexturing {
                                                                          mipmapped: false)
         textureDescriptor.usage = [.renderTarget, .shaderRead]
         
-        texturesBuffered.reserveCapacity(Settings.maxBuffersInFlight)
-        for _ in 0..<Settings.maxBuffersInFlight {
+        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
+        texturesBuffered.reserveCapacity(maxBuffersInFlight)
+        for _ in 0..<maxBuffersInFlight {
             let texture = metalDevide.makeTexture(descriptor: textureDescriptor)!
             texturesBuffered.append(texture)
         }
@@ -111,7 +116,7 @@ class GlobeTexturing {
                 var relativeTileDeltaX = Float(0)
                 var relativeTileDeltaY = Float(0)
                 
-                if (windowIsOdd && areaRange.isFullMap == false) {
+                if (areaRange.isFullMap == false) {
                     relativeTileDeltaX -= 0.5
                     relativeTileDeltaY += 0.5
                 }

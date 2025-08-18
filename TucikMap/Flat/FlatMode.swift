@@ -19,6 +19,7 @@ class FlatMode {
     private let drawAssembledMap            : DrawAssembledMap
     private let camera                      : CameraFlatView
     private let mapZoomState                : MapZoomState
+    private let mapSettings                 : MapSettings
     
     // Helpers
     private let drawPoint: DrawPoint
@@ -38,8 +39,10 @@ class FlatMode {
          updateBufferedUniform: UpdateBufferedUniform,
          mapModeStorage: MapModeStorage,
          drawPoint: DrawPoint,
-         mapUpdaterFlat: MapUpdaterFlat) {
+         mapUpdaterFlat: MapUpdaterFlat,
+         mapSettings: MapSettings) {
         
+        self.mapSettings                = mapSettings
         self.drawPoint                  = drawPoint
         self.pipelines                  = pipelines
         self.metalDevice                = metalDevice
@@ -54,7 +57,8 @@ class FlatMode {
         drawAssembledMap            = DrawAssembledMap(metalDevice: metalDevice,
                                                        screenUniforms: screenUniforms,
                                                        camera: camera,
-                                                       mapZoomState: mapZoomState)
+                                                       mapZoomState: mapZoomState,
+                                                       mapSettings: mapSettings)
         
         draw3dBuildings             = Draw3dBuildings(polygon3dPipeline: pipelines.polygon3dPipeline,
                                                       drawAssembledMap: drawAssembledMap,
@@ -123,7 +127,8 @@ class FlatMode {
             tileFrameProps: tileFrameProps
         )
         
-        if Settings.drawRoadPointsDebug {
+        let drawRoadPointsDebug = mapSettings.getMapDebugSettings().getDrawRoadPointsDebug()
+        if drawRoadPointsDebug {
             drawRoadPoints(assembledMap: assembledMap,
                            tileFrameProps: tileFrameProps,
                            basicRenderEncoder: basicRenderEncoder,
@@ -160,12 +165,13 @@ class FlatMode {
                 
                 let meta = metas[i2]
                 let localPositions = meta.localPositions
+                let cameraCenterPointSize = mapSettings.getMapDebugSettings().getCameraCenterPointSize()
                 for point in localPositions {
                     let pointToDraw = modelMatrix * SIMD4<Float>(point.x, point.y, 0, 1)
                     drawPoint.draw(
                         renderEncoder: basicRenderEncoder,
                         uniformsBuffer: uniformsBuffer,
-                        pointSize: Settings.cameraCenterPointSize * 0.5,
+                        pointSize: cameraCenterPointSize * 0.5,
                         position: SIMD3<Float>(pointToDraw.x, pointToDraw.y, 0),
                         color: color!,
                     )

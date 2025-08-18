@@ -12,10 +12,10 @@ class DrawGlobeGeom {
     private let verticesBuffer: MTLBuffer
     private let verticesCount: Int
     
-    init(metalDevice: MTLDevice) {
+    init(metalDevice: MTLDevice, mapSettings: MapSettings) {
         self.metalDevice = metalDevice
         
-        let radius: Float = Settings.nullZoomGlobeRadius
+        let radius: Float = mapSettings.getMapCommonSettings().getNullZoomGlobeRadius()
         let latitudeBands: Int = 30
         let longitudeBands: Int = 30
         

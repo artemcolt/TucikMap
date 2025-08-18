@@ -15,6 +15,7 @@ class DrawDebugData {
     private let drawUI          : DrawUI
     private let cameraStorage   : CameraStorage
     private let mapZoomState    : MapZoomState
+    private let mapSettings     : MapSettings
     
     init(basePipeline: BasePipeline,
          metalDevice: MTLDevice,
@@ -22,24 +23,27 @@ class DrawDebugData {
          textPipeline: TextPipeline,
          drawUI: DrawUI,
          drawPoint: DrawPoint,
-         mapZoomState: MapZoomState) {
+         mapZoomState: MapZoomState,
+         mapSettings: MapSettings) {
         self.basePipeline = basePipeline
         self.cameraStorage = cameraStorage
         self.textPipeline = textPipeline
         self.drawUI = drawUI
         self.mapZoomState = mapZoomState
         self.drawPoint = drawPoint
+        self.mapSettings = mapSettings
         
         drawAxes = DrawAxes(metalDevice: metalDevice)
     }
     
     func draw(renderPassWrapper: RenderPassWrapper, uniformsBuffer: MTLBuffer, view: MTKView) {
         let renderEncoder = renderPassWrapper.createUIEncoder()
+        let cameraCenterPointSize = mapSettings.getMapDebugSettings().getCameraCenterPointSize()
         basePipeline.selectPipeline(renderEncoder: renderEncoder)
         drawPoint.draw(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
-            pointSize: Settings.cameraCenterPointSize,
+            pointSize: cameraCenterPointSize,
             position: cameraStorage.currentView.targetPosition,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )

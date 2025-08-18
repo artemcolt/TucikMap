@@ -10,6 +10,11 @@ import Foundation
 class DrawingFrameRequester {
     private var renderNextFramesCount = 0
     private var renderToTime: TimeInterval = 0
+    private let mapSettings: MapSettings
+    
+    init(mapSettings: MapSettings) {
+        self.mapSettings = mapSettings
+    }
     
     func renderNextNFrames(_ n: Int) {
         renderNextFramesCount = n
@@ -20,7 +25,8 @@ class DrawingFrameRequester {
     }
     
     func renderNextStep() {
-        renderNextNFrames(Settings.maxBuffersInFlight)
+        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
+        renderNextNFrames(maxBuffersInFlight)
     }
     
     func isRedrawNeeded() -> Bool {

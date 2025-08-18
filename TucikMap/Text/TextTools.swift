@@ -8,7 +8,7 @@
 import MetalKit
 
 class TextTools {
-    let createTextGeometry = CreateTextGeometry()
+    let createTextGeometry: CreateTextGeometry
     let textAssembler: TextAssembler
     let mapLabelsAssembler: MapLabelsAssembler
     let mapRoadLabelsAssembler: MapRoadLabelsAssembler
@@ -20,8 +20,9 @@ class TextTools {
     private let boldFont: Font
     let robotoFont: FontBatch
     
-    init(metalDevice: MTLDevice, frameCounter: FrameCounter) {
-        self.metalDevice =  metalDevice
+    init(metalDevice: MTLDevice, frameCounter: FrameCounter, mapSettings: MapSettings) {
+        self.metalDevice = metalDevice
+        self.createTextGeometry = CreateTextGeometry(mapSettings: mapSettings)
         fontLoader = FontLoader(metalDevice: metalDevice)
         regularFont = fontLoader.load(fontName: "Roboto-Regular")
         boldFont = fontLoader.load(fontName: "Roboto-ExtraBold")
@@ -32,7 +33,8 @@ class TextTools {
         mapLabelsAssembler = MapLabelsAssembler(
             createTextGeometry: createTextGeometry,
             metalDevice: metalDevice,
-            frameCounter: frameCounter
+            frameCounter: frameCounter,
+            mapSettings: mapSettings
         )
         
         mapRoadLabelsAssembler = MapRoadLabelsAssembler(

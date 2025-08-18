@@ -19,18 +19,20 @@ class DrawAssembledMap {
     let mapZoomState: MapZoomState
     let sampler: MTLSamplerState
     var screenUniforms: ScreenUniforms
+    var mapSettings: MapSettings
     let drawTile = DrawTile()
     
-    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: CameraFlatView, mapZoomState: MapZoomState) {
+    init(metalDevice: MTLDevice, screenUniforms: ScreenUniforms, camera: CameraFlatView, mapZoomState: MapZoomState, mapSettings: MapSettings) {
         self.metalDevice = metalDevice
         self.mapZoomState = mapZoomState
         self.camera = camera
         self.screenUniforms = screenUniforms
+        self.mapSettings = mapSettings
         
         let samplerDescriptor = MTLSamplerDescriptor()
         samplerDescriptor.magFilter = .linear
         samplerDescriptor.minFilter = .linear
-        samplerDescriptor.mipFilter = .linear
+        samplerDescriptor.mipFilter = .notMipmapped
         sampler = metalDevice.makeSamplerState(descriptor: samplerDescriptor)!
     }
     
@@ -102,8 +104,8 @@ class DrawAssembledMap {
     ) {
         guard geoLabels.isEmpty == false else { return }
         
-        var animationTime = Settings.labelsFadeAnimationTimeSeconds
-        renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)
+        var labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
+        renderEncoder.setVertexBytes(&labelsFadeAnimationTimeSeconds, length: MemoryLayout<Float>.stride,   index: 6)
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 1)
         renderEncoder.setVertexBuffer(uniformsBuffer,                           offset: 0, index: 4)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
@@ -141,7 +143,8 @@ class DrawAssembledMap {
         currentFBIndex: Int,
         tileFrameProps: TileFrameProps
     ) {
-        var animationTime = Settings.labelsFadeAnimationTimeSeconds
+        let labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
+        var animationTime = labelsFadeAnimationTimeSeconds
         guard roadLabelsDrawing.isEmpty == false else { return }
         
         renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)

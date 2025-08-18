@@ -48,7 +48,8 @@ class MapUpdaterStorage {
          scrCollDetStorage: ScrCollDetStorage,
          updateBufferedUniform: UpdateBufferedUniform,
          globeTexturing: GlobeTexturing,
-         mapUpdaterContext: MapUpdaterContext) {
+         mapUpdaterContext: MapUpdaterContext,
+         mapSettings: MapSettings) {
         
         self.mapUpdaterContext  = mapUpdaterContext
         self.mapModeStorage     = mapModeStorage
@@ -64,7 +65,8 @@ class MapUpdaterStorage {
                                mapModeStorage: mapModeStorage,
                                mapUpdaterContext: mapUpdaterContext,
                                screenCollisionsDetector: scrCollDetStorage.flat,
-                               updateBufferedUniform: updateBufferedUniform)
+                               updateBufferedUniform: updateBufferedUniform,
+                               mapSettings: mapSettings)
         
         _globe = MapUpdaterGlobe(mapZoomState: mapZoomState,
                                  device: metalDevice,
@@ -78,6 +80,7 @@ class MapUpdaterStorage {
                                  mapUpdaterContext: mapUpdaterContext,
                                  screenCollisionsDetector: scrCollDetStorage.globe,
                                  updateBufferedUniform: updateBufferedUniform,
-                                 globeTexturing: globeTexturing)
+                                 globeTexturing: globeTexturing,
+                                 mapSettings: mapSettings)
     }
 }

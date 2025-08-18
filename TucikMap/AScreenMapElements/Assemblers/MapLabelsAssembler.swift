@@ -60,11 +60,13 @@ class MapLabelsAssembler {
     private let createTextGeometry  : CreateTextGeometry
     private let metalDevice         : MTLDevice
     private let frameCounter        : FrameCounter
+    private let mapSettings         : MapSettings
     
-    init(createTextGeometry: CreateTextGeometry, metalDevice: MTLDevice, frameCounter: FrameCounter) {
+    init(createTextGeometry: CreateTextGeometry, metalDevice: MTLDevice, frameCounter: FrameCounter, mapSettings: MapSettings) {
         self.createTextGeometry     = createTextGeometry
         self.metalDevice            = metalDevice
         self.frameCounter           = frameCounter
+        self.mapSettings            = mapSettings
     }
     
     private func createArraysForGpu(lines: [TextLineData], font: Font) -> DrawMapLabels {
@@ -120,9 +122,10 @@ class MapLabelsAssembler {
         let mapLabelGpuMetaBuffer       = metalDevice.makeBuffer(bytes: assembledBytes.mapLabelGpuMeta,
                                                                  length: MemoryLayout<MapLabelGpuMeta>.stride * assembledBytes.mapLabelGpuMeta.count)!
         
+        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         var intersectionsTrippleBuffer: [MTLBuffer] = []
-        intersectionsTrippleBuffer.reserveCapacity(Settings.maxBuffersInFlight)
-        for _ in 0..<Settings.maxBuffersInFlight {
+        intersectionsTrippleBuffer.reserveCapacity(maxBuffersInFlight)
+        for _ in 0..<maxBuffersInFlight {
             let intersectionsBuffer = metalDevice.makeBuffer(bytes: Array(repeating: LabelIntersection(hide: true, createdTime: 0), count: lines.count),
                                                              length: MemoryLayout<LabelIntersection>.stride * lines.count)!
             intersectionsTrippleBuffer.append(intersectionsBuffer)

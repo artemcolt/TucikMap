@@ -23,7 +23,8 @@ class MapUpdaterGlobe : MapUpdater {
          mapUpdaterContext: MapUpdaterContext,
          screenCollisionsDetector: ScreenCollisionsDetector,
          updateBufferedUniform: UpdateBufferedUniform,
-         globeTexturing: GlobeTexturing) {
+         globeTexturing: GlobeTexturing,
+         mapSettings: MapSettings) {
         self.globeTexturing = globeTexturing
         super.init(mapZoomState: mapZoomState,
                    device: device,
@@ -36,7 +37,8 @@ class MapUpdaterGlobe : MapUpdater {
                    mapModeStorage: mapModeStorage,
                    mapUpdaterContext: mapUpdaterContext,
                    updateBufferedUniform: updateBufferedUniform,
-                   screenCollisionsDetector: screenCollisionsDetector)
+                   screenCollisionsDetector: screenCollisionsDetector,
+                   mapSettings: mapSettings)
         
         metalTilesStorage.addHandler(handler: onMetalingTileEnd)
     }

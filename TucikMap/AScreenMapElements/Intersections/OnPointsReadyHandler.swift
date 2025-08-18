@@ -10,11 +10,14 @@ import Foundation
 class OnPointsReadyHandler {
     fileprivate let drawingFrameRequester   : DrawingFrameRequester
     fileprivate let handleGeoLabels         : HandleGeoLabels
+    fileprivate let mapSettings             : MapSettings
     
     init(drawingFrameRequester: DrawingFrameRequester,
-         handleGeoLabels: HandleGeoLabels) {
+         handleGeoLabels: HandleGeoLabels,
+         mapSettings: MapSettings) {
         self.drawingFrameRequester = drawingFrameRequester
         self.handleGeoLabels = handleGeoLabels
+        self.mapSettings = mapSettings
     }
 }
 
@@ -32,7 +35,8 @@ class OnPointsReadyHandlerGlobe : OnPointsReadyHandler {
         let spaceIntersections = SpaceIntersections()
         handleGeoLabels.onPointsReady(input: handleGeoInput, spaceIntersections: spaceIntersections)
         
-        drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
+        let labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
+        drawingFrameRequester.renderNextNSeconds(Double(labelsFadeAnimationTimeSeconds))
         
         let end = CFAbsoluteTimeGetCurrent()
         let timeInterval = end - start
@@ -45,9 +49,10 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
     
     init(drawingFrameRequester: DrawingFrameRequester,
          handleGeoLabels: HandleGeoLabels,
-         handleRoadLabels: HandleRoadLabels) {
+         handleRoadLabels: HandleRoadLabels,
+         mapSettings: MapSettings) {
         self.handleRoadLabels = handleRoadLabels
-        super.init(drawingFrameRequester: drawingFrameRequester, handleGeoLabels: handleGeoLabels)
+        super.init(drawingFrameRequester: drawingFrameRequester, handleGeoLabels: handleGeoLabels, mapSettings: mapSettings)
     }
     
     func onPointsReadyFlat(resultFlat: CombinedCompSPFlat.ResultFlat) {
@@ -74,8 +79,8 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
         
         handleRoadLabels.onPointsReady(result: handleRoadInput, spaceIntersections: spaceIntersections, viewportSize: viewportSize)
         
-        
-        drawingFrameRequester.renderNextNSeconds(Double(Settings.labelsFadeAnimationTimeSeconds))
+        let labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
+        drawingFrameRequester.renderNextNSeconds(Double(labelsFadeAnimationTimeSeconds))
         
         let end = CFAbsoluteTimeGetCurrent()
         let timeInterval = end - start

@@ -8,13 +8,14 @@
 class MapCADisplayLoop {
     private let frameCounter: FrameCounter
     private let drawingFrameRequester: DrawingFrameRequester
+    private let mapSettings: MapSettings
     
     private var forceUpdateStatesFlag      = true
     
     private var evaluateScreenDataFlag     = true
     
     private var loopCount: UInt64 = 0
-    private var computeIntersectionsEvery: UInt64 = Settings.refreshLabelsIntersectionsEveryNDisplayLoop
+    private var computeIntersectionsEvery: UInt64
     
     func checkEvaluateScreenData() -> Bool {
         if evaluateScreenDataFlag {
@@ -26,9 +27,13 @@ class MapCADisplayLoop {
     
     init(frameCounter: FrameCounter,
          drawingFrameRequester: DrawingFrameRequester,
+         mapSettings: MapSettings
     ) {
+        self.mapSettings = mapSettings
         self.frameCounter = frameCounter
         self.drawingFrameRequester = drawingFrameRequester
+        
+        computeIntersectionsEvery = mapSettings.getMapCommonSettings().getRefreshLabelsIntersectionsEveryNDisplayLoop()
     }
     
     func forceUpdateStates() {
@@ -43,7 +48,7 @@ class MapCADisplayLoop {
             
             evaluateScreenDataFlag      = true
             
-            drawingFrameRequester.renderNextNFrames(Settings.maxBuffersInFlight)
+            drawingFrameRequester.renderNextNFrames(mapSettings.getMapCommonSettings().getMaxBuffersInFlight())
         }
     }
     

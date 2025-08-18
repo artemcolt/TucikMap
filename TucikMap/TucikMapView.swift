@@ -17,7 +17,7 @@ struct TucikMapView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> MTKView {
-        let bgColor = Settings.backgroundColor
+        let bgColor = mapSettings.getMapBaseColors().getBackgroundColor()
         let mtkView = MTKView()
         mtkView.device = MTLCreateSystemDefaultDevice()
         mtkView.delegate = context.coordinator
@@ -25,7 +25,7 @@ struct TucikMapView: UIViewRepresentable {
         mtkView.depthStencilPixelFormat = .depth32Float_stencil8
         mtkView.colorPixelFormat = .bgra8Unorm
         mtkView.enableSetNeedsDisplay = true
-        mtkView.preferredFramesPerSecond = Settings.preferredFramesPerSecond
+        mtkView.preferredFramesPerSecond = mapSettings.getMapCommonSettings().getPreferredFramesPerSecond()
         
         let camera = context.coordinator.cameraStorage
         let delegate = context.coordinator.cameraStorage.controlsDelegate

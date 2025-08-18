@@ -15,7 +15,7 @@ import MetalKit
 class TileMvtParser {
     private let giveMeId                    : GiveMeId = GiveMeId()
     private let determineFeatureStyle       : DetermineFeatureStyle
-    private let mapDebugSettings            : MapDebugSettings
+    private let mapSettings                 : MapSettings
     
     private let parsePolygon                : ParsePolygon = ParsePolygon()
     private let parseLine                   : ParseLine = ParseLine()
@@ -24,9 +24,9 @@ class TileMvtParser {
     private var parsedCountTest             = 0
     
     
-    init(determineFeatureStyle: DetermineFeatureStyle, mapDebugSettings: MapDebugSettings) {
+    init(determineFeatureStyle: DetermineFeatureStyle, mapSettings: MapSettings) {
         self.determineFeatureStyle = determineFeatureStyle
-        self.mapDebugSettings = mapDebugSettings
+        self.mapSettings = mapSettings
     }
     
     func parse(
@@ -55,16 +55,16 @@ class TileMvtParser {
         )
     }
     
-    private func tryParsePolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double) -> Parsed3dPolygon? {
+    private func tryParsePolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double, tileExtent: Double) -> Parsed3dPolygon? {
         if geometry.type != .polygon {return nil}
         guard let polygon = geometry as? Polygon else {return nil}
 //        guard let clippedPolygon = polygon.clipped(to: boundingBox) else {
 //            return nil
 //        }
-        return parseBuilding.parseBuilding(polygon: polygon.coordinates, parsePolygon: parsePolygon, height: height)
+        return parseBuilding.parseBuilding(polygon: polygon.coordinates, parsePolygon: parsePolygon, height: height, tileExtent: tileExtent)
     }
     
-    private func tryParseMultiPolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double) -> [Parsed3dPolygon]? {
+    private func tryParseMultiPolygonBuilding(geometry: GeoJsonGeometry, boundingBox: BoundingBox, height: Double, tileExtent: Double) -> [Parsed3dPolygon]? {
         if geometry.type != .multiPolygon {return nil}
         guard let multiPolygon = geometry as? MultiPolygon else { return nil }
 //        guard let clippedMultiPolygon = multiPolygon.clipped(to: boundingBox) else {
@@ -72,7 +72,7 @@ class TileMvtParser {
 //        }
         var parsedBuidlings: [Parsed3dPolygon] = []
         for polygon in multiPolygon.coordinates {
-            guard let parsedBuilding = parseBuilding.parseBuilding(polygon: polygon, parsePolygon: parsePolygon, height: height) else { continue }
+            guard let parsedBuilding = parseBuilding.parseBuilding(polygon: polygon, parsePolygon: parsePolygon, height: height, tileExtent: tileExtent) else { continue }
             parsedBuidlings.append(parsedBuilding)
         }
         if parsedBuidlings.isEmpty { return nil}
@@ -86,7 +86,8 @@ class TileMvtParser {
         guard let clippedPolygon = polygon.clipped(to: boundingBox) else {
             return nil
         }
-        return parsePolygon.parse(polygon: clippedPolygon.coordinates)
+        let tileExtent = Double(mapSettings.getMapCommonSettings().getTileExtent())
+        return parsePolygon.parse(polygon: clippedPolygon.coordinates, tileExtent: tileExtent)
     }
     
     private func tryParseMultiPolygon(geometry: GeoJsonGeometry, boundingBox: BoundingBox) -> [ParsedPolygon]? {
@@ -95,9 +96,10 @@ class TileMvtParser {
         guard let clippedMultiPolygon = multiPolygon.clipped(to: boundingBox) else {
             return nil
         }
+        let tileExtent = Double(mapSettings.getMapCommonSettings().getTileExtent())
         var parsedPolygons: [ParsedPolygon] = []
         for polygon in clippedMultiPolygon.coordinates {
-            guard let parsedPolygon = parsePolygon.parse(polygon: polygon) else { continue }
+            guard let parsedPolygon = parsePolygon.parse(polygon: polygon, tileExtent: tileExtent) else { continue }
             parsedPolygons.append(parsedPolygon)
         }
         if parsedPolygons.isEmpty { return nil}
@@ -121,11 +123,12 @@ class TileMvtParser {
     }
     
     private func parseLines(multiLine: MultiLineString, width: Double) -> [ParsedLineRawVertices] {
+        let tileExtent = Double(mapSettings.getMapCommonSettings().getTileExtent())
         var parsed: [ParsedLineRawVertices] = []
         for line in multiLine.lineStrings {
             let coordinates = line.coordinates
             guard coordinates.count >= 2 else { continue }
-            let parsedLine = parseLine.parseRaw(line: coordinates, width: width)
+            let parsedLine = parseLine.parseRaw(line: coordinates, width: width, tileExtent: tileExtent)
             parsed.append(parsedLine)
         }
         return parsed
@@ -149,10 +152,11 @@ class TileMvtParser {
     }
     
     private func parseRoad(coordinates: [Coordinate3D], name: String, tileCoords: Tile) async -> ParsedRoadLabel? {
+        let tileExtent = Double(mapSettings.getMapCommonSettings().getTileExtent())
         var points: [SIMD2<Float>] = []
         points.reserveCapacity(coordinates.count)
         for coordinate in coordinates {
-            let currentPoint = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(coordinate.x, coordinate.y))
+            let currentPoint = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(coordinate.x, coordinate.y), tileExtent: tileExtent)
             points.append(SIMD2<Float>(Float(currentPoint.x), Float(currentPoint.y)))
         }
         
@@ -166,7 +170,8 @@ class TileMvtParser {
         
         // Тут пытаюсь проверять в целом длину дороги и если она прям очень маленькая то нету смысла ее парсить
         // все равно на нее ничего не поместиться
-        if worldPathLen < Settings.filterRoadLenLabel {
+        let filterRoadLenLabel = mapSettings.getMapCommonSettings().getFilterRoadLenLabel()
+        if worldPathLen < filterRoadLenLabel {
             return nil
         }
         
@@ -183,10 +188,11 @@ class TileMvtParser {
         guard let point = geometry as? Point else {return nil}
         let x = point.coordinate.x
         let y = point.coordinate.y
-        guard x > 0 && x < Double(Settings.tileExtent) && y > 0 && y < Double(Settings.tileExtent) else { return nil }
+        let tileExtent = mapSettings.getMapCommonSettings().getTileExtent()
+        guard x > 0 && x < Double(tileExtent) && y > 0 && y < Double(tileExtent) else { return nil }
         guard let filterTextResult = determineFeatureStyle.filterTextLabels(properties: properties, tile: tileCoords) else { return nil }
         guard let nameEn = properties["name_en"] as? String else {return nil}
-        let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y))
+        let coordinate = NormalizeLocalCoords.normalize(coord: SIMD2<Double>(x, y), tileExtent: Double(tileExtent))
         
         // здесь это нужно только чтобы id рассчитать
         // mapSize по идее любым может быть ВРОДЕ БЫ
@@ -291,6 +297,8 @@ class TileMvtParser {
     }
     
     func readingStage(tile: VectorTile, boundingBox: BoundingBox, tileCoords: Tile) async -> ReadingStageResult {
+        let tileExtent = Double(mapSettings.getMapCommonSettings().getTileExtent())
+        
         var polygon3dByStyle: [UInt8: [Parsed3dPolygon]] = [:]
         
         var polygonByStyle: [UInt8: [ParsedPolygon]] = [:]
@@ -325,7 +333,7 @@ class TileMvtParser {
                 let styleKey = style.key
                 if styleKey == 0 {
                     // none defineded style
-                    PrintStyleHelper.printNotUsedStyleToSee(detFeatureStyleData: detStyleData)
+                    printNotUsedStyleToSee(detFeatureStyleData: detStyleData)
                     continue
                 }
                 if styles[styleKey] == nil {
@@ -335,6 +343,7 @@ class TileMvtParser {
                 // Process each feature
                 let parseGeomStyleData = style.parseGeometryStyleData
                 
+                let buildingsFactor = mapSettings.getMapCommonSettings().getBuildingsFactor()
                 let extrude = properties["extrude"] as? String == "true"
                 if layerName == "building" && extrude {
                     let currentZ = tileCoords.z
@@ -342,22 +351,24 @@ class TileMvtParser {
                     let difference = currentZ - baseZoom
                     let factor = pow(2.0, Double(difference))
                     guard var height = properties["height"] as? Double else { continue }
-                    height = height * Settings.buildingsFactor * factor
+                    height = height * buildingsFactor * factor
                     let _ = properties["min_height"] as? Double
-                    if let parsed = tryParsePolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height) {
+                    if let parsed = tryParsePolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height, tileExtent: tileExtent) {
                         polygon3dByStyle[styleKey, default: []].append(parsed)
                     }
-                    if let parsed = tryParseMultiPolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height) {
+                    if let parsed = tryParseMultiPolygonBuilding(geometry: geometry, boundingBox: boundingBox, height: height, tileExtent: tileExtent) {
                         polygon3dByStyle[styleKey, default: []].append(contentsOf: parsed)
                     }
                     continue
                 }
                 
+                let renderOnlyRoadsArray = mapSettings.getMapDebugSettings().getRenderOnlyRoadsArray()
+                let renderRoadArrayFromTo = mapSettings.getMapDebugSettings().getRenderRoadArrayFromTo()
                 let name = properties["name_en"] as? String
                 if layerName == "road" && name != nil {
-                    let testCondition = Settings.renderOnlyRoadsArray.contains(name!) || Settings.renderOnlyRoadsArray.isEmpty
-                    let fromToTestCond = Settings.renderRoadArrayFromTo.isEmpty ||
-                        (Settings.renderRoadArrayFromTo[0] <= parsedCountTest && parsedCountTest <= Settings.renderRoadArrayFromTo[1])
+                    let testCondition = renderOnlyRoadsArray.contains(name!) || renderOnlyRoadsArray.isEmpty
+                    let fromToTestCond = renderRoadArrayFromTo.isEmpty ||
+                        (renderRoadArrayFromTo[0] <= parsedCountTest && parsedCountTest <= renderRoadArrayFromTo[1])
                     if testCondition {
                         if fromToTestCond {
                             if let parsed = await tryParseRoadLine(geometry: geometry, name: name ?? "no street name", tileCoords: tileCoords) {
@@ -394,7 +405,7 @@ class TileMvtParser {
         
         addBackground(polygonByStyle: &polygonByStyle, styles: &styles)
         
-        if mapDebugSettings.addTestBorders {
+        if mapSettings.getMapDebugSettings().getAddTestBorders() {
             addBorders(polygonByStyle: &polygonByStyle, styles: &styles)
         }
         
@@ -526,5 +537,15 @@ class TileMvtParser {
             ),
             styles: styles
         )
+    }
+    
+    private func printNotUsedStyleToSee(detFeatureStyleData: DetFeatureStyleData) {
+        if mapSettings.getMapDebugSettings().getPrintNotUsedStyle() {
+            let filterNotUsedLayernName = mapSettings.getMapDebugSettings().getFilterNotUsedLayernName()
+            if filterNotUsedLayernName.isEmpty == false && detFeatureStyleData.layerName.contains(filterNotUsedLayernName) == false {
+                return
+            }
+            print(detFeatureStyleData)
+        }
     }
 }

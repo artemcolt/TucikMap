@@ -9,7 +9,7 @@ import Foundation
 import simd
 
 class MapZoomState {
-    private let nullZoomCameraDistance = Settings.nullZoomCameraDistance
+    private let nullZoomCameraDistance: Float
     
     private(set) var zoomLevelFloat: Float = 0
     private(set) var zoomLevel: Int = 0
@@ -17,6 +17,10 @@ class MapZoomState {
     private(set) var maxTileCoord: Int = 0
     private(set) var tilesCount: Int = 0
     private(set) var powZoomLevel: Float = 0
+    
+    init(mapSettings: MapSettings) {
+        nullZoomCameraDistance = mapSettings.getMapCameraSettings().getNullZoomCameraDistance()
+    }
     
     func update(zoomLevelFloat: Float, mapSize: Float) {
         

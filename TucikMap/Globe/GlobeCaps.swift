@@ -20,8 +20,9 @@ class GlobeCaps {
     private let vertexCount: Int
     private let slices = 60
     
-    init(metalDevice: MTLDevice) {
-        let globeRadius = Settings.nullZoomGlobeRadius
+    init(metalDevice: MTLDevice, mapSettings: MapSettings) {
+        let nullZoomGlobeRadius = mapSettings.getMapCommonSettings().getNullZoomGlobeRadius()
+        let globeRadius = nullZoomGlobeRadius
         let globeCenter = SIMD3<Float>(0, 0, 0)
         
         let pi = Float.pi
@@ -58,8 +59,10 @@ class GlobeCaps {
             vertices.append(p1)
         }
         
-        let northPoleColors = Array(repeating: Settings.northPoleColor, count: vertices.count)
-        let southPoleColors = Array(repeating: Settings.southPoleColor, count: vertices.count)
+        let northPoleColor = mapSettings.getMapBaseColors().getNorthPoleColor()
+        let southPoleColor = mapSettings.getMapBaseColors().getSouthPoleColor()
+        let northPoleColors = Array(repeating: northPoleColor, count: vertices.count)
+        let southPoleColors = Array(repeating: southPoleColor, count: vertices.count)
         let colors = northPoleColors + southPoleColors
         
         // South cap

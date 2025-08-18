@@ -16,6 +16,7 @@ class MetalTilesStorage {
     private var onMetalingTileEnd   : [(Tile) -> Void] = []
     private let textTools           : TextTools
     private let metalDevice         : MTLDevice
+    private let mapSettings         : MapSettings
     
     init(
         determineStyle: DetermineFeatureStyle,
@@ -23,11 +24,13 @@ class MetalTilesStorage {
         textTools: TextTools,
         mapSettings: MapSettings
     ) {
+        self.mapSettings = mapSettings
         self.textTools = textTools
         self.metalDevice = metalDevice
-        memoryMetalTile = MemoryMetalTileCache(maxCacheSizeInBytes: Settings.maxCachedTilesMemory)
-        tileParser = TileMvtParser(determineFeatureStyle: determineStyle, mapDebugSettings: mapSettings.mapDebugSettings)
-        mapNeedsTile = MapNeedsTile(onComplete: onTileComplete)
+        let maxCachedTilesMemory = mapSettings.getMapCommonSettings().getMaxCachedTilesMemory()
+        memoryMetalTile = MemoryMetalTileCache(maxCacheSizeInBytes: maxCachedTilesMemory)
+        tileParser = TileMvtParser(determineFeatureStyle: determineStyle, mapSettings: mapSettings)
+        mapNeedsTile = MapNeedsTile(mapSettings: mapSettings, onComplete: onTileComplete)
     }
     
     func addHandler(handler: @escaping (Tile) -> Void) {
@@ -37,14 +40,17 @@ class MetalTilesStorage {
     private func onTileComplete(data: Data?, tile: Tile) {
         guard let data = data else { return }
         
-        if Settings.debugAssemblingMap { print("Parsing and metaling \(tile)") }
+        let debugAssemblingMap = mapSettings.getMapDebugSettings().getDebugAssemblingMap()
+        let tileExtent = mapSettings.getMapCommonSettings().getTileExtent()
+        let roadLabelTextSize = mapSettings.getMapCommonSettings().getRoadLabelTextSize()
+        if debugAssemblingMap { print("Parsing and metaling \(tile)") }
         Task {
             let parsedTile = await tileParser.parse(
                 tile: tile,
                 mvtData: data,
                 boundingBox: BoundingBox(
                     southWest: Coordinate3D(latitude: 0.0, longitude: 0.0),
-                    northEast: Coordinate3D(latitude: Double(Settings.tileExtent), longitude: Double(Settings.tileExtent))
+                    northEast: Coordinate3D(latitude: Double(tileExtent), longitude: Double(tileExtent))
                 )
             )
             
@@ -85,7 +91,7 @@ class MetalTilesStorage {
                 lines: roadLabelsParsed.map { roadLabel in
                     MapRoadLabelsAssembler.TextLineData(
                         text: roadLabel.name,
-                        scale: Settings.roadLabelTextSize,
+                        scale: roadLabelTextSize,
                         localPositions: roadLabel.localPoints,
                         id: roadLabel.id,
                         sortRank: 0,

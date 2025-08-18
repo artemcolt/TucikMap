@@ -22,12 +22,14 @@ class HandleRoadLabels {
     
     private let mapZoomState        : MapZoomState
     private let frameCounter        : FrameCounter
+    private let mapSettings         : MapSettings
     private var roadLabelsByTiles   : [MetalTile.RoadLabels] = []
     
     private var savedLabelIntersections: [UInt: LabelIntersection] = [:]
     var actualLabelsIds: Set<UInt> = []
     
-    init(mapZoomState: MapZoomState, frameCounter: FrameCounter) {
+    init(mapZoomState: MapZoomState, frameCounter: FrameCounter, mapSettings: MapSettings) {
+        self.mapSettings    = mapSettings
         self.mapZoomState   = mapZoomState
         self.frameCounter   = frameCounter
     }
@@ -69,11 +71,14 @@ class HandleRoadLabels {
     func forEvaluateCollisions(pipeline: inout ScreenCollisionsDetector.ForEvaluationResult,
                                prepareToScreenData: PrepareToScreenData
     ) {
+        let labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
+        let printRoadLabelsCount = mapSettings.getMapDebugSettings().getPrintRoadLabelsCount()
+        
         // Удаляет стухшие тайлы с дорожными метками
         let elapsedTime = self.frameCounter.getElapsedTimeSeconds()
         var metalRoadLabels: [MetalTile.RoadLabels] = []
         for roadLabel in self.roadLabelsByTiles {
-            if roadLabel.timePoint == nil || elapsedTime - roadLabel.timePoint! < Settings.labelsFadeAnimationTimeSeconds {
+            if roadLabel.timePoint == nil || elapsedTime - roadLabel.timePoint! < labelsFadeAnimationTimeSeconds {
                 metalRoadLabels.append(roadLabel)
             }
         }
@@ -96,7 +101,7 @@ class HandleRoadLabels {
             }
         }
         
-        if Settings.printRoadLabelsCount {
+        if printRoadLabelsCount {
             print("Road labels count = ", roadLabelsCount)
         }
         
@@ -116,6 +121,7 @@ class HandleRoadLabels {
         var outputIndexShift            = 0
         let elapsedTime                 = frameCounter.getElapsedTimeSeconds()
         let actualRoadLabelsIdsCaching  = result.actualRoadLabelsIds
+        let roadLabelScreenSpacing      = mapSettings.getMapCommonSettings().getRoadLabelScreenSpacing()
         
         var renderingCurrentRoadLabels  : [DrawTileRoadLabelsPrep] = []
         
@@ -135,7 +141,7 @@ class HandleRoadLabels {
                 let roadLabel           = meta[roadLabelIndex]
                 let worldPathLen        = roadLabel.pathLen
                 let measuredText        = roadLabel.measuredText
-                let textScreenWidth     = measuredText.width * roadLabel.scale + Settings.roadLabelScreenSpacing
+                let textScreenWidth     = measuredText.width * roadLabel.scale + roadLabelScreenSpacing
                 let localPositions      = roadLabel.localPositions
                 let count               = localPositions.count
                 var screenPathLen       = Float(0);
@@ -289,7 +295,8 @@ class HandleRoadLabels {
                                                                      maxInstances: maxInstances))
         }
         
-        self.currentRenderingRoads = RenderingRoadLabelsTB(tilesPrepare: renderingCurrentRoadLabels, bufferingCounter: Settings.maxBuffersInFlight)
+        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
+        self.currentRenderingRoads = RenderingRoadLabelsTB(tilesPrepare: renderingCurrentRoadLabels, bufferingCounter: maxBuffersInFlight)
     }
     
     

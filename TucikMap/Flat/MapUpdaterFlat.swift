@@ -23,6 +23,7 @@ class MapUpdaterFlat : MapUpdater {
         mapUpdaterContext: MapUpdaterContext,
         screenCollisionsDetector: ScreenCollisionsDetector,
         updateBufferedUniform: UpdateBufferedUniform,
+        mapSettings: MapSettings
     ) {
         super.init(mapZoomState: mapZoomState,
                    device: device,
@@ -35,7 +36,8 @@ class MapUpdaterFlat : MapUpdater {
                    mapModeStorage: mapModeStorage,
                    mapUpdaterContext: mapUpdaterContext,
                    updateBufferedUniform: updateBufferedUniform,
-                   screenCollisionsDetector: screenCollisionsDetector)
+                   screenCollisionsDetector: screenCollisionsDetector,
+                   mapSettings: mapSettings)
         
         metalTilesStorage.addHandler(handler: onMetalingTileEnd)
     }

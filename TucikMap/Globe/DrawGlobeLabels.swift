@@ -12,6 +12,7 @@ class DrawGlobeLabels {
     private let sampler: MTLSamplerState
     private let metalDevice: MTLDevice
     private let camera: Camera
+    private let mapSettigns: MapSettings
     
     // на всю карту общие парметры
     struct GlobeParams {
@@ -28,7 +29,8 @@ class DrawGlobeLabels {
         let factor: Float
     };
     
-    init(screenUniforms: ScreenUniforms, metalDevice: MTLDevice, camera: Camera) {
+    init(screenUniforms: ScreenUniforms, metalDevice: MTLDevice, camera: Camera, mapSettigns: MapSettings) {
+        self.mapSettigns = mapSettigns
         self.screenUniforms = screenUniforms
         self.metalDevice = metalDevice
         self.camera = camera
@@ -50,7 +52,8 @@ class DrawGlobeLabels {
     ) {
         guard geoLabels.isEmpty == false else { return }
         
-        var animationTime = Settings.labelsFadeAnimationTimeSeconds
+        let labelsFadeAnimationTimeSeconds = mapSettigns.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
+        var animationTime = labelsFadeAnimationTimeSeconds
         let latitude = camera.latitude
         let longitude = camera.longitude
         var globeParams = GlobeParams(latitude: latitude,

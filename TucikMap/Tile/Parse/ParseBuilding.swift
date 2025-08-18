@@ -13,9 +13,9 @@ import Foundation
 import simd
 
 class ParseBuilding {
-    func parseBuilding(polygon: [[Coordinate3D]], parsePolygon: ParsePolygon, height: Double) -> Parsed3dPolygon? {
+    func parseBuilding(polygon: [[Coordinate3D]], parsePolygon: ParsePolygon, height: Double, tileExtent: Double) -> Parsed3dPolygon? {
         let height = Float(height)
-        guard let parsed = parsePolygon.parse(polygon: polygon) else { return nil }
+        guard let parsed = parsePolygon.parse(polygon: polygon, tileExtent: tileExtent) else { return nil }
         
         // Roof vertices and indices
         let roofVertices: [SIMD3<Float>] = parsed.vertices.map { vertex in SIMD3<Float>(vertex.x, vertex.y, height) }
