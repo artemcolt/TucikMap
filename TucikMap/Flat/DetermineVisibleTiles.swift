@@ -126,8 +126,6 @@ class DetermineVisibleTiles {
                                   tileXCount: tileXCount.count,
                                   isFullMap: tileXCount.count == tilesCount)
         
-        print(areaRange)
-        
         return (tiles: Array(visibleTiles), areaRange: areaRange)
     }
     

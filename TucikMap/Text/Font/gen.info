@@ -1,0 +1,1 @@
+./msdf-atlas-gen -font Roboto-Regular.ttf -pxrange 12 -imageout atlas.png -json atlas.json

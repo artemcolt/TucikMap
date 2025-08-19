@@ -62,11 +62,12 @@ vertex VertexOut textVertexShader(VertexIn in [[stage_in]],
 fragment float4 textFragmentShader(VertexOut in [[stage_in]],
                                  texture2d<float> atlasTexture [[texture(0)]],
                                  sampler textureSampler [[sampler(0)]]) {
+    float textRange = 0.3;
     // Чтение значения из MSDF атласа
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
-    float sigDist = median(msdf.r, msdf.g, msdf.b) - 0.5;
-    float opacity = clamp(sigDist/fwidth(sigDist) + 0.5, 0.0, 1.0);
-    return float4(1.0, 0.0, 0.0, opacity);
+    float sigDist = median(msdf.r, msdf.g, msdf.b);
+    float textOpacity = smoothstep(textRange, textRange, sigDist);
+    return float4(1.0, 0.0, 0.0, textOpacity);
 }
 
 

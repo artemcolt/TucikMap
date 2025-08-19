@@ -30,7 +30,7 @@ class DrawUI {
                 rotation: SIMD3<Float>(0, 0, 0),
                 scale: 80)
             ],
-            font: textTools.robotoFont.regularFont
+            font: textTools.baseFont
         )
         
         textTools.drawText.renderTextBytes(

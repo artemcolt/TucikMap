@@ -98,7 +98,7 @@ class MetalTilesStorage {
                         pathLen: roadLabel.pathLen
                     )
                 },
-                font: textTools.robotoFont.boldFont
+                font: textTools.baseFont
             )
             
             let textLabels = textTools.mapLabelsAssembler.assemble(
@@ -111,7 +111,7 @@ class MetalTilesStorage {
                     id: label.id,
                     sortRank: label.sortRank
                 )},
-                font: textTools.robotoFont.boldFont
+                font: textTools.baseFont
             )
             
             let metalTile = MetalTile(

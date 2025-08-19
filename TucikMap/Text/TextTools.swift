@@ -16,17 +16,13 @@ class TextTools {
     private let fontLoader: FontLoader
     private let metalDevice: MTLDevice
     
-    private let regularFont: Font
-    private let boldFont: Font
-    let robotoFont: FontBatch
+    let baseFont: Font
     
     init(metalDevice: MTLDevice, frameCounter: FrameCounter, mapSettings: MapSettings) {
         self.metalDevice = metalDevice
         self.createTextGeometry = CreateTextGeometry(mapSettings: mapSettings)
         fontLoader = FontLoader(metalDevice: metalDevice)
-        regularFont = fontLoader.load(fontName: "Roboto-Regular")
-        boldFont = fontLoader.load(fontName: "Roboto-ExtraBold")
-        robotoFont = FontBatch(regularFont: regularFont, boldFont: boldFont)
+        baseFont = fontLoader.load(fontName: "atlas")
         
         drawText = DrawText(metalDevice: metalDevice)
         textAssembler = TextAssembler(createTextGeometry: createTextGeometry, metalDevice: metalDevice)

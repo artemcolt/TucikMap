@@ -105,17 +105,16 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
     // Чтение значения из MSDF атласа
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
     float sigDist = median(msdf.r, msdf.g, msdf.b);
+    float textRange = 0.2;
+    float outlineRange = 0.05;
     
-    // Адаптивная ширина сглаживания на основе производной
-    float w = fwidth(sigDist);
+    // Обводка
+    float outlineDist = sigDist;  // Положительный сдвиг для внешнего контура (толщину регулируйте здесь)
+    float outlineOpacity = smoothstep(outlineRange, outlineRange + 0.05, outlineDist);
     
-    // Для обводки (outline)
-    float outlineDist = sigDist;
-    float outlineOpacity = smoothstep(-w, w, outlineDist);
-    
-    // Для текста
-    float textDist = sigDist - 0.3;
-    float textOpacity = smoothstep(0.5 - w, 0.5 + w, textDist + 0.5);
+    // Текст
+    float textDist = sigDist;
+    float textOpacity = smoothstep(textRange, textRange, textDist);
     
     // Комбинируем обводку и текст
     float3 outlineColor = float3(1.0, 1.0, 1.0); // Цвет обводки (например, чёрный)
@@ -124,5 +123,6 @@ fragment float4 labelsFragmentShader(VertexOut in [[stage_in]],
     float finalOpacity = max(outlineOpacity, textOpacity);
     
     float show = mix(1 - in.progress, in.progress, in.show ? 1 : 0);
+    show = clamp(0.0, 1.0, show);
     return float4(finalColor, finalOpacity * show);
 }

@@ -11,6 +11,8 @@ struct ContentView: View {
     
     let mapSettings = MapSettingsBuilder()
         .initPosition(z: 0, latLon: SIMD2<Double>(0, 0))
+        .debugUI(enabled: true)
+        .renderOnDisplayUpdate(enabled: false)
         .build()
     
     var body: some View {

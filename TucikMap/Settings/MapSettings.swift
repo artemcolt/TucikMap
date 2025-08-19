@@ -44,6 +44,8 @@ class MapSettings {
 
 class MapSettingsBuilder {
     private var mapCameraSettings = MapCameraSettings()
+    private var mapDebugSettings = MapDebugSettings()
+    private var mapCommonSettings = MapCommonSettings()
     
     public func getMapCameraSettings() -> MapCameraSettings {
         return mapCameraSettings
@@ -55,8 +57,20 @@ class MapSettingsBuilder {
         return self
     }
     
+    func debugUI(enabled: Bool) -> MapSettingsBuilder {
+        mapDebugSettings.drawBaseDebug = enabled
+        return self
+    }
+    
+    func renderOnDisplayUpdate(enabled: Bool) -> MapSettingsBuilder {
+        mapCommonSettings.forceRenderOnDisplayUpdate = enabled
+        return self
+    }
+    
     func build() -> MapSettings {
-        return MapSettings(mapCameraSettings: mapCameraSettings)
+        return MapSettings(mapCameraSettings: mapCameraSettings,
+                           mapDebugSettings: mapDebugSettings,
+                           mapCommonSettings: mapCommonSettings)
     }
 }
 
@@ -213,7 +227,7 @@ struct MapCameraSettings {
 
 
 struct MapCommonSettings {
-    fileprivate let forceRenderOnDisplayUpdate: Bool
+    fileprivate var forceRenderOnDisplayUpdate: Bool
     fileprivate let maxBuffersInFlight: Int
     fileprivate let seeTileInDirection: Int
     fileprivate let fetchTilesQueueCapacity: Int
@@ -402,7 +416,7 @@ struct MapCommonSettings {
 
 
 struct MapDebugSettings {
-    fileprivate let drawBaseDebug: Bool
+    fileprivate var drawBaseDebug: Bool
     fileprivate let addTestBorders: Bool
     fileprivate let cameraCenterPointSize: Float
     fileprivate let axisLength: Float
