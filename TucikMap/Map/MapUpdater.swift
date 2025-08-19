@@ -94,7 +94,7 @@ class MapUpdater {
         let replsArray = replacements.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
-        let fullMetalTilesArray     = replsArray + actual
+        let fullMetalTilesArray = replsArray + actual
         self.assembledMap.setNewState(tiles: fullMetalTilesArray, areaRange: areaRange)
         
         let allReady = actual.count == visibleTilesResult.visibleTiles.count
@@ -102,6 +102,7 @@ class MapUpdater {
             screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
             mapCadDisplayLoop.forceUpdateStates()
         }
+        
         
         let debugAssemblingMap = mapSettings.getMapDebugSettings().getDebugAssemblingMap()
         let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()

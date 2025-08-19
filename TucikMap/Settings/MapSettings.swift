@@ -439,6 +439,11 @@ struct MapDebugSettings {
     fileprivate let printRoadLabelsCount: Bool
     fileprivate let enabledThrottling: Bool
     fileprivate let throttlingNanoSeconds: UInt64
+    fileprivate let drawTraversalPlane: Bool
+    
+    public func getDrawTraversalPlane() -> Bool {
+        return drawTraversalPlane
+    }
     
     public func getDrawBaseDebug() -> Bool {
         return drawBaseDebug
@@ -555,7 +560,8 @@ struct MapDebugSettings {
         printVisibleAreaRange: Bool = false,
         printRoadLabelsCount: Bool = false,
         enabledThrottling: Bool = false,
-        throttlingNanoSeconds: UInt64 = 4_000_000_000
+        throttlingNanoSeconds: UInt64 = 4_000_000_000,
+        drawTraversalPlane: Bool = false
     ) {
         self.drawBaseDebug = enabled
         self.addTestBorders = addTestBorders
@@ -580,5 +586,6 @@ struct MapDebugSettings {
         self.printRoadLabelsCount = printRoadLabelsCount
         self.enabledThrottling = enabledThrottling
         self.throttlingNanoSeconds = throttlingNanoSeconds
+        self.drawTraversalPlane = drawTraversalPlane
     }
 }

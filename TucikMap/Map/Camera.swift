@@ -211,6 +211,7 @@ class Camera {
         mapPanning.x = newMapPanning.x
             
         updateMap(view: view, size: view.drawableSize)
+        //print("rotationYaw = \(rotationYaw), cameraPitch = \(cameraPitch)")
     }
     
     func getCenterLatLon() -> (lat: Double, lon: Double) {

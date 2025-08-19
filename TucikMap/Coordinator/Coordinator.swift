@@ -56,7 +56,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         metalDevice             = device
         metalCommandQueue       = device.makeCommandQueue()!
         semaphore               = DispatchSemaphore(value: mapSettings.getMapCommonSettings().getMaxBuffersInFlight())
-
+        
         mapZoomState            = MapZoomState(mapSettings: mapSettings)
         screenUniforms          = ScreenUniforms(metalDevice: metalDevice)
         drawPoint               = DrawPoint(metalDevice: metalDevice)
@@ -233,6 +233,10 @@ class Coordinator: NSObject, MTKViewDelegate {
             mapUpdaterStorage.currentView.update(view: view, useOnlyCached: false)
         }
         
+        let cameraQuaternion = camera.cameraQuaternion;
+        let baseNormal = SIMD3<Float>(0, 0, 1)
+        let traversalPlaneNormal = cameraQuaternion.act(baseNormal)
+        
         // Расчет экранной UI информации, пересечения текста например
         if (mapCadDisplayLoop.checkEvaluateScreenData()) {
             switch mapModeStorage.mapMode {
@@ -244,7 +248,8 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                                        longitude: camera.longitude,
                                                                        globeRadius: camera.globeRadius,
                                                                        cameraPosition: camera.cameraPosition,
-                                                                       transition: switchMapMode.transition)
+                                                                       transition: switchMapMode.transition,
+                                                                       planeNormal: traversalPlaneNormal)
             }
         }
         
@@ -262,12 +267,17 @@ class Coordinator: NSObject, MTKViewDelegate {
             drawDebugData.draw(renderPassWrapper: renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
         }
         
-        // Вывести на экран, на основную текстуру отрисованную текстуру 
+        if mapSettings.getMapDebugSettings().getDrawTraversalPlane() == true {
+            drawDebugData.drawGlobeTraversalPlane(renderPassWrapper: renderPassWrapper,
+                                                  uniformsBuffer: uniformsBuffer,
+                                                  planeNormal: traversalPlaneNormal)
+        }
+        
+
+        // Вывести на экран, на основную текстуру отрисованную текстуру
         drawTextureOnScreen.draw(currentRenderPassDescriptor: view.currentRenderPassDescriptor,
                                  commandBuffer: commandBuffer,
                                  sceneTexture: renderPassWrapper.getScreenTexture())
-        
-        
         
         commandBuffer.present(drawable)
         frameCounter.update(with: commandBuffer)

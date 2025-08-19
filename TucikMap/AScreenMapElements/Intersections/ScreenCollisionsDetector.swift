@@ -151,7 +151,8 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
                        longitude: Float,
                        globeRadius: Float,
                        cameraPosition: SIMD3<Float>,
-                       transition: Float) -> Bool {
+                       transition: Float,
+                       planeNormal: SIMD3<Float>) -> Bool {
         let prepareToScreenData = PrepareToScreenDataGlobe(mapZoomState: mapZoomState,
                                                            latitude: latitude,
                                                            longitude: longitude,
@@ -197,7 +198,8 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
                                                         latitude: latitude,
                                                         longitude: longitude,
                                                         globeRadius: globeRadius,
-                                                        transition: transition)
+                                                        transition: transition,
+                                                        planeNormal: planeNormal)
         projectPointsGlobe.projectGlobe(inputGlobe: inputGlobe)
         
         return false

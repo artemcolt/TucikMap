@@ -49,6 +49,14 @@ class RenderPassWrapper {
         ur8Texture1 = metalDevice.makeTexture(descriptor: descriptor)!
     }
     
+    func createGlobeTransversalEncoder() -> MTLRenderCommandEncoder {
+        useDepthStencil()
+        renderPassDescriptor.colorAttachments[0].loadAction = .load
+        renderPassDescriptor.depthAttachment.loadAction = .load
+        renderPassDescriptor.depthAttachment.storeAction = .dontCare
+        return encoder(renderPassDescriptor)
+    }
+    
     func createUIEncoder() -> MTLRenderCommandEncoder {
         renderPassDescriptor.colorAttachments[0].loadAction = .load
         renderPassDescriptor.depthAttachment.texture = nil
@@ -144,6 +152,7 @@ class RenderPassWrapper {
         renderPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
         renderPassDescriptor.colorAttachments[1].loadAction = .clear
         renderPassDescriptor.colorAttachments[1].texture = ur8Texture0
+        renderPassDescriptor.depthAttachment.storeAction = .store
         let encoder = encoder(renderPassDescriptor)
         renderPassDescriptor.colorAttachments[1].texture = nil
         return encoder

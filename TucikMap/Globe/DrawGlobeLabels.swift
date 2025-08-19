@@ -20,6 +20,7 @@ class DrawGlobeLabels {
         let longitude: Float
         let globeRadius: Float
         let transition: Float
+        let planeNormal: SIMD3<Float>
     }
     
     // параметры под один тайл
@@ -56,10 +57,13 @@ class DrawGlobeLabels {
         var animationTime = labelsFadeAnimationTimeSeconds
         let latitude = camera.latitude
         let longitude = camera.longitude
+        let baseNormal = SIMD3<Float>(0, 0, 1)
+        let planeNormal = camera.cameraQuaternion.act(baseNormal)
         var globeParams = GlobeParams(latitude: latitude,
                                       longitude: longitude,
                                       globeRadius: globeRadius,
-                                      transition: transition)
+                                      transition: transition,
+                                      planeNormal: planeNormal)
         
         renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobeParams>.stride, index: 8)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)

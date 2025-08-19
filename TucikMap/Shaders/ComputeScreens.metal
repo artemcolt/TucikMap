@@ -47,6 +47,7 @@ struct GlobeParams {
     float longitude;
     float globeRadius;
     float transition;
+    float3 planeNormal;
 };
 
 // это данные для одного тайла
@@ -118,7 +119,10 @@ kernel void computeScreensGlobe(
     
     
     // visiblity detection code
-    bool visible = worldPosition.z > -radius;
+    float3 normal = globeParams.planeNormal;
+    float signedDistance = dot(worldPosition.xyz, normal) + normal.z * radius;
+    
+    bool visible = signedDistance > 0.0f;
     
     float4 clipPos = uniforms.projectionMatrix * uniforms.viewMatrix * worldPosition;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);

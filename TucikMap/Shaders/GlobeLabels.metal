@@ -55,6 +55,7 @@ struct GlobeParams {
     float longitude;
     float globeRadius;
     float transition;
+    float3 planeNormal;
 };
 
 struct GlobeLabelsParams {
