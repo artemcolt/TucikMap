@@ -185,7 +185,7 @@ class HandleGeoLabels {
             
             guard let textLabels = metalTile.textLabels else { continue }
             let inputArray = textLabels.mapLabelCpuMeta.map {
-                label in ComputeScreenPositions.Vertex(location: label.localPosition, matrixId: simd_short1(matrixIndex))
+                label in ComputeScreenPositions.Vertex(location: label.localPosition, matrixId: simd_int1(matrixIndex))
             }
             inputComputeScreenVertices.append(contentsOf: inputArray)
             mapLabelLineCollisionsMeta.append(contentsOf: textLabels.mapLabelCpuMeta)
@@ -200,8 +200,10 @@ class HandleGeoLabels {
     func setGeoLabels(geoLabels: [MetalTile.TextLabels]) {
         guard geoLabels.isEmpty == false else { return }
         let elapsedTime = frameCounter.getElapsedTimeSeconds()
-        
         let currentZ = geoLabels.first!.tile.z
+        
+        // нужно осохранить предыдущие для анимации затухания
+        // после того как анимация затухания заканчивается они удаляются
         var savePrevious: [MetalTile.TextLabels] = []
         for i in 0..<self.geoLabels.count {
             var label = self.geoLabels[i]

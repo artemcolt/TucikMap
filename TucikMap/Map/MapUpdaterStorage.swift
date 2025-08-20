@@ -54,6 +54,14 @@ class MapUpdaterStorage {
         self.mapUpdaterContext  = mapUpdaterContext
         self.mapModeStorage     = mapModeStorage
         
+        let determineVisibleTilesFlat = DetermineVisibleTilesFlat(mapZoomState: mapZoomState,
+                                                                  camera: camera.flatView,
+                                                                  mapSettings: mapSettings)
+        
+        let determineVisibleTilesGlobe = DetermineVisibleTilesGlobe(mapZoomState: mapZoomState,
+                                                                    camera: camera.globeView,
+                                                                    mapSettings: mapSettings)
+        
         _flat = MapUpdaterFlat(mapZoomState: mapZoomState,
                                device: metalDevice,
                                camera: camera.flatView,
@@ -66,7 +74,8 @@ class MapUpdaterStorage {
                                mapUpdaterContext: mapUpdaterContext,
                                screenCollisionsDetector: scrCollDetStorage.flat,
                                updateBufferedUniform: updateBufferedUniform,
-                               mapSettings: mapSettings)
+                               mapSettings: mapSettings,
+                               determineVisibleTiles: determineVisibleTilesFlat)
         
         _globe = MapUpdaterGlobe(mapZoomState: mapZoomState,
                                  device: metalDevice,
@@ -81,6 +90,7 @@ class MapUpdaterStorage {
                                  screenCollisionsDetector: scrCollDetStorage.globe,
                                  updateBufferedUniform: updateBufferedUniform,
                                  globeTexturing: globeTexturing,
-                                 mapSettings: mapSettings)
+                                 mapSettings: mapSettings,
+                                 determineVisibleTiles: determineVisibleTilesGlobe)
     }
 }

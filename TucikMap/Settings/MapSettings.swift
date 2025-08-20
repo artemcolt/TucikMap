@@ -8,6 +8,83 @@
 import SwiftUI
 import MetalKit
 
+class MapSettingsBuilder {
+    private var mapCameraSettings = MapCameraSettings()
+    private var mapDebugSettings = MapDebugSettings()
+    private var mapCommonSettings = MapCommonSettings()
+    
+    public func getMapCameraSettings() -> MapCameraSettings {
+        return mapCameraSettings
+    }
+    
+    func showLabelsOnTilesDist(tilesDist: Int) -> MapSettingsBuilder {
+        mapCommonSettings.showLabelsOnTilesDist = tilesDist
+        return self
+    }
+    
+    func drawTraversalPlane(enabled: Bool) -> MapSettingsBuilder {
+        mapDebugSettings.drawTraversalPlane = enabled
+        return self
+    }
+    
+    func visionSizeGlobe(tiles: Int) -> MapSettingsBuilder {
+        mapCommonSettings.seeTileInDirectionGlobe = tiles
+        mapCommonSettings.fetchTilesQueueCapacity = max(getFTQCapacityFor(tiles), getFTQCapacityFor(mapCommonSettings.seeTileInDirectionFlat))
+        return self
+    }
+    
+    func visionSizeFlat(tiles: Int) -> MapSettingsBuilder {
+        mapCommonSettings.seeTileInDirectionFlat = tiles
+        mapCommonSettings.fetchTilesQueueCapacity = max(getFTQCapacityFor(tiles), getFTQCapacityFor(mapCommonSettings.seeTileInDirectionGlobe))
+        return self
+    }
+    
+    // get fetch tiles queue capacity for visible size
+    func getFTQCapacityFor(_ seeInDirection: Int) -> Int {
+        let res = pow(Float(seeInDirection + seeInDirection + 1), 2) // столько тайлов на границе
+        return Int(res)
+    }
+    
+    func initPosition(z: Float, latLon: SIMD2<Double>) -> MapSettingsBuilder {
+        mapCameraSettings.z = z
+        mapCameraSettings.latLon = latLon
+        return self
+    }
+    
+    func debugUI(enabled: Bool) -> MapSettingsBuilder {
+        mapDebugSettings.drawBaseDebug = enabled
+        return self
+    }
+    
+    func drawGrid(enabled: Bool) -> MapSettingsBuilder {
+        mapDebugSettings.addTestBorders = enabled
+        return self
+    }
+    
+    func drawTileBorders(enabled: Bool) -> MapSettingsBuilder {
+        mapDebugSettings.drawBaseDebug = enabled
+        return self
+    }
+    
+    func renderOnDisplayUpdate(enabled: Bool) -> MapSettingsBuilder {
+        mapCommonSettings.forceRenderOnDisplayUpdate = enabled
+        return self
+    }
+    
+    func debugAssemblingMap(enabled: Bool) -> MapSettingsBuilder {
+        mapDebugSettings.debugAssemblingMap = enabled
+        return self
+    }
+    
+    func build() -> MapSettings {
+        return MapSettings(mapCameraSettings: mapCameraSettings,
+                           mapDebugSettings: mapDebugSettings,
+                           mapCommonSettings: mapCommonSettings)
+    }
+}
+
+
+
 class MapSettings {
     fileprivate let mapCameraSettings: MapCameraSettings
     fileprivate let mapDebugSettings: MapDebugSettings
@@ -40,38 +117,6 @@ class MapSettings {
         self.mapBaseColors = mapBaseColors
     }
     
-}
-
-class MapSettingsBuilder {
-    private var mapCameraSettings = MapCameraSettings()
-    private var mapDebugSettings = MapDebugSettings()
-    private var mapCommonSettings = MapCommonSettings()
-    
-    public func getMapCameraSettings() -> MapCameraSettings {
-        return mapCameraSettings
-    }
-    
-    func initPosition(z: Float, latLon: SIMD2<Double>) -> MapSettingsBuilder {
-        mapCameraSettings.z = z
-        mapCameraSettings.latLon = latLon
-        return self
-    }
-    
-    func debugUI(enabled: Bool) -> MapSettingsBuilder {
-        mapDebugSettings.drawBaseDebug = enabled
-        return self
-    }
-    
-    func renderOnDisplayUpdate(enabled: Bool) -> MapSettingsBuilder {
-        mapCommonSettings.forceRenderOnDisplayUpdate = enabled
-        return self
-    }
-    
-    func build() -> MapSettings {
-        return MapSettings(mapCameraSettings: mapCameraSettings,
-                           mapDebugSettings: mapDebugSettings,
-                           mapCommonSettings: mapCommonSettings)
-    }
 }
 
 
@@ -229,8 +274,8 @@ struct MapCameraSettings {
 struct MapCommonSettings {
     fileprivate var forceRenderOnDisplayUpdate: Bool
     fileprivate let maxBuffersInFlight: Int
-    fileprivate let seeTileInDirection: Int
-    fileprivate let fetchTilesQueueCapacity: Int
+    fileprivate var seeTileInDirectionGlobe: Int
+    fileprivate var seeTileInDirectionFlat: Int
     fileprivate let clearDownloadedOnDiskTiles: Bool
     fileprivate let spaceUnicodeNumber: Int
     fileprivate let spaceSize: Float
@@ -253,6 +298,12 @@ struct MapCommonSettings {
     fileprivate let nullZoomGlobeRadius: Float
     fileprivate let globeMapSize: Float
     fileprivate let baseFlatMapSize: Float
+    fileprivate var fetchTilesQueueCapacity: Int
+    fileprivate var showLabelsOnTilesDist: Int
+    
+    public func getShowLabelsOnTilesDist() -> Int {
+        return showLabelsOnTilesDist
+    }
     
     public func getForceRenderOnDisplayUpdate() -> Bool {
         return forceRenderOnDisplayUpdate
@@ -262,8 +313,12 @@ struct MapCommonSettings {
         return maxBuffersInFlight
     }
     
-    public func getSeeTileInDirection() -> Int {
-        return seeTileInDirection
+    public func getSeeTileInDirectionGlobe() -> Int {
+        return seeTileInDirectionGlobe
+    }
+    
+    public func getSeeTileInDirectionFlat() -> Int {
+        return seeTileInDirectionFlat
     }
     
     public func getFetchTilesQueueCapacity() -> Int {
@@ -361,8 +416,8 @@ struct MapCommonSettings {
     init(
         forceRenderOnDisplayUpdate: Bool = false,
         maxBuffersInFlight: Int = 3,
-        seeTileInDirection: Int = 2,
-        fetchTilesQueueCapacity: Int = 40,
+        seeTileInDirectionFlat: Int = 2,
+        seeTileInDirectionGlobe: Int = 2,
         clearDownloadedOnDiskTiles: Bool = false,
         spaceUnicodeNumber: Int = 32,
         spaceSize: Float = 0.2,
@@ -371,24 +426,26 @@ struct MapCommonSettings {
         maxCachedTilesMemory: Int = 500 * 1024 * 1024,
         preferredFramesPerSecond: Int = 60,
         refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 10,
-        maxInputComputeScreenPoints: Int = 3000,
         labelsFadeAnimationTimeSeconds: Float = 0.3,
         buildingsFactor: Double = 0.006,
         roadLabelScreenSpacing: Float = 0,
         roadLabelTextSize: Float = 50,
-        geoLabelsParametersBufferSize: Int = 40,
+        maxInputComputeScreenPoints: Int = 6000,
+        geoLabelsParametersBufferSize: Int = 200,
         globeTextureSize: Int = 4096 * 2,
-        globeToPlaneZoomStart: Float = 4,
-        globeToPlaneZoomEnd: Float = 5,
+        globeToPlaneZoomStart: Float = 6,
+        globeToPlaneZoomEnd: Float = 7,
         tileExtent: Int = 4096,
         filterRoadLenLabel: Float = 0.3,
         nullZoomGlobeRadius: Float = 0.2,
-        globeMapSize: Float = 1.0
+        globeMapSize: Float = 1.0,
+        fetchTilesQueueCapacity: Int = 9,
+        showLabelsOnTilesDist: Int = 1
     ) {
         self.forceRenderOnDisplayUpdate = forceRenderOnDisplayUpdate
         self.maxBuffersInFlight = maxBuffersInFlight
-        self.seeTileInDirection = seeTileInDirection
-        self.fetchTilesQueueCapacity = fetchTilesQueueCapacity
+        self.seeTileInDirectionFlat = seeTileInDirectionFlat
+        self.seeTileInDirectionGlobe = seeTileInDirectionGlobe
         self.clearDownloadedOnDiskTiles = clearDownloadedOnDiskTiles
         self.spaceUnicodeNumber = spaceUnicodeNumber
         self.spaceSize = spaceSize
@@ -410,6 +467,8 @@ struct MapCommonSettings {
         self.filterRoadLenLabel = filterRoadLenLabel
         self.nullZoomGlobeRadius = nullZoomGlobeRadius
         self.globeMapSize = globeMapSize
+        self.fetchTilesQueueCapacity = fetchTilesQueueCapacity
+        self.showLabelsOnTilesDist = showLabelsOnTilesDist
         self.baseFlatMapSize = 2 * Float.pi * nullZoomGlobeRadius
     }
 }
@@ -417,12 +476,11 @@ struct MapCommonSettings {
 
 struct MapDebugSettings {
     fileprivate var drawBaseDebug: Bool
-    fileprivate let addTestBorders: Bool
+    fileprivate var addTestBorders: Bool
     fileprivate let cameraCenterPointSize: Float
     fileprivate let axisLength: Float
     fileprivate let axisThickness: Float
     fileprivate var drawAxis: Bool
-    fileprivate var drawGrid: Bool
     fileprivate var printNotUsedStyle: Bool
     fileprivate var filterNotUsedLayernName: String
     fileprivate var debugAssemblingMap: Bool
@@ -439,7 +497,7 @@ struct MapDebugSettings {
     fileprivate let printRoadLabelsCount: Bool
     fileprivate let enabledThrottling: Bool
     fileprivate let throttlingNanoSeconds: UInt64
-    fileprivate let drawTraversalPlane: Bool
+    fileprivate var drawTraversalPlane: Bool
     
     public func getDrawTraversalPlane() -> Bool {
         return drawTraversalPlane
@@ -467,10 +525,6 @@ struct MapDebugSettings {
     
     public func getDrawAxis() -> Bool {
         return drawAxis
-    }
-    
-    public func getDrawGrid() -> Bool {
-        return drawGrid
     }
     
     public func getPrintNotUsedStyle() -> Bool {
@@ -544,7 +598,6 @@ struct MapDebugSettings {
         axisLength: Float = 10_000,
         axisThickness: Float = 20,
         drawAxis: Bool = false,
-        drawGrid: Bool = false,
         printNotUsedStyle: Bool = false,
         filterNotUsedLayernName: String = "road",
         debugAssemblingMap: Bool = false,
@@ -569,7 +622,6 @@ struct MapDebugSettings {
         self.axisLength = axisLength
         self.axisThickness = axisThickness
         self.drawAxis = drawAxis
-        self.drawGrid = drawGrid
         self.printNotUsedStyle = printNotUsedStyle
         self.filterNotUsedLayernName = filterNotUsedLayernName
         self.debugAssemblingMap = debugAssemblingMap

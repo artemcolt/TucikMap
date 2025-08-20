@@ -12,7 +12,12 @@ struct ContentView: View {
     let mapSettings = MapSettingsBuilder()
         .initPosition(z: 0, latLon: SIMD2<Double>(0, 0))
         .debugUI(enabled: true)
+        .drawTraversalPlane(enabled: false)
         .renderOnDisplayUpdate(enabled: false)
+        .drawGrid(enabled: true)
+        .debugAssemblingMap(enabled: false)
+        .visionSizeFlat(tiles: 5)
+        .visionSizeGlobe(tiles: 5)
         .build()
     
     var body: some View {

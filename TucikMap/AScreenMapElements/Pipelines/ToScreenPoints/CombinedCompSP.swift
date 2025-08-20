@@ -32,40 +32,25 @@ class CombinedCompSP {
     
     fileprivate let metalCommandQueue               : MTLCommandQueue
     fileprivate let uniformBuffer                   : MTLBuffer
-    fileprivate let inputParametersBuffer           : MTLBuffer
     fileprivate let inputScreenPositionsBuffer      : MTLBuffer
-    fileprivate let outputWorldPositionsBuffer      : MTLBuffer
-    
-    // размер для входного буффера точек, максимально может быть столько точек
-    fileprivate let inputBufferWorldPostionsSize    : Int
-    // размер для входного буффера матриц, макисмально может быть столько матриц
-    fileprivate let modelMatrixBufferSize           : Int
+    fileprivate let mapSettings                     : MapSettings
     
     init(metalDevice: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
          mapSettings: MapSettings) {
-        self.inputBufferWorldPostionsSize = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
-        self.modelMatrixBufferSize      = mapSettings.getMapCommonSettings().getGeoLabelsParametersBufferSize()
+        self.mapSettings                    = mapSettings
+        self.metalCommandQueue              = metalCommandQueue
         
-        self.metalCommandQueue          = metalCommandQueue
+        let inputBufferWorldPostionsSize    = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
         
-        // этим значением запоним буффер входных вертексов
-        var inputScreenPositionsMock    = Array(repeating: ComputeScreenPositions.Vertex(location: SIMD2<Float>(), matrixId: 0),
-                                                count: inputBufferWorldPostionsSize)
-        
-        
-        uniformBuffer                   = metalDevice.makeBuffer(length: MemoryLayout<Uniforms>.stride)!
-        inputScreenPositionsBuffer      = metalDevice.makeBuffer(bytes: &inputScreenPositionsMock,
-                                                                 length: MemoryLayout<ComputeScreenPositions.Vertex>.stride * inputBufferWorldPostionsSize)!
+        // Этим значением заполним буффер входных вертексов
+        var inputScreenPositionsMock        = Array(repeating: ComputeScreenPositions.Vertex(location: SIMD2<Float>(), matrixId: 0),
+                                                    count: inputBufferWorldPostionsSize)
         
         
-        var inputModelMatrices          = Array(repeating: matrix_identity_float4x4, count: modelMatrixBufferSize)
-        inputParametersBuffer        = metalDevice.makeBuffer(bytes: &inputModelMatrices,
-                                                                 length: MemoryLayout<matrix_float4x4>.stride * modelMatrixBufferSize)!
-        
-        // в буфере храняться точки в экранной проекции
-        // результат работы вычислительного шейдера
-        outputWorldPositionsBuffer      = metalDevice.makeBuffer(length: MemoryLayout<SIMD2<Float>>.stride * inputBufferWorldPostionsSize)!
+        uniformBuffer                       = metalDevice.makeBuffer(length: MemoryLayout<Uniforms>.stride)!
+        inputScreenPositionsBuffer          = metalDevice.makeBuffer(bytes: &inputScreenPositionsMock,
+                                                                     length: MemoryLayout<ComputeScreenPositions.Vertex>.stride * inputBufferWorldPostionsSize)!
     }
 }
 
@@ -94,9 +79,10 @@ class CombinedCompSPGlobe: CombinedCompSP {
         let geoLabelsSize                   : Int
     }
     
-    
-    fileprivate let onPointsReadyGlobe: OnPointsReadyHandlerGlobe
-    fileprivate var computeScreenPositionsGlobe: ComputeScreenPositionsGlobe
+    fileprivate let inputParametersBuffer           : MTLBuffer
+    fileprivate let outputWorldPositionsBuffer      : MTLBuffer
+    fileprivate let onPointsReadyGlobe              : OnPointsReadyHandlerGlobe
+    fileprivate var computeScreenPositionsGlobe     : ComputeScreenPositionsGlobe
     
     init(metalDevice: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
@@ -105,11 +91,28 @@ class CombinedCompSPGlobe: CombinedCompSP {
          mapSettings: MapSettings) {
         self.onPointsReadyGlobe = onPointsReadyGlobe
         self.computeScreenPositionsGlobe = computeScreenPositionsGlobe
+        
+        // На каждый тайл есть парметры для того чтобы считать лейблы
+        let parametersBufferSize            = mapSettings.getMapCommonSettings().getGeoLabelsParametersBufferSize()
+        var inputParameters                 = Array(repeating: DrawGlobeLabels.GlobeLabelsParams(centerX: 0, centerY: 0, factor: 0),
+                                                    count: parametersBufferSize)
+        
+        self.inputParametersBuffer          = metalDevice.makeBuffer(bytes: &inputParameters,
+                                                                     length: MemoryLayout<DrawGlobeLabels.GlobeLabelsParams>.stride * parametersBufferSize)!
+        
+        let inputBufferWorldPostionsSize    = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
+        
+        // в буфере храняться точки в экранной проекции
+        // результат работы вычислительного шейдера
+        let memLen = MemoryLayout<ComputeScreenPositionsGlobe.GlobeComputeScreenOutput>.stride
+        self.outputWorldPositionsBuffer = metalDevice.makeBuffer(length: memLen * inputBufferWorldPostionsSize)!
+        
         super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue, mapSettings: mapSettings)
     }
     
     func projectGlobe(inputGlobe: InputGlobe) {
-        var parameters = inputGlobe.parameters
+        let inputBufferWorldPostionsSize    = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
+        var parameters                      = inputGlobe.parameters
         
         inputParametersBuffer.contents().copyMemory(from: &parameters,
                                                     byteCount: MemoryLayout<DrawGlobeLabels.GlobeLabelsParams>.stride * parameters.count)
@@ -146,7 +149,7 @@ class CombinedCompSPGlobe: CombinedCompSP {
                                                                           globeRadius: globeRadius,
                                                                           transition: transition,
                                                                           planeNormal: planeNormal)
-        let calcBlockGlobe                  = ComputeScreenPositionsGlobe.CalculationBlockGlobe(inputParametersBuffer: inputParametersBuffer,
+        let calculationBlockGlobe           = ComputeScreenPositionsGlobe.CalculationBlockGlobe(inputParametersBuffer: inputParametersBuffer,
                                                                                                 inputBuffer: inputScreenPositionsBuffer,
                                                                                                 outputBuffer: outputWorldPositionsBuffer,
                                                                                                 vertexCount: inputBufferWorldPostionsSize,
@@ -155,13 +158,13 @@ class CombinedCompSPGlobe: CombinedCompSP {
         
         computeScreenPositionsGlobe.computeGlobe(uniforms: uniformBuffer,
                                                  computeEncoder: computeCommandEncoder,
-                                                 calculationBlockGlobe: calcBlockGlobe)
+                                                 calculationBlockGlobe: calculationBlockGlobe)
         
         computeCommandEncoder.endEncoding()
         commandBuffer.addCompletedHandler { buffer in
             DispatchQueue.main.async {
                 // Вычислили экранные координаты на gpu
-                let output = calcBlockGlobe.readOutput()
+                let output = calculationBlockGlobe.readOutput()
                 
                 let result = ResultGlobe(output: output,
                                          uniforms: uniforms,
@@ -216,8 +219,10 @@ class CombinedCompSPFlat: CombinedCompSP {
         let actualRoadLabelsIds             : Set<UInt>
     }
     
-    fileprivate let onPointsReadyFlat: OnPointsReadyHandlerFlat
-    fileprivate let computeScreenPositionsFlat: ComputeScreenPositionsFlat
+    fileprivate let inputParametersBuffer           : MTLBuffer
+    fileprivate let outputWorldPositionsBuffer      : MTLBuffer
+    fileprivate let onPointsReadyFlat               : OnPointsReadyHandlerFlat
+    fileprivate let computeScreenPositionsFlat      : ComputeScreenPositionsFlat
     
     init(metalDevice: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
@@ -225,6 +230,21 @@ class CombinedCompSPFlat: CombinedCompSP {
          computeScreenPositionsFlat: ComputeScreenPositionsFlat, mapSettings: MapSettings) {
         self.onPointsReadyFlat = onPointsReadyFlat
         self.computeScreenPositionsFlat = computeScreenPositionsFlat
+        
+        // На каждый тайл есть парметры для того чтобы считать лейблы
+        // В случае с flat представлением это модельная матрица для преобразования
+        let parametersBufferSize            = mapSettings.getMapCommonSettings().getGeoLabelsParametersBufferSize()
+        var inputModelMatrices              = Array(repeating: matrix_identity_float4x4, count: parametersBufferSize)
+        self.inputParametersBuffer          = metalDevice.makeBuffer(bytes: &inputModelMatrices,
+                                                                     length: MemoryLayout<matrix_float4x4>.stride * parametersBufferSize)!
+        
+        let inputBufferWorldPostionsSize    = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
+        
+        // в буфере храняться точки в экранной проекции
+        // результат работы вычислительного шейдера
+        let memLen = MemoryLayout<SIMD2<Float>>.stride
+        self.outputWorldPositionsBuffer = metalDevice.makeBuffer(length: memLen * inputBufferWorldPostionsSize)!
+        
         super.init(metalDevice: metalDevice, metalCommandQueue: metalCommandQueue, mapSettings: mapSettings)
     }
     
@@ -264,6 +284,7 @@ class CombinedCompSPFlat: CombinedCompSP {
               let computeCommandEncoder     = commandBuffer.makeComputeCommandEncoder() else { return }
         
         
+        let inputBufferWorldPostionsSize    = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
         let calculationBlock                = ComputeScreenPositionsFlat.CalculationBlock(inputParametersBuffer: inputParametersBuffer,
                                                                                           inputBuffer: inputScreenPositionsBuffer,
                                                                                           outputBuffer: outputWorldPositionsBuffer,

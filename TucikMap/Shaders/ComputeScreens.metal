@@ -18,7 +18,7 @@ struct Uniforms {
 
 struct InputComputeScreenVertex {
     float2 location;
-    short matrixId;
+    int matrixId;
 };
 
 kernel void computeScreens(

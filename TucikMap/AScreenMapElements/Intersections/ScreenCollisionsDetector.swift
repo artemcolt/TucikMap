@@ -184,12 +184,14 @@ class ScreenCollisionsDetectorGlobe : ScreenCollisionsDetector {
             // если быстро зумить камеру туда/cюда то geoLabels будет расти в размере из-за того что анимация не успевает за изменениями
             // в таком случае пропускаем изменения и отображаем старые данные до тех пор пока пользователь не успокоиться
             //renderFrameCount.renderNextNFrames(Settings.maxBuffersInFlight) // продолжаем рендрить чтобы обновились данные в конце концов
+            print("Warning: new screen geo labels ignored because resultSize > parametersBufferSize")
             return true // recompute is needed again but later
         }
         
         // TODO Как обработать случай когда точек для преобразования слишком много
         let maxInputComputeScreenPoints = mapSettings.getMapCommonSettings().getMaxInputComputeScreenPoints()
         if input.inputComputeScreenVertices.count > maxInputComputeScreenPoints {
+            print("Warning: new screen geo labels ignored because vertices > maxInputComputeScreenPoints")
             return false // Слишком много точек для преобразования, пропускаем рендринг
         }
         

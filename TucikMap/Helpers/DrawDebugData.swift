@@ -73,7 +73,7 @@ class DrawDebugData {
 
         
         let planeOrigin = SIMD3<Float>(0, 0, -cameraStorage.currentView.globeRadius)
-        let size: Float = 0.6  // Example parameter; adjust as needed
+        let size: Float = 0.6 * mapZoomState.powZoomLevel  // Example parameter; adjust as needed
 
         let unitNormal = normalize(planeNormal)
         let half = size / 2
@@ -97,7 +97,7 @@ class DrawDebugData {
         // 6 vertices for two triangles (with duplication, no indices), ordered to ensure correct winding matching the normal direction
         var vertices: [SIMD3<Float>] = [v1, v3, v2, v1, v4, v3]
         
-        var colors = vertices.map { vert in SIMD4<Float>(0, 1, 0, 0.5) }
+        var colors = vertices.map { vert in SIMD4<Float>(0, 1, 0, 0.85) }
         renderEncoder.setVertexBytes(&vertices, length: MemoryLayout<SIMD3<Float>>.stride * vertices.count, index: 0)
         renderEncoder.setVertexBytes(&colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 1)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)

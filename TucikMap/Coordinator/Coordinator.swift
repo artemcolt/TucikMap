@@ -263,14 +263,14 @@ class Coordinator: NSObject, MTKViewDelegate {
             globeMode.draw(in: view, renderPassWrapper: renderPassWrapper)
         }
         
-        if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
-            drawDebugData.draw(renderPassWrapper: renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
-        }
-        
         if mapSettings.getMapDebugSettings().getDrawTraversalPlane() == true {
             drawDebugData.drawGlobeTraversalPlane(renderPassWrapper: renderPassWrapper,
                                                   uniformsBuffer: uniformsBuffer,
                                                   planeNormal: traversalPlaneNormal)
+        }
+        
+        if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
+            drawDebugData.draw(renderPassWrapper: renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
         }
         
 

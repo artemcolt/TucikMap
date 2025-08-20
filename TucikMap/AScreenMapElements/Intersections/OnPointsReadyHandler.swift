@@ -23,7 +23,6 @@ class OnPointsReadyHandler {
 
 class OnPointsReadyHandlerGlobe : OnPointsReadyHandler {
     func onPointsReadyGlobe(resultGlobe: CombinedCompSPGlobe.ResultGlobe) {
-        let start = CFAbsoluteTimeGetCurrent()
         let result = resultGlobe
         let output = result.output.map { pos in HandleGeoLabels.Position(screenPos: pos.screenCoord, visible: pos.visibleGlobeSide) }
         let handleGeoInput = HandleGeoLabels.OnPointsReady(output: output,
@@ -37,10 +36,6 @@ class OnPointsReadyHandlerGlobe : OnPointsReadyHandler {
         
         let labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
         drawingFrameRequester.renderNextNSeconds(Double(labelsFadeAnimationTimeSeconds))
-        
-        let end = CFAbsoluteTimeGetCurrent()
-        let timeInterval = end - start
-        //print(String(format: "Время выполнения: %.6f секунд", timeInterval))
     }
 }
 
@@ -56,7 +51,6 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
     }
     
     func onPointsReadyFlat(resultFlat: CombinedCompSPFlat.ResultFlat) {
-        let start = CFAbsoluteTimeGetCurrent()
         let result = resultFlat.result
         let viewportSize = resultFlat.viewportSize
         let output = result.output.map { pos in HandleGeoLabels.Position(screenPos: pos, visible: true) }
@@ -81,9 +75,5 @@ class OnPointsReadyHandlerFlat : OnPointsReadyHandler {
         
         let labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
         drawingFrameRequester.renderNextNSeconds(Double(labelsFadeAnimationTimeSeconds))
-        
-        let end = CFAbsoluteTimeGetCurrent()
-        let timeInterval = end - start
-        //print(String(format: "Время выполнения: %.6f секунд", timeInterval))
     }
 }

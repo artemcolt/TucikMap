@@ -25,14 +25,13 @@ class ComputeScreenPositions {
     // Эта матрица рассчитывается на основе mapPanning, зума и самого тайла
     struct Vertex {
         let location: SIMD2<Float> // точка в мировых координатах
-        let matrixId: simd_short1  // индекс матрицы модели чтобы преобразовать окончательно мировую точку
+        let matrixId: simd_int1  // индекс матрицы модели чтобы преобразовать окончательно мировую точку
     }
     
     init(metalDevice: MTLDevice, library: MTLLibrary) {
         self.metalDevice            = metalDevice
     }
 }
-
 
 
 
@@ -54,7 +53,7 @@ class ComputeScreenPositionsGlobe: ComputeScreenPositions {
     
     struct GlobeComputeScreenOutput {
         let screenCoord: SIMD2<Float>
-        let visibleGlobeSide: Bool
+        let visibleGlobeSide: simd_bool
     };
     
     private let globeParamsBuffer: MTLBuffer
@@ -120,8 +119,7 @@ class ComputeScreenPositionsFlat: ComputeScreenPositions {
     
     func computeFlat(uniforms: MTLBuffer,
                      computeEncoder: MTLComputeCommandEncoder,
-                     calculationBlock: CalculationBlock,
-                     ) {
+                     calculationBlock: CalculationBlock) {
         computeScreenPipeline.selectComputePipeline(computeEncoder: computeEncoder)
         let inputBuffer                     = calculationBlock.inputBuffer
         let outputBuffer                    = calculationBlock.outputBuffer

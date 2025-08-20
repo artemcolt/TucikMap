@@ -89,8 +89,6 @@ class GlobeTexturing {
         pipelines.polygonPipeline.selectPipeline(renderEncoder: commandEncoder)
         drawTile.setUniforms(renderEncoder: commandEncoder, uniformsBuffer: uniformsBuffer)
         
-        let windowIsOdd = areaRange.tileXCount % 2 == 1
-        
         for looping in -1...1 {
             for metalTile in metalTiles {
                 let tile = metalTile.tile

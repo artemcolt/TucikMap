@@ -25,13 +25,18 @@ struct AreaRange {
     }
 }
 
+struct VisibleTile {
+    let tile: Tile
+    let tilesFromCenterTile: SIMD2<Float>
+}
+
 struct DetVisTilesResult {
-    var visibleTiles: [Tile]
+    var visibleTiles: [VisibleTile]
     let areaRange: AreaRange
     
     func containsTile(tile compare: Tile) -> Bool {
-        return visibleTiles.contains { tile in
-            tile.x == compare.x && tile.y == compare.y && tile.z == compare.z
+        return visibleTiles.contains { visTile in
+            visTile.tile.x == compare.x && visTile.tile.y == compare.y && visTile.tile.z == compare.z
         }
     }
 }

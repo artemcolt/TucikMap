@@ -14,14 +14,16 @@ class MapNeedsTile {
     private var onComplete: (Data?, Tile) -> Void
     private var ongoingTasks: [String: Task<Void, Never>] = [:]
     private let maxConcurrentFetchs: Int
-    private let fifo: FIFOQueue<Tile>
+    private let lifo: LIFOStack<Tile>
     private let mapSettings: MapSettings
     
     init(mapSettings: MapSettings, onComplete: @escaping (Data?, Tile) -> Void) {
         self.onComplete = onComplete
         self.maxConcurrentFetchs = mapSettings.getMapCommonSettings().getMaxConcurrentFetchs()
         self.mapSettings = mapSettings
-        self.fifo = FIFOQueue(capacity: mapSettings.getMapCommonSettings().getFetchTilesQueueCapacity())
+        
+        let maxFifoCapacity = mapSettings.getMapCommonSettings().getFetchTilesQueueCapacity()
+        self.lifo = LIFOStack(capacity: maxFifoCapacity)
         
         tileDiskCaching = TileDiskCaching(mapSettings: mapSettings)
         tileDownloader = TileDownloader(mapSettings: mapSettings)
@@ -38,7 +40,7 @@ class MapNeedsTile {
         }
         
         if ongoingTasks.count >= maxConcurrentFetchs {
-            fifo.enqueue(tile)
+            lifo.push(tile)
             if debugAssemblingMap { print("Request fifo enque tile \(tile)") }
             return
         }
@@ -68,7 +70,7 @@ class MapNeedsTile {
     
     private func _onComplete(data: Data?, tile: Tile) {
         ongoingTasks.removeValue(forKey: tile.key())
-        if let deqeueTile = fifo.dequeue() {
+        if let deqeueTile = lifo.pop() {
             please(tile: deqeueTile)
         }
         onComplete(data, tile)

@@ -96,7 +96,7 @@ class HandleRoadLabels {
             for meta in roadLabels.mapLabelsCpuMeta {
                 roadLabelsCount += 1
                 let computeInput = meta.localPositions.map { localPoint in ComputeScreenPositions.Vertex(location: localPoint,
-                                                                                                         matrixId: simd_short1(matrixIndex)) }
+                                                                                                         matrixId: simd_int1(matrixIndex)) }
                 forCompute.append(contentsOf: computeInput)
             }
         }

@@ -6,25 +6,26 @@
 //
 
 import MetalKit
+import SwiftUI
 import GISTools
 
 
 class MapUpdater {
-    private var mapZoomState            : MapZoomState!
-    private var determineVisibleTiles   : DetermineVisibleTiles!
-    private var determineFeatureStyle   : DetermineFeatureStyle!
-    private var textTools               : TextTools!
-    private var metalTilesStorage       : MetalTilesStorage!
-    private var drawingFrameRequester   : DrawingFrameRequester!
-    private var frameCounter            : FrameCounter!
-    private var mapUpdaterContext       : MapUpdaterContext
-    private let screenCollisionsDetector: ScreenCollisionsDetector
-    var updateBufferedUniform           : UpdateBufferedUniform
-    var mapCadDisplayLoop               : MapCADisplayLoop
-    var metalDevice                     : MTLDevice
-    var savedView                       : MTKView!
-    var mapModeStorage                  : MapModeStorage
-    var mapSettings                     : MapSettings
+    fileprivate var mapZoomState                    : MapZoomState!
+    fileprivate var determineFeatureStyle           : DetermineFeatureStyle!
+    fileprivate var textTools                       : TextTools!
+    fileprivate var metalTilesStorage               : MetalTilesStorage!
+    fileprivate var drawingFrameRequester           : DrawingFrameRequester!
+    fileprivate var frameCounter                    : FrameCounter!
+    fileprivate var mapUpdaterContext               : MapUpdaterContext
+    fileprivate let screenCollisionsDetector        : ScreenCollisionsDetector
+    fileprivate var updateBufferedUniform           : UpdateBufferedUniform
+    fileprivate var mapCadDisplayLoop               : MapCADisplayLoop
+    fileprivate var metalDevice                     : MTLDevice
+    fileprivate var savedView                       : MTKView!
+    fileprivate var mapModeStorage                  : MapModeStorage
+    fileprivate var mapSettings                     : MapSettings
+    fileprivate var determineVisibleTiles           : DetermineVisibleTiles
     
     var assembledMap: AssembledMap {
         get { mapUpdaterContext.assembledMap }
@@ -43,7 +44,8 @@ class MapUpdater {
         mapUpdaterContext: MapUpdaterContext,
         updateBufferedUniform: UpdateBufferedUniform,
         screenCollisionsDetector: ScreenCollisionsDetector,
-        mapSettings: MapSettings
+        mapSettings: MapSettings,
+        determineVisibleTiles: DetermineVisibleTiles
     ) {
         self.screenCollisionsDetector   = screenCollisionsDetector
         self.metalDevice                = device
@@ -57,7 +59,7 @@ class MapUpdater {
         self.mapUpdaterContext          = mapUpdaterContext
         self.updateBufferedUniform      = updateBufferedUniform
         self.mapSettings                = mapSettings
-        determineVisibleTiles           = DetermineVisibleTiles(mapZoomState: mapZoomState, camera: camera, mapSettings: mapSettings)
+        self.determineVisibleTiles      = determineVisibleTiles
     }
     
     func update(view: MTKView, useOnlyCached: Bool) {
@@ -67,22 +69,38 @@ class MapUpdater {
         let areaRange = visibleTilesResult.areaRange
         guard visibleTiles.isEmpty == false else { return }
         
-        var replacements = Set<MetalTile>()
-        var actual = Set<MetalTile>()
+        // тайлы для отображения поверхности
+        var groundReplacementTiles = Set<MetalTile>()
+        var groundActualTiles = Set<MetalTile>()
+        
+        // тайлы для отображений гео лейблов
+        var labelsActualTiles = Set<MetalTile>()
+        
+        let showLabelsOnTilesDist = mapSettings.getMapCommonSettings().getShowLabelsOnTilesDist()
+        
         let actualZ = areaRange.z
         for i in 0..<visibleTiles.count {
-            let tile = visibleTiles[i]
+            let visTile = visibleTiles[i]
+            let tile = visTile.tile
             
             // current visible tile is ready
             if let metalTile = metalTilesStorage.getMetalTile(tile: tile) {
-                actual.insert(metalTile)
+                groundActualTiles.insert(metalTile)
+                
+                let fromCenter = visTile.tilesFromCenterTile
+                // чтобы на полюсах показывались противоположные лейблы
+                let isYMapBorder = tile.y == 0 || tile.y == mapZoomState.maxTileCoord
+                let isBeyondFrame = Int(fromCenter.x) <= showLabelsOnTilesDist && Int(fromCenter.y) <= showLabelsOnTilesDist
+                if isYMapBorder || isBeyondFrame {
+                    labelsActualTiles.insert(metalTile)
+                }
                 continue
             }
             
             // find replacement for actual
-            for scTile in assembledMap.tiles {
-                if scTile.tile.covers(tile) || tile.covers(scTile.tile) {
-                    replacements.insert(scTile)
+            for onMapMetalTile in assembledMap.tiles {
+                if onMapMetalTile.tile.covers(tile) || tile.covers(onMapMetalTile.tile) {
+                    groundReplacementTiles.insert(onMapMetalTile)
                 }
             }
             
@@ -91,15 +109,24 @@ class MapUpdater {
             
             metalTilesStorage.requestMetalTile(tile: tile)
         }
-        let replsArray = replacements.sorted {
+        
+        // Для отображения поверхности
+        let sortedGroundReplacements = groundReplacementTiles.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
-        let fullMetalTilesArray = replsArray + actual
+        let fullMetalTilesArray = sortedGroundReplacements + groundActualTiles
+        
+        // Тайлы чтобы карта была широкой до горизонта
+//        if let mapExpander: MetalTile = metalTilesStorage.getMetalTile(tile: Tile(x: 0, y: 0, z: 0)) {
+//            if fullMetalTilesArray.contains(mapExpander) == false {
+//                fullMetalTilesArray = [mapExpander] + fullMetalTilesArray
+//            }
+//        }
         self.assembledMap.setNewState(tiles: fullMetalTilesArray, areaRange: areaRange)
         
-        let allReady = actual.count == visibleTilesResult.visibleTiles.count
+        let allReady = groundActualTiles.count == visibleTiles.count
         if allReady {
-            screenCollisionsDetector.newState(actualTiles: Array(actual), view: view)
+            screenCollisionsDetector.newState(actualTiles: Array(labelsActualTiles), view: view)
             mapCadDisplayLoop.forceUpdateStates()
         }
         
@@ -107,9 +134,97 @@ class MapUpdater {
         let debugAssemblingMap = mapSettings.getMapDebugSettings().getDebugAssemblingMap()
         let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         if debugAssemblingMap {
-            print("Assembling map, replacements: \(replacements.count), tilesToRender: \(actual.count)")
+            print("Assembling map, replacements: \(groundReplacementTiles.count), tilesToRender: \(groundActualTiles.count)")
         }
         
         drawingFrameRequester.renderNextNFrames(maxBuffersInFlight)
+    }
+}
+
+
+class MapUpdaterFlat: MapUpdater {
+    init(
+        mapZoomState: MapZoomState,
+        device: MTLDevice,
+        camera: CameraFlatView,
+        textTools: TextTools,
+        drawingFrameRequester: DrawingFrameRequester,
+        frameCounter: FrameCounter,
+        metalTilesStorage: MetalTilesStorage,
+        mapCadDisplayLoop: MapCADisplayLoop,
+        mapModeStorage: MapModeStorage,
+        mapUpdaterContext: MapUpdaterContext,
+        screenCollisionsDetector: ScreenCollisionsDetector,
+        updateBufferedUniform: UpdateBufferedUniform,
+        mapSettings: MapSettings,
+        determineVisibleTiles: DetermineVisibleTiles
+    ) {
+        super.init(mapZoomState: mapZoomState,
+                   device: device,
+                   camera: camera,
+                   textTools: textTools,
+                   drawingFrameRequester: drawingFrameRequester,
+                   frameCounter: frameCounter,
+                   metalTilesStorage: metalTilesStorage,
+                   mapCadDisplayLoop: mapCadDisplayLoop,
+                   mapModeStorage: mapModeStorage,
+                   mapUpdaterContext: mapUpdaterContext,
+                   updateBufferedUniform: updateBufferedUniform,
+                   screenCollisionsDetector: screenCollisionsDetector,
+                   mapSettings: mapSettings,
+                   determineVisibleTiles: determineVisibleTiles)
+        
+        metalTilesStorage.addHandler(handler: onMetalingTileEnd)
+    }
+    
+    private func onMetalingTileEnd(tile: Tile) {
+        if mapModeStorage.mapMode == .flat {
+            self.update(view: savedView, useOnlyCached: true)
+        }
+    }
+}
+
+
+class MapUpdaterGlobe: MapUpdater {
+    private let globeTexturing: GlobeTexturing
+    
+    init(mapZoomState: MapZoomState,
+         device: MTLDevice,
+         camera: Camera,
+         textTools: TextTools,
+         drawingFrameRequester: DrawingFrameRequester,
+         frameCounter: FrameCounter,
+         metalTilesStorage: MetalTilesStorage,
+         mapCadDisplayLoop: MapCADisplayLoop,
+         mapModeStorage: MapModeStorage,
+         mapUpdaterContext: MapUpdaterContext,
+         screenCollisionsDetector: ScreenCollisionsDetector,
+         updateBufferedUniform: UpdateBufferedUniform,
+         globeTexturing: GlobeTexturing,
+         mapSettings: MapSettings,
+         determineVisibleTiles: DetermineVisibleTiles) {
+        self.globeTexturing = globeTexturing
+        super.init(mapZoomState: mapZoomState,
+                   device: device,
+                   camera: camera,
+                   textTools: textTools,
+                   drawingFrameRequester: drawingFrameRequester,
+                   frameCounter: frameCounter,
+                   metalTilesStorage: metalTilesStorage,
+                   mapCadDisplayLoop: mapCadDisplayLoop,
+                   mapModeStorage: mapModeStorage,
+                   mapUpdaterContext: mapUpdaterContext,
+                   updateBufferedUniform: updateBufferedUniform,
+                   screenCollisionsDetector: screenCollisionsDetector,
+                   mapSettings: mapSettings,
+                   determineVisibleTiles: determineVisibleTiles)
+        
+        metalTilesStorage.addHandler(handler: onMetalingTileEnd)
+    }
+    
+    private func onMetalingTileEnd(tile: Tile) {
+        if mapModeStorage.mapMode == .globe {
+            self.update(view: savedView, useOnlyCached: true)
+        }
     }
 }
