@@ -7,18 +7,10 @@
 
 import SwiftUI
 
+let MAPBOX_TOKEN: String = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlbW91eWRwZzdldCJ9.EAByLTrB_zc7-ytI6GDGBw"
+
 struct ContentView: View {
-    
-    let mapSettings = MapSettingsBuilder()
-        .initPosition(z: 0, latLon: SIMD2<Double>(0, 0))
-        .debugUI(enabled: true)
-        .drawTraversalPlane(enabled: false)
-        .renderOnDisplayUpdate(enabled: false)
-        .drawGrid(enabled: false)
-        .debugAssemblingMap(enabled: false)
-        .visionSizeFlat(tiles: 4)
-        .visionSizeGlobe(tiles: 4)
-        .build()
+    let mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN)).build()
     
     var body: some View {
         TucikMapView(mapSettings: mapSettings)

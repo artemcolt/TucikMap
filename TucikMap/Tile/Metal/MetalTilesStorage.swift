@@ -27,7 +27,7 @@ class MetalTilesStorage {
         self.mapSettings = mapSettings
         self.textTools = textTools
         self.metalDevice = metalDevice
-        let maxCachedTilesMemory = mapSettings.getMapCommonSettings().getMaxCachedTilesMemory()
+        let maxCachedTilesMemory = mapSettings.getMapCommonSettings().getMaxCachedTilesMemInBytes()
         memoryMetalTile = MemoryMetalTileCache(maxCacheSizeInBytes: maxCachedTilesMemory)
         tileParser = TileMvtParser(determineFeatureStyle: determineStyle, mapSettings: mapSettings)
         mapNeedsTile = MapNeedsTile(mapSettings: mapSettings, onComplete: onTileComplete)

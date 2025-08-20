@@ -8,8 +8,6 @@
 import Foundation
 
 class TileDownloader {
-    private let baseURLString = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2"
-    private let accessToken = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlbW91eWRwZzdldCJ9.EAByLTrB_zc7-ytI6GDGBw"
     private let configuration: URLSessionConfiguration
     private let mapSettings: MapSettings
 
@@ -29,7 +27,7 @@ class TileDownloader {
         if debugAssemblingMap { print("Download tile \(tileKey)") }
         
         // Create new download task
-        let tileURL = tileURLFor(zoom: zoom, x: x, y: y)
+        let tileURL = mapSettings.getMapCommonSettings().GetGetMapTileDownloadUrl().get(tileX: x, tileY: y, tileZ: zoom)
         let session: URLSession = URLSession(configuration: configuration)
         if let response = try? await session.data(from: tileURL) {
             if debugAssemblingMap { print("Tile is downloaded \(tile)") }
@@ -38,10 +36,5 @@ class TileDownloader {
         
         if debugAssemblingMap { print("Downloading tile failed \(tile)") }
         return nil
-    }
-    
-    private func tileURLFor(zoom: Int, x: Int, y: Int) -> URL {
-        let urlString = "\(baseURLString)/\(zoom)/\(x)/\(y).mvt?access_token=\(accessToken)"
-        return URL(string: urlString)!
     }
 }

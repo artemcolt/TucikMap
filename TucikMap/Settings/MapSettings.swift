@@ -17,6 +17,16 @@ class MapSettingsBuilder {
         return mapCameraSettings
     }
     
+    func tileDownloadUrlAdapter(getMapTileDownloadUrl: GetMapTileDownloadUrl) -> MapSettingsBuilder {
+        mapCommonSettings.getMapTileDownloadUrl = getMapTileDownloadUrl
+        return self
+    }
+    
+    func maxCachedTilesMemInBytes(memInBytes: Int) -> MapSettingsBuilder {
+        mapCommonSettings.maxCachedTilesMemInBytes = memInBytes
+        return self
+    }
+    
     func showLabelsOnTilesDist(tilesDist: Int) -> MapSettingsBuilder {
         mapCommonSettings.showLabelsOnTilesDist = tilesDist
         return self
@@ -80,6 +90,10 @@ class MapSettingsBuilder {
         return MapSettings(mapCameraSettings: mapCameraSettings,
                            mapDebugSettings: mapDebugSettings,
                            mapCommonSettings: mapCommonSettings)
+    }
+    
+    init(getMapTileDownloadUrl: GetMapTileDownloadUrl) {
+        mapCommonSettings.getMapTileDownloadUrl = getMapTileDownloadUrl
     }
 }
 
@@ -280,8 +294,7 @@ struct MapCommonSettings {
     fileprivate let spaceUnicodeNumber: Int
     fileprivate let spaceSize: Float
     fileprivate let maxConcurrentFetchs: Int
-    fileprivate let maxCachedTilesCount: Int
-    fileprivate let maxCachedTilesMemory: Int
+    fileprivate var maxCachedTilesMemInBytes: Int
     fileprivate let preferredFramesPerSecond: Int
     fileprivate let refreshLabelsIntersectionsEveryNDisplayLoop: UInt64
     fileprivate let maxInputComputeScreenPoints: Int
@@ -300,6 +313,11 @@ struct MapCommonSettings {
     fileprivate let baseFlatMapSize: Float
     fileprivate var fetchTilesQueueCapacity: Int
     fileprivate var showLabelsOnTilesDist: Int
+    fileprivate var getMapTileDownloadUrl: GetMapTileDownloadUrl
+    
+    public func GetGetMapTileDownloadUrl() -> GetMapTileDownloadUrl {
+        return getMapTileDownloadUrl
+    }
     
     public func getShowLabelsOnTilesDist() -> Int {
         return showLabelsOnTilesDist
@@ -341,12 +359,8 @@ struct MapCommonSettings {
         return maxConcurrentFetchs
     }
     
-    public func getMaxCachedTilesCount() -> Int {
-        return maxCachedTilesCount
-    }
-    
-    public func getMaxCachedTilesMemory() -> Int {
-        return maxCachedTilesMemory
+    public func getMaxCachedTilesMemInBytes() -> Int {
+        return maxCachedTilesMemInBytes
     }
     
     public func getPreferredFramesPerSecond() -> Int {
@@ -416,13 +430,12 @@ struct MapCommonSettings {
     init(
         forceRenderOnDisplayUpdate: Bool = false,
         maxBuffersInFlight: Int = 3,
-        seeTileInDirectionFlat: Int = 2,
-        seeTileInDirectionGlobe: Int = 2,
+        seeTileInDirectionFlat: Int = 4,
+        seeTileInDirectionGlobe: Int = 4,
         clearDownloadedOnDiskTiles: Bool = false,
         spaceUnicodeNumber: Int = 32,
         spaceSize: Float = 0.2,
         maxConcurrentFetchs: Int = 3,
-        maxCachedTilesCount: Int = 100,
         maxCachedTilesMemory: Int = 500 * 1024 * 1024,
         preferredFramesPerSecond: Int = 60,
         refreshLabelsIntersectionsEveryNDisplayLoop: UInt64 = 10,
@@ -440,7 +453,8 @@ struct MapCommonSettings {
         nullZoomGlobeRadius: Float = 0.2,
         globeMapSize: Float = 1.0,
         fetchTilesQueueCapacity: Int = 9,
-        showLabelsOnTilesDist: Int = 1
+        showLabelsOnTilesDist: Int = 1,
+        getMapTileDownloadUrl: GetMapTileDownloadUrl = MapBoxGetMapTileUrl(accessToken: "")
     ) {
         self.forceRenderOnDisplayUpdate = forceRenderOnDisplayUpdate
         self.maxBuffersInFlight = maxBuffersInFlight
@@ -450,8 +464,7 @@ struct MapCommonSettings {
         self.spaceUnicodeNumber = spaceUnicodeNumber
         self.spaceSize = spaceSize
         self.maxConcurrentFetchs = maxConcurrentFetchs
-        self.maxCachedTilesCount = maxCachedTilesCount
-        self.maxCachedTilesMemory = maxCachedTilesMemory
+        self.maxCachedTilesMemInBytes = maxCachedTilesMemory
         self.preferredFramesPerSecond = preferredFramesPerSecond
         self.refreshLabelsIntersectionsEveryNDisplayLoop = refreshLabelsIntersectionsEveryNDisplayLoop
         self.maxInputComputeScreenPoints = maxInputComputeScreenPoints
@@ -469,6 +482,7 @@ struct MapCommonSettings {
         self.globeMapSize = globeMapSize
         self.fetchTilesQueueCapacity = fetchTilesQueueCapacity
         self.showLabelsOnTilesDist = showLabelsOnTilesDist
+        self.getMapTileDownloadUrl = getMapTileDownloadUrl
         self.baseFlatMapSize = 2 * Float.pi * nullZoomGlobeRadius
     }
 }
@@ -592,7 +606,7 @@ struct MapDebugSettings {
     }
 
     init(
-        enabled: Bool = false,
+        drawBaseDebug: Bool = false,
         addTestBorders: Bool = false,
         cameraCenterPointSize: Float = 0.01,
         axisLength: Float = 10_000,
@@ -616,7 +630,7 @@ struct MapDebugSettings {
         throttlingNanoSeconds: UInt64 = 4_000_000_000,
         drawTraversalPlane: Bool = false
     ) {
-        self.drawBaseDebug = enabled
+        self.drawBaseDebug = drawBaseDebug
         self.addTestBorders = addTestBorders
         self.cameraCenterPointSize = cameraCenterPointSize
         self.axisLength = axisLength
