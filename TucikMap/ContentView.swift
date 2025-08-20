@@ -14,10 +14,10 @@ struct ContentView: View {
         .debugUI(enabled: true)
         .drawTraversalPlane(enabled: false)
         .renderOnDisplayUpdate(enabled: false)
-        .drawGrid(enabled: true)
+        .drawGrid(enabled: false)
         .debugAssemblingMap(enabled: false)
-        .visionSizeFlat(tiles: 5)
-        .visionSizeGlobe(tiles: 5)
+        .visionSizeFlat(tiles: 4)
+        .visionSizeGlobe(tiles: 4)
         .build()
     
     var body: some View {

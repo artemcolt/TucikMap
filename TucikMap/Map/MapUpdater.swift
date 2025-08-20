@@ -62,6 +62,15 @@ class MapUpdater {
         self.determineVisibleTiles      = determineVisibleTiles
     }
     
+    private func shouldShowLabels(visTile: VisibleTile, showLabelsOnTilesDist: Int) -> Bool {
+        let tile = visTile.tile
+        let fromCenter = visTile.tilesFromCenterTile
+        // чтобы на полюсах показывались противоположные лейблы
+        let isYMapBorder = tile.y == 0 || tile.y == mapZoomState.maxTileCoord
+        let isBeyondFrame = Int(fromCenter.x) <= showLabelsOnTilesDist && Int(fromCenter.y) <= showLabelsOnTilesDist
+        return isYMapBorder || isBeyondFrame
+    }
+    
     func update(view: MTKView, useOnlyCached: Bool) {
         savedView = view
         let visibleTilesResult = determineVisibleTiles.determine()
@@ -69,14 +78,17 @@ class MapUpdater {
         let areaRange = visibleTilesResult.areaRange
         guard visibleTiles.isEmpty == false else { return }
         
+        let showLabelsOnTilesDist = mapSettings.getMapCommonSettings().getShowLabelsOnTilesDist()
+        let withLabelsVisibleTilesCount = visibleTiles.count(where: { visTile in
+            return shouldShowLabels(visTile: visTile, showLabelsOnTilesDist: showLabelsOnTilesDist)
+        })
+        
         // тайлы для отображения поверхности
         var groundReplacementTiles = Set<MetalTile>()
         var groundActualTiles = Set<MetalTile>()
         
         // тайлы для отображений гео лейблов
         var labelsActualTiles = Set<MetalTile>()
-        
-        let showLabelsOnTilesDist = mapSettings.getMapCommonSettings().getShowLabelsOnTilesDist()
         
         let actualZ = areaRange.z
         for i in 0..<visibleTiles.count {
@@ -87,11 +99,7 @@ class MapUpdater {
             if let metalTile = metalTilesStorage.getMetalTile(tile: tile) {
                 groundActualTiles.insert(metalTile)
                 
-                let fromCenter = visTile.tilesFromCenterTile
-                // чтобы на полюсах показывались противоположные лейблы
-                let isYMapBorder = tile.y == 0 || tile.y == mapZoomState.maxTileCoord
-                let isBeyondFrame = Int(fromCenter.x) <= showLabelsOnTilesDist && Int(fromCenter.y) <= showLabelsOnTilesDist
-                if isYMapBorder || isBeyondFrame {
+                if shouldShowLabels(visTile: visTile, showLabelsOnTilesDist: showLabelsOnTilesDist) {
                     labelsActualTiles.insert(metalTile)
                 }
                 continue
@@ -114,19 +122,13 @@ class MapUpdater {
         let sortedGroundReplacements = groundReplacementTiles.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
-        let fullMetalTilesArray = sortedGroundReplacements + groundActualTiles
+        let fullGroundTiles = sortedGroundReplacements + groundActualTiles
+        self.assembledMap.setNewState(tiles: fullGroundTiles, areaRange: areaRange)
         
-        // Тайлы чтобы карта была широкой до горизонта
-//        if let mapExpander: MetalTile = metalTilesStorage.getMetalTile(tile: Tile(x: 0, y: 0, z: 0)) {
-//            if fullMetalTilesArray.contains(mapExpander) == false {
-//                fullMetalTilesArray = [mapExpander] + fullMetalTilesArray
-//            }
-//        }
-        self.assembledMap.setNewState(tiles: fullMetalTilesArray, areaRange: areaRange)
-        
-        let allReady = groundActualTiles.count == visibleTiles.count
+        let labelsActualTilesList = Array(labelsActualTiles)
+        let allReady = withLabelsVisibleTilesCount == labelsActualTilesList.count
         if allReady {
-            screenCollisionsDetector.newState(actualTiles: Array(labelsActualTiles), view: view)
+            screenCollisionsDetector.newState(actualTiles: labelsActualTilesList, view: view)
             mapCadDisplayLoop.forceUpdateStates()
         }
         
