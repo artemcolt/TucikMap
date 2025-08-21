@@ -193,12 +193,25 @@ struct MapCameraSettings {
     fileprivate var pinchSensitivity: Float
     fileprivate var maxCameraPitch: Float
     fileprivate var minCameraPitch: Float
-    fileprivate var fov: Float
     fileprivate var nullZoomCameraDistance: Float
     fileprivate var minCameraDistance: Float
     fileprivate var farPlaneIncreaseFactor: Float
     fileprivate var zoomLevelMax: Float
     fileprivate var maxTileZoom: Int
+    
+    fileprivate var baseFov: Float
+    fileprivate var poleFov: Float
+    
+    fileprivate var camAffectDistStartZ: Float
+    fileprivate var camAffectDistEndZ: Float
+    
+    public func getCamAffectDistStartZ() -> Float {
+        return camAffectDistStartZ
+    }
+    
+    public func getCamAffectDistEndZ() -> Float {
+        return camAffectDistEndZ
+    }
     
     public func getZ() -> Float {
         return z
@@ -232,8 +245,12 @@ struct MapCameraSettings {
         return minCameraPitch
     }
     
-    public func getFov() -> Float {
-        return fov
+    public func getBaseFov() -> Float {
+        return baseFov
+    }
+    
+    public func getPoleFov() -> Float {
+        return poleFov
     }
     
     public func getNullZoomCameraDistance() -> Float {
@@ -264,14 +281,17 @@ struct MapCameraSettings {
          pinchSensitivity: Float = 0.1,
          maxCameraPitch: Float = Float.pi / 3,
          minCameraPitch: Float = 0,
-         fov: Float = Float.pi / 3.0,
          farPlaneIncreaseFactor: Float = 2.0,
          zoomLevelMax: Float = 20.9,
-         maxTileZoom: Int = 16) {
+         maxTileZoom: Int = 16,
+         baseFov: Float = Float.pi / 3.0,
+         poleFov: Float = Float.pi / 6.0,
+         camAffectDistStartZ: Float = 1,
+         camAffectDistEndZ: Float = 2,
+    ) {
         self.maxTileZoom = maxTileZoom
         self.zoomLevelMax = zoomLevelMax
         self.farPlaneIncreaseFactor = farPlaneIncreaseFactor
-        self.fov = fov
         self.z = z
         self.latLon = latLon
         self.rotationSensitivity = rotationSensitivity
@@ -280,8 +300,13 @@ struct MapCameraSettings {
         self.pinchSensitivity = pinchSensitivity
         self.maxCameraPitch = maxCameraPitch
         self.minCameraPitch = minCameraPitch
+        self.camAffectDistStartZ = camAffectDistStartZ
+        self.camAffectDistEndZ = camAffectDistEndZ
         
-        nullZoomCameraDistance = 1.0 / (2 * tan(fov / 2))
+        self.baseFov = baseFov
+        self.poleFov = poleFov
+        
+        nullZoomCameraDistance = 1.0 / (2 * tan(baseFov / 2))
         minCameraDistance = nullZoomCameraDistance / pow(2, 18)
     }
 }
@@ -442,8 +467,8 @@ struct MapCommonSettings {
     init(
         forceRenderOnDisplayUpdate: Bool = false,
         maxBuffersInFlight: Int = 3,
-        seeTileInDirectionFlat: Int = 4,
-        seeTileInDirectionGlobe: Int = 4,
+        seeTileInDirectionFlat: Int = 2,
+        seeTileInDirectionGlobe: Int = 2,
         clearDownloadedOnDiskTiles: Bool = false,
         spaceUnicodeNumber: Int = 32,
         spaceSize: Float = 0.2,

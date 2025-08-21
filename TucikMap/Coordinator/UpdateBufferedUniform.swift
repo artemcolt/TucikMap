@@ -7,22 +7,28 @@
 
 import SwiftUI
 import MetalKit
-
+import Foundation
 
 class UpdateBufferedUniform {
+    
+    private var currentBufferIndex      = -1
+    private let halfPi                  = Float.pi / 2
+    private let maxLatitudeRadians      : Float
+    
+    private(set) var lastUniforms       : Uniforms?
+    private(set) var lastViewportSize   : SIMD2<Float>!
+    
     // Triple buffering for uniforms
-    private(set) var uniformBuffers: [MTLBuffer] = []
+    private(set) var uniformBuffers     : [MTLBuffer] = []
+    private let frameCounter            : FrameCounter
+    private let maxBuffersInFlight      : Int
+    private let device                  : MTLDevice
+    private let mapZoomState            : MapZoomState
+    private let cameraStorage           : CameraStorage
+    private let mapSettings             : MapSettings
     
-    private var currentBufferIndex = -1
-    private(set) var lastUniforms: Uniforms?
-    private(set) var lastViewportSize: SIMD2<Float>!
-    
-    private let frameCounter: FrameCounter
-    private let maxBuffersInFlight: Int
-    private let device: MTLDevice
-    private let mapZoomState: MapZoomState
-    private let cameraStorage: CameraStorage
-    private let halfPi = Float.pi / 2
+    fileprivate let startZDistortionAffect      : Float
+    fileprivate let endZDistortionAffect        : Float
     
     init(device: MTLDevice,
          mapZoomState: MapZoomState,
@@ -35,6 +41,12 @@ class UpdateBufferedUniform {
         self.mapZoomState = mapZoomState
         self.cameraStorage = cameraStorage
         self.frameCounter = frameCounter
+        self.mapSettings = mapSettings
+        self.maxLatitudeRadians = 2 * atan(exp(Float.pi)) - halfPi
+        
+        self.startZDistortionAffect = mapSettings.getMapCameraSettings().getCamAffectDistStartZ()
+        self.endZDistortionAffect = mapSettings.getMapCameraSettings().getCamAffectDistEndZ()
+        
         createUniformBuffers()
     }
     
@@ -56,10 +68,23 @@ class UpdateBufferedUniform {
         let far                 = nearAndFar.y
         //print("near: \(near), far: \(far), camDist: \(camera.cameraDistance)")
         
+        let currentZ = mapZoomState.zoomLevelFloat
+        
+        let range = endZDistortionAffect - startZDistortionAffect
+        let distortionAffectValue: Float = max(0, min(1, (currentZ - startZDistortionAffect) / range))
+        
+        let mixValue = abs(camera.latitude / maxLatitudeRadians)  // от 0 (экватор) до 1 (полюс)
+        let adjustedMix = pow(mixValue, 100.0) * distortionAffectValue  // нелинейная корректировка: медленнее в начале, быстрее в конце
+
+        let baseFov = mapSettings.getMapCameraSettings().getBaseFov()
+        let poleFov = mapSettings.getMapCameraSettings().getPoleFov()
+        let fov = (1 - adjustedMix) * baseFov + adjustedMix * poleFov
+        //print("fov = ", fov)
+        
         // Create perspective projection matrix
-        let projectionMatrix    = MatrixUtils.perspectiveMatrix(fovRadians: Float.pi / 3.0,
+        let projectionMatrix    = MatrixUtils.perspectiveMatrix(fovRadians: fov,
                                                                 aspect: aspect,
-                                                                near: max(0.05, near),
+                                                                near: max(0.0001, near),
                                                                 far: far)
         
         // Create view matrix using look-at

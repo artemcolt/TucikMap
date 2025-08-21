@@ -57,7 +57,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         metalCommandQueue       = device.makeCommandQueue()!
         semaphore               = DispatchSemaphore(value: mapSettings.getMapCommonSettings().getMaxBuffersInFlight())
         
-        mapZoomState            = MapZoomState(mapSettings: mapSettings)
+        mapZoomState            = MapZoomState()
         screenUniforms          = ScreenUniforms(metalDevice: metalDevice)
         drawPoint               = DrawPoint(metalDevice: metalDevice)
         drawSpace               = DrawSpace(metalDevice: metalDevice)

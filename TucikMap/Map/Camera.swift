@@ -53,6 +53,7 @@ class Camera {
     fileprivate var panDeltaX                   : Float = 0
     fileprivate var panDeltaY                   : Float = 0
     fileprivate var rotationDeltaYaw            : Float = 0
+    fileprivate(set) var distortion             : Float = 0
     
     fileprivate var previousBorderedZoomLevel   : Int = -1
     private(set) var centerTileX                : Float = 0
@@ -65,6 +66,9 @@ class Camera {
     fileprivate let drawingFrameRequester       : DrawingFrameRequester
     fileprivate let mapCadDisplayLoop           : MapCADisplayLoop
     fileprivate let mapSettings                 : MapSettings
+    
+    fileprivate let startZDistortionAffect      : Float
+    fileprivate let endZDistortionAffect        : Float
 
     init(mapZoomState: MapZoomState,
          drawingFrameRequester: DrawingFrameRequester,
@@ -77,6 +81,9 @@ class Camera {
         self.mapCadDisplayLoop = mapCadDisplayLoop
         self.cameraContext = cameraContext
         self.mapSettings = mapSettings
+        
+        startZDistortionAffect = mapSettings.getMapCameraSettings().getCamAffectDistStartZ()
+        endZDistortionAffect = mapSettings.getMapCameraSettings().getCamAffectDistEndZ()
     }
     
     func nearAndFar() -> SIMD2<Float> {
@@ -139,14 +146,6 @@ class Camera {
     }
     
     func updateMap(view: MTKView, size: CGSize) {
-        mapZoom = max(0, min(mapZoom, mapSettings.getMapCameraSettings().getZoomLevelMax()))
-        cameraDistance = mapSettings.getMapCameraSettings().getNullZoomCameraDistance() / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
-        mapZoomState.update(zoomLevelFloat: mapZoom, mapSize: mapSize)
-        
-        // Compute camera position based on distance and orientation
-        let forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
-        cameraPosition = targetPosition + forward * cameraDistance
-        
         // Зацикливаем карту
         let halfMapSize = Double(mapSize) / 2.0
         if mapPanning.x > halfMapSize {
@@ -160,6 +159,25 @@ class Camera {
         let panY        = mapPanning.y // 0 в центре карты, на половине пути
         let mercY       = -panY / mapSize * 2.0 * Double.pi
         latitude        = Float(2.0 * atan(exp(mercY)) - Double.pi / 2)
+        distortion      = Float(abs(cos(latitude)))
+        
+        let zFloat = mapZoomState.zoomLevelFloat
+        let range = endZDistortionAffect - startZDistortionAffect
+        let distortionAffectValue: Float = max(0, min(1, (zFloat - startZDistortionAffect) / range))
+        
+        let undistortedDistance = mapSettings.getMapCameraSettings().getNullZoomCameraDistance()
+        let distortedDistance = undistortedDistance * distortion
+        let currentBaseCamDistance = undistortedDistance + (distortedDistance - undistortedDistance) * distortionAffectValue
+        //print("distortion = ", distortion, " camBaseDist = ", currentBaseCamDistance)
+        
+        mapZoom = max(0, min(mapZoom, mapSettings.getMapCameraSettings().getZoomLevelMax()))
+        cameraDistance = currentBaseCamDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
+        mapZoomState.update(zoomLevelFloat: mapZoom, mapSize: self.mapSize)
+        
+        // Compute camera position based on distance and orientation
+        let forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector
+        cameraPosition = targetPosition + forward * cameraDistance
+        
         let panX        = mapPanning.x
         longitude       = -Float(panX / (mapSize / 2.0)) * Float.pi
         
@@ -300,7 +318,7 @@ class CameraGlobeView : Camera {
     override var mapSize: Float { get { return mapSettings.getMapCommonSettings().getGlobeMapSize() } }
     
     override func nearAndFar() -> SIMD2<Float> {
-        let near: Float         = 0.1
+        let near: Float         = 0.01
         let far: Float          = 20.0
         return SIMD2<Float>(near, far)
     }

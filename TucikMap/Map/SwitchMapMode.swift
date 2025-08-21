@@ -56,8 +56,7 @@ class SwitchMapMode {
                 globeCam.updateMap(view: view, size: view.drawableSize)
                 return true
             case .globe:
-                let distortion = Float(abs(cos(globeCam.latitude)))
-                cameraStorage.flatView.applyDistortion(distortion: distortion)
+                cameraStorage.flatView.applyDistortion(distortion: globeCam.distortion)
                 
                 let halfFlatMapSize = Double(flatCam.mapSize) / 2.0
                 mapModeStorage.mapMode = .flat
