@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AC0D5A722E57718E00F86FA0 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = AC0D5A712E57718800F86FA0 /* README.md */; };
+		AC0D5A742E57742800F86FA0 /* LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = AC0D5A732E57742500F86FA0 /* LICENSE.md */; };
 		AC96346E2DE7465D0040488F /* MVTTools in Frameworks */ = {isa = PBXBuildFile; productRef = AC96346D2DE7465D0040488F /* MVTTools */; };
 		AC9634782DE788140040488F /* SwiftEarcut in Frameworks */ = {isa = PBXBuildFile; productRef = AC9634772DE788140040488F /* SwiftEarcut */; };
 /* End PBXBuildFile section */
@@ -24,6 +25,7 @@
 
 /* Begin PBXFileReference section */
 		AC0D5A712E57718800F86FA0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		AC0D5A732E57742500F86FA0 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
 		AC1A53882DE5BAA4007E96AD /* TucikMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TucikMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACD42D392E13BBD5002CE195 /* TucikMapTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TucikMapTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -64,6 +66,7 @@
 		AC1A537F2DE5BAA4007E96AD = {
 			isa = PBXGroup;
 			children = (
+				AC0D5A732E57742500F86FA0 /* LICENSE.md */,
 				AC0D5A712E57718800F86FA0 /* README.md */,
 				AC1A538A2DE5BAA4007E96AD /* TucikMap */,
 				ACD42D3A2E13BBD5002CE195 /* TucikMapTests */,
@@ -178,6 +181,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AC0D5A742E57742800F86FA0 /* LICENSE.md in Resources */,
 				AC0D5A722E57718E00F86FA0 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

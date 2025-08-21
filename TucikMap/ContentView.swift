@@ -11,8 +11,7 @@ let MAPBOX_TOKEN: String = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlb
 
 struct ContentView: View {
     let mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN))
-        .debugUI(enabled: true)
-        .drawGrid(enabled: true)
+        .debugUI(enabled: false)
         .initPosition(z: 15, latLon: Locations.russia.coordinate)
         .build()
     
