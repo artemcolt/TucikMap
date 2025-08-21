@@ -233,16 +233,16 @@ fragment float4 roadLabelsFragmentShader(VertexOut in [[stage_in]],
     // Чтение значения из MSDF атласа
     float4 msdf = atlasTexture.sample(textureSampler, in.texCoord);
     float sigDist = median(msdf.r, msdf.g, msdf.b);
+    float textRange = 0.2;
+    float outlineRange = 0.05;
     
-    float smoothing = 0.1;
+    // Обводка
+    float outlineDist = sigDist;  // Положительный сдвиг для внешнего контура (толщину регулируйте здесь)
+    float outlineOpacity = smoothstep(outlineRange, outlineRange + 0.05, outlineDist);
     
-    // Обводка (большая буква)
-    float outlineDist = sigDist - 0.1;
-    float outlineOpacity = clamp(outlineDist/smoothing + 0.5, 0.0, 1.0);
-    
-    // Основа
-    float textDist = sigDist - 0.3;
-    float textOpacity = clamp(textDist/smoothing + 0.5, 0.0, 1.0);
+    // Текст
+    float textDist = sigDist;
+    float textOpacity = smoothstep(textRange, textRange, textDist);
     
     // Комбинируем обводку и текст
     float3 outlineColor = float3(1.0, 1.0, 1.0); // Цвет обводки (например, чёрный)

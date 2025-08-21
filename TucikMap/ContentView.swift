@@ -10,7 +10,10 @@ import SwiftUI
 let MAPBOX_TOKEN: String = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlbW91eWRwZzdldCJ9.EAByLTrB_zc7-ytI6GDGBw"
 
 struct ContentView: View {
-    let mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN)).build()
+    let mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN))
+        .debugUI(enabled: true)
+        .drawGrid(enabled: true)
+        .build()
     
     var body: some View {
         TucikMapView(mapSettings: mapSettings)

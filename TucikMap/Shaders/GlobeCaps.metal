@@ -26,6 +26,7 @@ struct MapParams {
     float latitude;
     float globeRadius;
     float factor;
+    float fade;
 };
 
 vertex Vertex globeCapsVertex(uint vertexID [[vertex_id]],
@@ -43,7 +44,8 @@ vertex Vertex globeCapsVertex(uint vertexID [[vertex_id]],
     
     Vertex out;
     out.position = clipPosition;
-    out.color = colors[vertexID];
+    float4 color = colors[vertexID];
+    out.color = float4(color.xyz, color.w * mapParams.fade);
     return out;
 }
 

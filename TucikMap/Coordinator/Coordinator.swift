@@ -45,8 +45,8 @@ class Coordinator: NSObject, MTKViewDelegate {
     private let applyLabelsState            : ApplyLabelsState
     private let scrCollDetStorage           : ScrCollDetStorage
     
-    var flatMode: FlatMode
-    var globeMode: GlobeMode
+    let flatMode: FlatMode
+    let globeMode: GlobeMode
     
     init(_ parent: TucikMapView, mapSettings: MapSettings) {
         self.parent             = parent

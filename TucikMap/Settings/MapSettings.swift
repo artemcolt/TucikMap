@@ -17,6 +17,12 @@ class MapSettingsBuilder {
         return mapCameraSettings
     }
     
+    func capsFadeZooms(startZ: Float, endZ: Float) -> MapSettingsBuilder {
+        mapCommonSettings.fadeCapsStartZ = startZ
+        mapCommonSettings.fadeCapsEndZ = endZ
+        return self
+    }
+    
     func tileDownloadUrlAdapter(getMapTileDownloadUrl: GetMapTileDownloadUrl) -> MapSettingsBuilder {
         mapCommonSettings.getMapTileDownloadUrl = getMapTileDownloadUrl
         return self
@@ -38,21 +44,17 @@ class MapSettingsBuilder {
     }
     
     func visionSizeGlobe(tiles: Int) -> MapSettingsBuilder {
+        let getFTQCapacityFor = MapCommonSettings.getFTQCapacityFor
         mapCommonSettings.seeTileInDirectionGlobe = tiles
         mapCommonSettings.fetchTilesQueueCapacity = max(getFTQCapacityFor(tiles), getFTQCapacityFor(mapCommonSettings.seeTileInDirectionFlat))
         return self
     }
     
     func visionSizeFlat(tiles: Int) -> MapSettingsBuilder {
+        let getFTQCapacityFor = MapCommonSettings.getFTQCapacityFor
         mapCommonSettings.seeTileInDirectionFlat = tiles
         mapCommonSettings.fetchTilesQueueCapacity = max(getFTQCapacityFor(tiles), getFTQCapacityFor(mapCommonSettings.seeTileInDirectionGlobe))
         return self
-    }
-    
-    // get fetch tiles queue capacity for visible size
-    func getFTQCapacityFor(_ seeInDirection: Int) -> Int {
-        let res = pow(Float(seeInDirection + seeInDirection + 1), 2) // столько тайлов на границе
-        return Int(res)
     }
     
     func initPosition(z: Float, latLon: SIMD2<Double>) -> MapSettingsBuilder {
@@ -314,9 +316,19 @@ struct MapCommonSettings {
     fileprivate var fetchTilesQueueCapacity: Int
     fileprivate var showLabelsOnTilesDist: Int
     fileprivate var getMapTileDownloadUrl: GetMapTileDownloadUrl
+    fileprivate var fadeCapsStartZ: Float
+    fileprivate var fadeCapsEndZ: Float
     
     public func GetGetMapTileDownloadUrl() -> GetMapTileDownloadUrl {
         return getMapTileDownloadUrl
+    }
+    
+    public func getFadeCapsStartZ() -> Float {
+        return fadeCapsStartZ
+    }
+    
+    public func getFadeCapsEndZ() -> Float {
+        return fadeCapsEndZ
     }
     
     public func getShowLabelsOnTilesDist() -> Int {
@@ -452,9 +464,10 @@ struct MapCommonSettings {
         filterRoadLenLabel: Float = 0.3,
         nullZoomGlobeRadius: Float = 0.2,
         globeMapSize: Float = 1.0,
-        fetchTilesQueueCapacity: Int = 9,
         showLabelsOnTilesDist: Int = 1,
-        getMapTileDownloadUrl: GetMapTileDownloadUrl = MapBoxGetMapTileUrl(accessToken: "")
+        getMapTileDownloadUrl: GetMapTileDownloadUrl = MapBoxGetMapTileUrl(accessToken: ""),
+        fadeCapsStartZ: Float = 4,
+        fadeCapsEndZ: Float = 5
     ) {
         self.forceRenderOnDisplayUpdate = forceRenderOnDisplayUpdate
         self.maxBuffersInFlight = maxBuffersInFlight
@@ -480,10 +493,20 @@ struct MapCommonSettings {
         self.filterRoadLenLabel = filterRoadLenLabel
         self.nullZoomGlobeRadius = nullZoomGlobeRadius
         self.globeMapSize = globeMapSize
-        self.fetchTilesQueueCapacity = fetchTilesQueueCapacity
         self.showLabelsOnTilesDist = showLabelsOnTilesDist
         self.getMapTileDownloadUrl = getMapTileDownloadUrl
+        self.fadeCapsStartZ = fadeCapsStartZ
+        self.fadeCapsEndZ = fadeCapsEndZ
         self.baseFlatMapSize = 2 * Float.pi * nullZoomGlobeRadius
+        
+        let getFTQCapacityFor = MapCommonSettings.getFTQCapacityFor
+        self.fetchTilesQueueCapacity = max(getFTQCapacityFor(seeTileInDirectionGlobe), getFTQCapacityFor(seeTileInDirectionFlat))
+    }
+    
+    // get fetch tiles queue capacity for visible size
+    static func getFTQCapacityFor(_ seeInDirection: Int) -> Int {
+        let res = pow(Float(seeInDirection + seeInDirection + 1), 2) // столько тайлов на границе
+        return Int(res)
     }
 }
 

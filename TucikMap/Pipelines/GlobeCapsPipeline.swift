@@ -22,8 +22,13 @@ class GlobeCapsPipeline {
         pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float_stencil8
         pipelineDescriptor.stencilAttachmentPixelFormat = .depth32Float_stencil8
         
-//        pipelineDescriptor.depthAttachmentPixelFormat = .invalid
-//        pipelineDescriptor.stencilAttachmentPixelFormat = .invalid
+        pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+        pipelineDescriptor.colorAttachments[0].rgbBlendOperation = .add
+        pipelineDescriptor.colorAttachments[0].alphaBlendOperation = .add
+        pipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+        pipelineDescriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
+        pipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+        pipelineDescriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
         
         pipelineState = try! metalDevice.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }

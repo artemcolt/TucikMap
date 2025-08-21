@@ -10,17 +10,35 @@ import Foundation  // For math functions like sinh, atan
 
 class GlobeCaps {
     struct MapParams {
-        let latitude: Float;
-        let globeRadius: Float;
+        let latitude: Float
+        let globeRadius: Float
         let factor: Float
+        let fade: Float
     };
     
-    private let verticesBuffer: MTLBuffer
-    private let colorsBuffer: MTLBuffer
-    private let vertexCount: Int
     private let slices = 60
     
-    init(metalDevice: MTLDevice, mapSettings: MapSettings) {
+    private let verticesBuffer          : MTLBuffer
+    private let colorsBuffer            : MTLBuffer
+    private let vertexCount             : Int
+    private let cameraGlobeView         : CameraGlobeView
+    private let mapZoomState            : MapZoomState
+    private let globeCapsPipeline       : GlobeCapsPipeline
+    private let startZ                  : Float
+    private let endZ                    : Float
+    
+    
+    init(metalDevice: MTLDevice,
+         mapSettings: MapSettings,
+         cameraGlobeView: CameraGlobeView,
+         mapZoomState: MapZoomState,
+         globeCapsPipeline: GlobeCapsPipeline) {
+        self.cameraGlobeView = cameraGlobeView
+        self.mapZoomState = mapZoomState
+        self.globeCapsPipeline = globeCapsPipeline
+        self.startZ = mapSettings.getMapCommonSettings().getFadeCapsStartZ()
+        self.endZ = mapSettings.getMapCommonSettings().getFadeCapsEndZ()
+        
         let nullZoomGlobeRadius = mapSettings.getMapCommonSettings().getNullZoomGlobeRadius()
         let globeRadius = nullZoomGlobeRadius
         let globeCenter = SIMD3<Float>(0, 0, 0)
@@ -90,16 +108,31 @@ class GlobeCaps {
         
         self.vertexCount = vertices.count
         self.verticesBuffer = metalDevice.makeBuffer(bytes: vertices, length: MemoryLayout<SIMD3<Float>>.stride * vertices.count)!
-        
         self.colorsBuffer = metalDevice.makeBuffer(bytes: colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count)!
     }
     
-    func drawCaps(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, mapParams: MapParams) {
+    private func drawCaps(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, mapParams: MapParams) {
         var mapParams = mapParams
         renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(colorsBuffer, offset: 0, index: 1)
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)
         renderEncoder.setVertexBytes(&mapParams, length: MemoryLayout<MapParams>.stride, index: 3)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+    }
+    
+    func drawCapsFor(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer) {
+        let camera = cameraGlobeView
+        let currentZ = mapZoomState.zoomLevelFloat
+        let interpolation: Float = 1.0 - max(0, min(1, (currentZ - startZ) / (endZ - startZ)))
+        let mapParams = GlobeCaps.MapParams(latitude: camera.latitude,
+                                            globeRadius: camera.globeRadius,
+                                            factor: mapZoomState.powZoomLevel,
+                                            fade: interpolation)
+        if interpolation != 0 {
+            globeCapsPipeline.selectPipeline(renderEncoder: renderEncoder)
+            drawCaps(renderEncoder: renderEncoder,
+                     uniformsBuffer: uniformsBuffer,
+                     mapParams: mapParams)
+        }
     }
 }

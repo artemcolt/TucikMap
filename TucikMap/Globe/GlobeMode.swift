@@ -93,7 +93,11 @@ class GlobeMode {
         self.pipelines              = pipelines
         self.mapUpdater             = mapUpdater
         self.mapSettings            = mapSettings
-        self.globeCaps              = GlobeCaps(metalDevice: metalDevice, mapSettings: mapSettings)
+        self.globeCaps              = GlobeCaps(metalDevice: metalDevice,
+                                                mapSettings: mapSettings,
+                                                cameraGlobeView: cameraStorage.globeView,
+                                                mapZoomState: mapZoomState,
+                                                globeCapsPipeline: pipelines.globeCapsPipeline)
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
         depthStencilDescriptor.depthCompareFunction = .less
@@ -214,12 +218,9 @@ class GlobeMode {
             let renderEncoder = renderPassWrapper.createGlobeEncoder()
             renderEncoder.setDepthStencilState(depthStencilState)
             renderEncoder.setCullMode(.front)
-            pipelines.globeCapsPipeline.selectPipeline(renderEncoder: renderEncoder)
-            globeCaps.drawCaps(renderEncoder: renderEncoder,
-                               uniformsBuffer: uniformsBuffer,
-                               mapParams: GlobeCaps.MapParams(latitude: camera.latitude,
-                                                              globeRadius: camera.globeRadius,
-                                                              factor: mapZoomState.powZoomLevel))
+            
+            // рисуем крышки глобуса
+            globeCaps.drawCapsFor(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
             
             
             pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
