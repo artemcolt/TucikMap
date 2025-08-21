@@ -287,7 +287,7 @@ struct MapCameraSettings {
          baseFov: Float = Float.pi / 3.0,
          poleFov: Float = Float.pi / 6.0,
          camAffectDistStartZ: Float = 1,
-         camAffectDistEndZ: Float = 2,
+         camAffectDistEndZ: Float = 3,
     ) {
         self.maxTileZoom = maxTileZoom
         self.zoomLevelMax = zoomLevelMax
@@ -467,7 +467,7 @@ struct MapCommonSettings {
     init(
         forceRenderOnDisplayUpdate: Bool = false,
         maxBuffersInFlight: Int = 3,
-        seeTileInDirectionFlat: Int = 2,
+        seeTileInDirectionFlat: Int = 3,
         seeTileInDirectionGlobe: Int = 2,
         clearDownloadedOnDiskTiles: Bool = false,
         spaceUnicodeNumber: Int = 32,
