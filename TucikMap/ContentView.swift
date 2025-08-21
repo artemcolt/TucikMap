@@ -13,6 +13,7 @@ struct ContentView: View {
     let mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN))
         .debugUI(enabled: true)
         .drawGrid(enabled: true)
+        //.initPosition(z: 15, latLon: SIMD2<Double>())
         .build()
     
     var body: some View {

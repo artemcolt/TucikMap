@@ -50,7 +50,7 @@ class DrawDebugData {
         drawPoint.draw(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
-            pointSize: cameraCenterPointSize,
+            pointSize: cameraCenterPointSize * cameraStorage.currentView.distortion,
             position: cameraStorage.currentView.targetPosition,
             color: SIMD4<Float>(1.0, 0.0, 0.0, 1.0)
         )
