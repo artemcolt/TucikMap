@@ -17,7 +17,7 @@ struct TucikMapView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> MTKView {
-        let bgColor = mapSettings.getMapBaseColors().getBackgroundColor()
+        let bgColor = mapSettings.getMapCommonSettings().getMapStyle().getMapBaseColors().getBackgroundColor()
         let mtkView = MTKView()
         mtkView.device = MTLCreateSystemDefaultDevice()
         mtkView.delegate = context.coordinator

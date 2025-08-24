@@ -17,6 +17,16 @@ class MapSettingsBuilder {
         return mapCameraSettings
     }
     
+    func onContollerCreated(_ controller: ControllerCreated) -> MapSettingsBuilder {
+        mapCommonSettings.controllerCreated = controller
+        return self
+    }
+    
+    func style(mapStyle: MapStyle) -> MapSettingsBuilder {
+        mapCommonSettings.mapStyle = mapStyle
+        return self
+    }
+    
     func capsFadeZooms(startZ: Float, endZ: Float) -> MapSettingsBuilder {
         mapCommonSettings.fadeCapsStartZ = startZ
         mapCommonSettings.fadeCapsEndZ = endZ
@@ -105,7 +115,6 @@ class MapSettings {
     fileprivate let mapCameraSettings: MapCameraSettings
     fileprivate let mapDebugSettings: MapDebugSettings
     fileprivate let mapCommonSettings: MapCommonSettings
-    fileprivate let mapBaseColors: MapBaseColors
     
     public func getMapCameraSettings() -> MapCameraSettings {
         return mapCameraSettings
@@ -119,70 +128,15 @@ class MapSettings {
         return mapCommonSettings
     }
     
-    public func getMapBaseColors() -> MapBaseColors {
-        return mapBaseColors
-    }
-    
     init(mapCameraSettings: MapCameraSettings = MapCameraSettings(),
          mapDebugSettings: MapDebugSettings = MapDebugSettings(),
-         mapCommonSettings: MapCommonSettings = MapCommonSettings(),
-         mapBaseColors: MapBaseColors = MapBaseColors()) {
+         mapCommonSettings: MapCommonSettings = MapCommonSettings()) {
         self.mapCameraSettings = mapCameraSettings
         self.mapDebugSettings = mapDebugSettings
         self.mapCommonSettings = mapCommonSettings
-        self.mapBaseColors = mapBaseColors
     }
     
 }
-
-
-class MapBaseColors {
-    fileprivate let tileBgColor: SIMD4<Float>
-    fileprivate let backgroundColor: SIMD4<Double>
-    fileprivate let waterColor: SIMD4<Float>
-    fileprivate let landCoverColor: SIMD4<Float>
-    fileprivate let northPoleColor: SIMD4<Float>
-    fileprivate let southPoleColor: SIMD4<Float>
-    
-    public func getTileBgColor() -> SIMD4<Float> {
-        return tileBgColor
-    }
-    
-    public func getBackgroundColor() -> SIMD4<Double> {
-        return backgroundColor
-    }
-    
-    public func getWaterColor() -> SIMD4<Float> {
-        return waterColor
-    }
-    
-    public func getLandCoverColor() -> SIMD4<Float> {
-        return landCoverColor
-    }
-    
-    public func getNorthPoleColor() -> SIMD4<Float> {
-        return northPoleColor
-    }
-    
-    public func getSouthPoleColor() -> SIMD4<Float> {
-        return southPoleColor
-    }
-    
-    init(tileBgColor: SIMD4<Float> = SIMD4<Float>(1.0, 1.0, 1.0, 1.0),
-         backgroundColor: SIMD4<Double> = SIMD4<Double>(0.0039, 0.0431, 0.0980, 1.0),
-         waterColor: SIMD4<Float> = SIMD4<Float>(0.3, 0.6, 0.9, 1.0),
-         landCoverColor: SIMD4<Float> = SIMD4<Float>(0.4, 0.7, 0.4, 0.7)) {
-        
-        self.tileBgColor = tileBgColor
-        self.backgroundColor = backgroundColor
-        self.waterColor = waterColor
-        self.landCoverColor = landCoverColor
-        
-        self.northPoleColor = self.waterColor
-        self.southPoleColor = ColorsUtils.blend(source: self.landCoverColor, destination: self.tileBgColor)
-    }
-}
-
 
 struct MapCameraSettings {
     fileprivate var z: Float
@@ -343,6 +297,16 @@ struct MapCommonSettings {
     fileprivate var getMapTileDownloadUrl: GetMapTileDownloadUrl
     fileprivate var fadeCapsStartZ: Float
     fileprivate var fadeCapsEndZ: Float
+    fileprivate var mapStyle: MapStyle
+    fileprivate var controllerCreated: ControllerCreated?
+    
+    public func getControllerCreated() -> ControllerCreated? {
+        return controllerCreated
+    }
+    
+    public func getMapStyle() -> MapStyle {
+        return mapStyle
+    }
     
     public func getMaxMarkersVisible() -> Int {
         return 40
@@ -496,8 +460,12 @@ struct MapCommonSettings {
         showLabelsOnTilesDist: Int = 1,
         getMapTileDownloadUrl: GetMapTileDownloadUrl = MapBoxGetMapTileUrl(accessToken: ""),
         fadeCapsStartZ: Float = 4,
-        fadeCapsEndZ: Float = 5
+        fadeCapsEndZ: Float = 5,
+        mapStyle: MapStyle = DefaultMapStyle(),
+        controllerCreated: ControllerCreated? = nil
     ) {
+        self.controllerCreated = controllerCreated
+        self.mapStyle = mapStyle
         self.forceRenderOnDisplayUpdate = forceRenderOnDisplayUpdate
         self.maxBuffersInFlight = maxBuffersInFlight
         self.seeTileInDirectionFlat = seeTileInDirectionFlat
@@ -554,7 +522,6 @@ struct MapDebugSettings {
     fileprivate let printCenterTile: Bool
     fileprivate let showOnlyTiles: [Tile]
     fileprivate let allowOnlyTiles: [Tile]
-    fileprivate let getOnlySpecificMapLabels: [String]
     fileprivate let renderOnlyRoadsArray: [String]
     fileprivate let renderRoadArrayFromTo: [Int]
     fileprivate let drawRoadPointsDebug: Bool
@@ -621,10 +588,6 @@ struct MapDebugSettings {
         return allowOnlyTiles
     }
     
-    public func getGetOnlySpecificMapLabels() -> [String] {
-        return getOnlySpecificMapLabels
-    }
-    
     public func getRenderOnlyRoadsArray() -> [String] {
         return renderOnlyRoadsArray
     }
@@ -671,7 +634,6 @@ struct MapDebugSettings {
         printCenterTile: Bool = false,
         showOnlyTiles: [Tile] = [],
         allowOnlyTiles: [Tile] = [],
-        getOnlySpecificMapLabels: [String] = [],
         renderOnlyRoadsArray: [String] = [],
         renderRoadArrayFromTo: [Int] = [],
         drawRoadPointsDebug: Bool = false,
@@ -695,7 +657,6 @@ struct MapDebugSettings {
         self.printCenterTile = printCenterTile
         self.showOnlyTiles = showOnlyTiles
         self.allowOnlyTiles = allowOnlyTiles
-        self.getOnlySpecificMapLabels = getOnlySpecificMapLabels
         self.renderOnlyRoadsArray = renderOnlyRoadsArray
         self.renderRoadArrayFromTo = renderRoadArrayFromTo
         self.drawRoadPointsDebug = drawRoadPointsDebug

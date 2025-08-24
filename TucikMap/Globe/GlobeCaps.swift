@@ -77,8 +77,9 @@ class GlobeCaps {
             vertices.append(p1)
         }
         
-        let northPoleColor = mapSettings.getMapBaseColors().getNorthPoleColor()
-        let southPoleColor = mapSettings.getMapBaseColors().getSouthPoleColor()
+        let baseColors = mapSettings.getMapCommonSettings().getMapStyle().getMapBaseColors()
+        let northPoleColor = baseColors.getNorthPoleColor()
+        let southPoleColor = baseColors.getSouthPoleColor()
         let northPoleColors = Array(repeating: northPoleColor, count: vertices.count)
         let southPoleColors = Array(repeating: southPoleColor, count: vertices.count)
         let colors = northPoleColors + southPoleColors

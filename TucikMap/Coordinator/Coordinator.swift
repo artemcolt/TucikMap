@@ -12,6 +12,7 @@ import MetalPerformanceShaders
 class Coordinator: NSObject, MTKViewDelegate {
     var parent                              : TucikMapView
     var cameraStorage                       : CameraStorage
+    let mapController                       : MapController
     
     private var metalDevice                 : MTLDevice
     private var metalCommandQueue           : MTLCommandQueue
@@ -47,8 +48,8 @@ class Coordinator: NSObject, MTKViewDelegate {
     private let textureLoader               : TextureLoader
     private let markersStorage              : MarkersStorage
     
-    let flatMode: FlatMode
-    let globeMode: GlobeMode
+    private let flatMode                    : FlatMode
+    private let globeMode                   : GlobeMode
     
     init(_ parent: TucikMapView, mapSettings: MapSettings) {
         self.parent             = parent
@@ -124,6 +125,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                  pipelines: pipelines,
                                                  mapSettings: mapSettings)
         
+        mapController           = MapController(drawingFrameRequester: drawingFrameRequester)
         let mapUpdaterContext   = MapUpdaterContext()
         mapUpdaterStorage       = MapUpdaterStorage(mapModeStorage: mapModeStorage,
                                                     mapZoomState: mapZoomState,
@@ -184,6 +186,11 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             mapSettings: mapSettings,
                                             textureLoader: textureLoader,
                                             markersStorage: markersStorage)
+        
+        if let controllerCreated = mapSettings.getMapCommonSettings().getControllerCreated() {
+            controllerCreated.onControllerReady(mapController: mapController)
+        }
+        
         super.init()
     }
     
@@ -209,6 +216,16 @@ class Coordinator: NSObject, MTKViewDelegate {
         // Wait until the previous frame's GPU work has completed
         // This ensures we don't try to update a buffer that's still in use
         _ = semaphore.wait(timeout: .distantFuture)
+        
+        // Обработка комманд карте
+        if let moveTo = mapController.mapCommand {
+            cameraStorage.currentView.moveTo(lat: moveTo.latitude,
+                                             lon: moveTo.longitude,
+                                             zoom: moveTo.z,
+                                             view: view,
+                                             size: view.drawableSize)
+            mapController.mapCommand = nil
+        }
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
@@ -294,5 +311,27 @@ class Coordinator: NSObject, MTKViewDelegate {
         commandBuffer.present(drawable)
         frameCounter.update(with: commandBuffer)
         commandBuffer.commit()
+    }
+}
+
+
+class MapController {
+    struct MoveTo {
+        let latitude: Double
+        let longitude: Double
+        let z: Float
+    }
+    
+    private let drawingFrameRequester: DrawingFrameRequester
+    
+    fileprivate var mapCommand: MoveTo?
+    
+    init(drawingFrameRequester: DrawingFrameRequester) {
+        self.drawingFrameRequester = drawingFrameRequester
+    }
+    
+    func moveTo(latitude: Double, longitude: Double, z: Float) {
+        mapCommand = MoveTo(latitude: latitude, longitude: longitude, z: z)
+        drawingFrameRequester.renderNextStep()
     }
 }
