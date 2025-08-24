@@ -12,7 +12,7 @@ let MAPBOX_TOKEN: String = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlb
 struct ContentView: View {
     let mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN))
         .debugUI(enabled: true)
-        .drawGrid(enabled: true)
+        .drawGrid(enabled: false)
         .initPosition(z: 7.5, latLon: Locations.russia.coordinate) // SIMD2<Double>(0,0)
         .build()
     

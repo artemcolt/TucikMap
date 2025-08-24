@@ -91,25 +91,12 @@ vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
     float4 labelCoord4 = localTranslation * localScale * float4(lineMeta.localPosition, 0, 1);
     float2 labelCoord = labelCoord4.xy;
     
-    constexpr float PI = M_PI_F;
-    constexpr float HALF_PI = M_PI_F / 2.0;
-    float theta = -labelCoord.x * PI + HALF_PI;
-    float y = labelCoord.y * PI;
-    float phi = 2.0 * atan(exp(y)) - HALF_PI;
-
+    float PI = M_PI_F;
     float radius = globeParams.globeRadius;
-    float4 spherePos;
-    spherePos.x = radius * cos(phi) * cos(theta);
-    spherePos.y = radius * sin(phi);
-    spherePos.z = radius * cos(phi) * sin(theta);
-    spherePos.w = 1;
+    float longitude = globeParams.longitude;
+    float latitude = globeParams.latitude;
+    float4 globeWorldLabelPos = getGlobeWorldPosition(labelCoord, radius, longitude, latitude);
     
-    
-    float4x4 globeTranslate = translation_matrix(float3(0, 0, -radius));
-    float4x4 globeLongitude = rotation_matrix(-globeParams.longitude, float3(0, 1, 0));
-    float4x4 globeLatitude = rotation_matrix(globeParams.latitude, float3(1, 0, 0));
-    float4x4 globeRotation = globeLatitude * globeLongitude;
-    float4 globeWorldLabelPos = globeTranslate * globeRotation * spherePos;
     
     // plane position of label
     float distortion          = cos(globeParams.latitude);

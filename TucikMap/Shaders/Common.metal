@@ -10,6 +10,32 @@ using namespace metal;
 #include "Common.h"
 
 
+float4 getGlobeWorldPosition(float2 normMapCoord, float radius, float longitude, float latitude) {
+    float4 spherePos = float4(getSpherePos(normMapCoord, radius), 1);
+    
+    float4x4 globeTranslate = translation_matrix(float3(0, 0, -radius));
+    float4x4 globeLongitude = rotation_matrix(-longitude, float3(0, 1, 0));
+    float4x4 globeLatitude = rotation_matrix(latitude, float3(1, 0, 0));
+    float4x4 globeRotation = globeLatitude * globeLongitude;
+    float4 globeWorldLabelPos = globeTranslate * globeRotation * spherePos;
+    return globeWorldLabelPos;
+}
+
+float3 getSpherePos(float2 normMapCoord, float radius) {
+    constexpr float PI = M_PI_F;
+    constexpr float HALF_PI = M_PI_F / 2.0;
+    float theta = -normMapCoord.x * PI + HALF_PI;
+    float y = normMapCoord.y * PI;
+    float phi = 2.0 * atan(exp(y)) - HALF_PI;
+    
+    float3 spherePos;
+    spherePos.x = radius * cos(phi) * cos(theta);
+    spherePos.y = radius * sin(phi);
+    spherePos.z = radius * cos(phi) * sin(theta);
+    
+    return spherePos;
+}
+
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
 }

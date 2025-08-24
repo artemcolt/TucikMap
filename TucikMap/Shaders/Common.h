@@ -18,4 +18,8 @@ float4x4 scale_matrix(float3 scale);
 
 float latToMercatorY(float latitudeRadians);
 
+float3 getSpherePos(float2 normMapCoord, float radius);
+
+float4 getGlobeWorldPosition(float2 normMapCoord, float radius, float longitude, float latitude);
+
 #endif

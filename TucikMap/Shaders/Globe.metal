@@ -37,20 +37,11 @@ struct GlobeParams {
 vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
                                    constant Uniforms& uniforms [[buffer(1)]],
                                    constant GlobeParams& globeParams [[buffer(2)]]) {
+    float2 sphereGenCoord = float2(vertexIn.xCoord, vertexIn.yCoord) * float2(-1, 1);
     
-    constexpr float PI = M_PI_F;
-    constexpr float HALF_PI = M_PI_F / 2.0;
-    float theta = vertexIn.xCoord * PI + HALF_PI;
-    float y = vertexIn.yCoord * PI;
-    float phi = 2.0 * atan(exp(y)) - HALF_PI;
-
+    float PI = M_PI_F;
     float radius = globeParams.globeRadius;
-    float4 spherePos;
-    spherePos.x = radius * cos(phi) * cos(theta);
-    spherePos.y = radius * sin(phi);
-    spherePos.z = radius * cos(phi) * sin(theta);
-    spherePos.w = 1;
-    
+    float4 spherePos = float4(getSpherePos(sphereGenCoord, radius), 1.0);
     
     float rotation            = globeParams.globeRotation;
     float4x4 translation      = translation_matrix(float3(0, 0, -radius));
@@ -68,12 +59,9 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
 
     float transition          = globeParams.transition;
     
-    //transition = 1;
     float4 worldPosition      = mix(globeWorldPosition, planeWorldPosition, transition);
     float4 viewPosition       = uniforms.viewMatrix * worldPosition;
     float4 clipPosition       = uniforms.projectionMatrix * viewPosition;
-    
-    
     
     VertexOut out;
     out.position = clipPosition;

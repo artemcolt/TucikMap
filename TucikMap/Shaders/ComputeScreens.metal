@@ -82,19 +82,9 @@ kernel void computeScreensGlobe(
     float4 labelCoord4 = localTranslation * localScale * float4(inputLoc, 0, 1);
     float2 labelCoord = labelCoord4.xy;
     
-    
     constexpr float PI = M_PI_F;
-    constexpr float HALF_PI = M_PI_F / 2.0;
-    float theta = -labelCoord.x * PI + HALF_PI;
-    float y = labelCoord.y * PI;
-    float phi = 2.0 * atan(exp(y)) - HALF_PI;
-
     float radius = globeParams.globeRadius;
-    float4 spherePos;
-    spherePos.x = radius * cos(phi) * cos(theta);
-    spherePos.y = radius * sin(phi);
-    spherePos.z = radius * cos(phi) * sin(theta);
-    spherePos.w = 1;
+    float4 spherePos = float4(getSpherePos(labelCoord, radius), 1.0);
     
     float4x4 globeTranslate = translation_matrix(float3(0, 0, -radius));
     float4x4 globeLongitude = rotation_matrix(-globeParams.longitude, float3(0, 1, 0));

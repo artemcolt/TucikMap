@@ -45,33 +45,18 @@ vertex VertexOut globeMarkersVertexShader(VertexIn in [[stage_in]],
                                           constant MapMarkerMeta* markersMeta [[buffer(2)]],
                                           constant Uniforms &worldUniforms [[buffer(3)]],
                                           constant GlobeParams& globeParams [[buffer(4)]],
-                                          uint vertexID [[vertex_id]]
-                                          ) {
+                                          uint vertexID [[vertex_id]]) {
     int markerIndex = vertexID / 6;
     
     MapMarkerMeta markerMeta = markersMeta[markerIndex];
     float2 markerCoord = markerMeta.globeNormalizedPosition;
-    
-    constexpr float PI = M_PI_F;
-    constexpr float HALF_PI = M_PI_F / 2.0;
-    float theta = -markerCoord.x * PI + HALF_PI;
-    float y = markerCoord.y * PI;
-    float phi = 2.0 * atan(exp(y)) - HALF_PI;
-
     float radius = globeParams.globeRadius;
-    float4 spherePos;
-    spherePos.x = radius * cos(phi) * cos(theta);
-    spherePos.y = radius * sin(phi);
-    spherePos.z = radius * cos(phi) * sin(theta);
-    spherePos.w = 1;
+    float longitude = globeParams.longitude;
+    float latitude = globeParams.latitude;
     
-    
-    float4x4 globeTranslate = translation_matrix(float3(0, 0, -radius));
-    float4x4 globeLongitude = rotation_matrix(-globeParams.longitude, float3(0, 1, 0));
-    float4x4 globeLatitude = rotation_matrix(globeParams.latitude, float3(1, 0, 0));
-    float4x4 globeRotation = globeLatitude * globeLongitude;
-    float4 globeWorldLabelPos = globeTranslate * globeRotation * spherePos;
+    float4 globeWorldLabelPos = getGlobeWorldPosition(markerCoord, radius, longitude, latitude);
     float4 worldPosition = globeWorldLabelPos;
+    
     
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldPosition;
     float3 ndc = float3(clipPos.x / clipPos.w, clipPos.y / clipPos.w, clipPos.z / clipPos.w);
