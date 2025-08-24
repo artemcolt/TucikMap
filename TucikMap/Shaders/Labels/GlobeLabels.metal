@@ -7,7 +7,7 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#include "Common.h"
+#include "../Common.h"
 
 struct VertexIn {
     float2 position [[attribute(0)]];

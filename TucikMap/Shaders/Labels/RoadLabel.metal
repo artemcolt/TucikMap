@@ -7,7 +7,7 @@
 
 #include <metal_stdlib>
 using namespace metal;
-#include "Common.h"
+#include "../Common.h"
 
 struct Uniforms {
     metal::float4x4 projectionMatrix;

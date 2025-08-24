@@ -44,6 +44,8 @@ class Coordinator: NSObject, MTKViewDelegate {
     private let switchMapMode               : SwitchMapMode
     private let applyLabelsState            : ApplyLabelsState
     private let scrCollDetStorage           : ScrCollDetStorage
+    private let textureLoader               : TextureLoader
+    private let markersStorage              : MarkersStorage
     
     let flatMode: FlatMode
     let globeMode: GlobeMode
@@ -68,6 +70,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         textureAdder            = TextureAdder(metalDevice: metalDevice, textureAdderPipeline: pipelines.textureAdderPipeline)
         drawTextureOnScreen     = DrawTextureOnScreen(metalDevice: metalDevice, postProcessingPipeline: pipelines.postProcessing)
         mapModeStorage          = MapModeStorage()
+        textureLoader           = TextureLoader(metalDevice: metalDevice)
         mapCadDisplayLoop       = MapCADisplayLoop(frameCounter: frameCounter,
                                                    drawingFrameRequester: drawingFrameRequester,
                                                    mapSettings: mapSettings)
@@ -140,6 +143,10 @@ class Coordinator: NSObject, MTKViewDelegate {
         applyLabelsState        = ApplyLabelsState(scrCollDetStorage: scrCollDetStorage,
                                                    assembledMap: mapUpdaterContext.assembledMap)
         
+        markersStorage          = MarkersStorage(metalDevice: metalDevice,
+                                                 mapSettings: mapSettings,
+                                                 cameraStorage: cameraStorage)
+        
         flatMode                = FlatMode(metalDevice: metalDevice,
                                            metalCommandQueue: metalCommandQueue,
                                            frameCounter: frameCounter,
@@ -155,7 +162,9 @@ class Coordinator: NSObject, MTKViewDelegate {
                                            mapModeStorage: mapModeStorage,
                                            drawPoint: drawPoint,
                                            mapUpdaterFlat: mapUpdaterStorage.flat,
-                                           mapSettings: mapSettings)
+                                           mapSettings: mapSettings,
+                                           textureLoader: textureLoader,
+                                           markersStorage: markersStorage)
         
         globeMode               = GlobeMode(metalDevice: metalDevice,
                                             pipelines: pipelines,
@@ -172,7 +181,9 @@ class Coordinator: NSObject, MTKViewDelegate {
                                             drawSpace: drawSpace,
                                             drawGlobeGlowing: drawGlobeGlowing,
                                             textureAdder: textureAdder,
-                                            mapSettings: mapSettings)
+                                            mapSettings: mapSettings,
+                                            textureLoader: textureLoader,
+                                            markersStorage: markersStorage)
         super.init()
     }
     
@@ -262,6 +273,7 @@ class Coordinator: NSObject, MTKViewDelegate {
         case .globe:
             globeMode.draw(in: view, renderPassWrapper: renderPassWrapper)
         }
+        
         
         if mapSettings.getMapDebugSettings().getDrawTraversalPlane() == true {
             drawDebugData.drawGlobeTraversalPlane(renderPassWrapper: renderPassWrapper,

@@ -232,21 +232,9 @@ class Camera {
         //print("rotationYaw = \(rotationYaw), cameraPitch = \(cameraPitch)")
     }
     
-    func getCenterLatLon() -> (lat: Double, lon: Double) {
+    func getCenterLatLon() -> SIMD2<Double> {
         let mapSize = Double(mapSize)
-        
-        // Step 1: Reverse the map offset to get Mercator coordinates x and y
-        let x = mapSize / 2 - mapPanning.x
-        let y = mapSize / 2 - mapPanning.y
-        
-        // Step 2: Convert Mercator x to longitude
-        let lon = (x / mapSize * 360.0) - 180.0
-        
-        // Step 3: Convert Mercator y to latitude
-        let latRad = 2.0 * (atan(exp(.pi * (1.0 - 2.0 * y / mapSize))) - .pi / 4)
-        let lat = -latRad * 180.0 / .pi
-        
-        return (lat: lat, lon: lon)
+        return MapMathUtils.getLatLonDegreesByPan(mapSize: mapSize, panX: mapPanning.x, panY: mapPanning.y)
     }
     
     func moveTo(lat: Double, lon: Double, zoom: Float, view: MTKView, size: CGSize) {

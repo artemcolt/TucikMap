@@ -8,6 +8,8 @@
 import Foundation
 import MetalKit
 
+
+
 struct TilePositionTranslate {
     let scaleX: Float
     let scaleY: Float
@@ -17,6 +19,55 @@ struct TilePositionTranslate {
 }
 
 class MapMathUtils {
+    static func normalizeLatLonDegrees(latLon: SIMD2<Double>) -> SIMD2<Double> {
+        return SIMD2<Double>(latLon.x / 90, latLon.y / 180)
+    }
+    
+    static func degreesToRadians(degrees: SIMD2<Double>) -> SIMD2<Double> {
+        return degrees * .pi / 180.0
+    }
+    
+    static func latitudeDegreesToNormalized(latitudeDegrees: Double) -> Double {
+        let latRad = latitudeDegrees * .pi / 180.0
+        let mercY = log(tan(.pi / 4.0 + latRad / 2.0))
+        return mercY / .pi
+    }
+    
+    static func longitudeDegreesToNormalized(longitudeDegrees: Double) -> Double {
+        return longitudeDegrees / 180.0
+    }
+    
+    static func getPanByLatLonDegrees(mapSize: Double, lat: Double, lon: Double) -> SIMD2<Double> {
+        // Step 1: Convert longitude to Mercator x
+        let x = (lon + 180.0) / 360.0 * mapSize
+        
+        // Step 2: Convert latitude to Mercator y
+        let latRad = -lat * .pi / 180.0
+        let mercY = log(tan(.pi / 4 + latRad / 2.0))
+        let y = mapSize * (0.5 - mercY / (2 * .pi))
+        
+        // Step 3: Apply map offsets to get panX and panY
+        let panX = mapSize / 2.0 - x
+        let panY = mapSize / 2.0 - y
+        
+        return SIMD2<Double>(panX, panY)
+    }
+    
+    static func getLatLonDegreesByPan(mapSize: Double, panX: Double, panY: Double) -> SIMD2<Double> {
+        // Step 1: Reverse the map offset to get Mercator coordinates x and y
+        let x = mapSize / 2 - panX
+        let y = mapSize / 2 - panY
+        
+        // Step 2: Convert Mercator x to longitude
+        let lon = (x / mapSize * 360.0) - 180.0
+        
+        // Step 3: Convert Mercator y to latitude
+        let latRad = 2.0 * (atan(exp(.pi * (1.0 - 2.0 * y / mapSize))) - .pi / 4)
+        let lat = -latRad * 180.0 / .pi
+        
+        return SIMD2<Double>(lat, lon)
+    }
+    
     static func getTilePositionTranslate(
         tile: Tile,
         mapZoomState: MapZoomState,

@@ -20,6 +20,8 @@ class FlatMode {
     private let camera                      : CameraFlatView
     private let mapZoomState                : MapZoomState
     private let mapSettings                 : MapSettings
+    private let drawMarkers                 : DrawFlatMarkers
+    private let markersStorage              : MarkersStorage
     
     // Helpers
     private let drawPoint: DrawPoint
@@ -40,8 +42,11 @@ class FlatMode {
          mapModeStorage: MapModeStorage,
          drawPoint: DrawPoint,
          mapUpdaterFlat: MapUpdaterFlat,
-         mapSettings: MapSettings) {
+         mapSettings: MapSettings,
+         textureLoader: TextureLoader,
+         markersStorage: MarkersStorage) {
         
+        self.markersStorage             = markersStorage
         self.mapSettings                = mapSettings
         self.drawPoint                  = drawPoint
         self.pipelines                  = pipelines
@@ -63,6 +68,14 @@ class FlatMode {
         draw3dBuildings             = Draw3dBuildings(polygon3dPipeline: pipelines.polygon3dPipeline,
                                                       drawAssembledMap: drawAssembledMap,
                                                       metalDevice: metalDevice)
+        
+        drawMarkers                 = DrawFlatMarkers(metalDevice: metalDevice,
+                                                      markersPipeline: pipelines.markersPipeline,
+                                                      screenUnifroms: screenUniforms,
+                                                      cameraStorage: cameraStorage,
+                                                      textureLoader: textureLoader,
+                                                      mapZoomState: mapZoomState,
+                                                      markersStorage: markersStorage)
         
     }
     
@@ -134,6 +147,8 @@ class FlatMode {
                            basicRenderEncoder: basicRenderEncoder,
                            uniformsBuffer: uniformsBuffer)
         }
+        
+        drawMarkers.drawMarkers(renderEncoder: basicRenderEncoder, uniformsBuffer: uniformsBuffer)
         
         basicRenderEncoder.endEncoding()
     }

@@ -42,6 +42,8 @@ class GlobeMode {
     private let drawGlobeGeom           : DrawGlobeGeom
     private let textureAdder            : TextureAdder
     private let mapSettings             : MapSettings
+    private let drawMarkers             : DrawGlobeMarkers
+    private let markersStorage          : MarkersStorage
     
     private var depthStencilState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
@@ -70,8 +72,11 @@ class GlobeMode {
          drawSpace: DrawSpace,
          drawGlobeGlowing: DrawGlobeGlowing,
          textureAdder: TextureAdder,
-         mapSettings: MapSettings) {
+         mapSettings: MapSettings,
+         textureLoader: TextureLoader,
+         markersStorage: MarkersStorage) {
         
+        self.markersStorage         = markersStorage
         self.drawGlobeLabels        = DrawGlobeLabels(screenUniforms: screenUniforms,
                                                       metalDevice: metalDevice,
                                                       camera: cameraStorage.currentView,
@@ -93,6 +98,12 @@ class GlobeMode {
         self.pipelines              = pipelines
         self.mapUpdater             = mapUpdater
         self.mapSettings            = mapSettings
+        self.drawMarkers            = DrawGlobeMarkers(metalDevice: metalDevice,
+                                                       globeMarkersPipeline: pipelines.globeMarkersPipeline,
+                                                       screenUnifroms: screenUniforms,
+                                                       cameraStorage: cameraStorage,
+                                                       textureLoader: textureLoader,
+                                                       markersStorage: markersStorage)
         self.globeCaps              = GlobeCaps(metalDevice: metalDevice,
                                                 mapSettings: mapSettings,
                                                 cameraGlobeView: cameraStorage.globeView,
@@ -264,6 +275,8 @@ class GlobeMode {
             globeRadius: globeRadius,
             transition: transition
         )
+        
+        drawMarkers.drawMarkers(renderEncoder: labelsRenderEncoder, uniformsBuffer: uniformsBuffer)
         
         if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
             pipelines.texturePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)

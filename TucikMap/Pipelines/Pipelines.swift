@@ -24,6 +24,8 @@ class Pipelines {
     private(set) var globeGeomPipeline: GlobeGeomPipeline!
     private(set) var postProcessing: DrawTextureOnScreenPipeline!
     private(set) var textureAdderPipeline: TextureAdderPipeline!
+    private(set) var globeMarkersPipeline: GlobeMarkersPipeline!
+    private(set) var markersPipeline: MarkersPipeline!
  
     init(metalDevice: MTLDevice) {
         // Create the render pipeline
@@ -44,5 +46,7 @@ class Pipelines {
         globeGeomPipeline = GlobeGeomPipeline(metalDevice: metalDevice, library: library)
         postProcessing = DrawTextureOnScreenPipeline(metalDevice: metalDevice, library: library)
         textureAdderPipeline = TextureAdderPipeline(metalDevice: metalDevice, library: library)
+        globeMarkersPipeline = GlobeMarkersPipeline(metalDevice: metalDevice, library: library)
+        markersPipeline = MarkersPipeline(metalDevice: metalDevice, library: library)
     }
 }

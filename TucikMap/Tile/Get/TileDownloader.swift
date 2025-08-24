@@ -10,11 +10,13 @@ import Foundation
 class TileDownloader {
     private let configuration: URLSessionConfiguration
     private let mapSettings: MapSettings
+    private let mapTileDownloader: GetMapTileDownloadUrl
 
     init(mapSettings: MapSettings) {
         configuration = URLSessionConfiguration.default
         configuration.tlsMaximumSupportedProtocolVersion = .TLSv12
         self.mapSettings = mapSettings
+        self.mapTileDownloader = mapSettings.getMapCommonSettings().getGetMapTileDownloadUrl()
     }
     
     func download(tile: Tile) async -> Data? {
@@ -27,7 +29,7 @@ class TileDownloader {
         if debugAssemblingMap { print("Download tile \(tileKey)") }
         
         // Create new download task
-        let tileURL = mapSettings.getMapCommonSettings().GetGetMapTileDownloadUrl().get(tileX: x, tileY: y, tileZ: zoom)
+        let tileURL = mapTileDownloader.get(tileX: x, tileY: y, tileZ: zoom)
         let session: URLSession = URLSession(configuration: configuration)
         if let response = try? await session.data(from: tileURL) {
             if debugAssemblingMap { print("Tile is downloaded \(tile)") }

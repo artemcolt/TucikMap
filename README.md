@@ -4,7 +4,7 @@
 
 A high-performance, interactive 3D map renderer built with Swift and Metal for iOS. Zoom seamlessly from global views to street-level details, powered by Mapbox vector tiles and custom GPU-accelerated rendering. Perfect for developers exploring Metal graphics, mapping apps, or AR integrations.
 
-[![Swift](https://img.shields.io/badge/Swift-5.10-orange.svg)](https://swift.org) [![Metal](https://img.shields.io/badge/Metal-3-blue.svg)](https://developer.apple.com/metal/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-green.svg)](https://example.com) <!-- Добавь реальный статус сборки, если есть CI/CD -->
+[![Swift](https://img.shields.io/badge/Swift-5.10-orange.svg)](https://swift.org) [![Metal](https://img.shields.io/badge/Metal-3-blue.svg)](https://developer.apple.com/metal/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 Overview
 

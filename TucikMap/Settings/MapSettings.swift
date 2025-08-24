@@ -344,7 +344,11 @@ struct MapCommonSettings {
     fileprivate var fadeCapsStartZ: Float
     fileprivate var fadeCapsEndZ: Float
     
-    public func GetGetMapTileDownloadUrl() -> GetMapTileDownloadUrl {
+    public func getMaxMarkersVisible() -> Int {
+        return 40
+    }
+    
+    public func getGetMapTileDownloadUrl() -> GetMapTileDownloadUrl {
         return getMapTileDownloadUrl
     }
     
@@ -468,7 +472,7 @@ struct MapCommonSettings {
         forceRenderOnDisplayUpdate: Bool = false,
         maxBuffersInFlight: Int = 3,
         seeTileInDirectionFlat: Int = 3,
-        seeTileInDirectionGlobe: Int = 2,
+        seeTileInDirectionGlobe: Int = 1,
         clearDownloadedOnDiskTiles: Bool = false,
         spaceUnicodeNumber: Int = 32,
         spaceSize: Float = 0.2,
@@ -482,7 +486,7 @@ struct MapCommonSettings {
         roadLabelTextSize: Float = 50,
         maxInputComputeScreenPoints: Int = 6000,
         geoLabelsParametersBufferSize: Int = 200,
-        globeTextureSize: Int = 4096 * 2,
+        globeTextureSize: Int = 8192,
         globeToPlaneZoomStart: Float = 6,
         globeToPlaneZoomEnd: Float = 7,
         tileExtent: Int = 4096,
