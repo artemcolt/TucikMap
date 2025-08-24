@@ -125,7 +125,7 @@ class Coordinator: NSObject, MTKViewDelegate {
                                                  pipelines: pipelines,
                                                  mapSettings: mapSettings)
         
-        mapController           = MapController(drawingFrameRequester: drawingFrameRequester)
+        mapController           = MapController(drawingFrameRequester: drawingFrameRequester, cameraStorage: cameraStorage)
         let mapUpdaterContext   = MapUpdaterContext()
         mapUpdaterStorage       = MapUpdaterStorage(mapModeStorage: mapModeStorage,
                                                     mapZoomState: mapZoomState,
@@ -202,14 +202,18 @@ class Coordinator: NSObject, MTKViewDelegate {
         screenUniforms.update(size: size)
         flatMode.mtkView(view, drawableSizeWillChange: size)
         
-        let moveSettings = mapSettings.getMapCameraSettings()
-        let latLon = moveSettings.getLatLon()
-        let z = moveSettings.getZ()
-        cameraStorage.currentView.moveTo(lat: latLon.x,
-                                         lon: latLon.y,
-                                         zoom: z,
-                                         view: view,
-                                         size: size)
+        let camera = cameraStorage.currentView
+        let cameraSettings = mapSettings.getMapCameraSettings()
+        let latLon = cameraSettings.getLatLon()
+        let z = cameraSettings.getZ()
+        camera.moveTo(lat: latLon.x,
+                      lon: latLon.y,
+                      zoom: z)
+        
+        let initYaw = cameraSettings.getInitYaw()
+        let initPitch = cameraSettings.getInitPitch()
+        camera.setYawAndPitch(yaw: initYaw, pitch: initPitch)
+        camera.updateMap(view: view, size: size)
     }
     
     func draw(in view: MTKView) {
@@ -218,13 +222,8 @@ class Coordinator: NSObject, MTKViewDelegate {
         _ = semaphore.wait(timeout: .distantFuture)
         
         // Обработка комманд карте
-        if let moveTo = mapController.mapCommand {
-            cameraStorage.currentView.moveTo(lat: moveTo.latitude,
-                                             lon: moveTo.longitude,
-                                             zoom: moveTo.z,
-                                             view: view,
-                                             size: view.drawableSize)
-            mapController.mapCommand = nil
+        if mapController.getNeedUpdate() {
+            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
         }
         
         guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
@@ -315,23 +314,3 @@ class Coordinator: NSObject, MTKViewDelegate {
 }
 
 
-class MapController {
-    struct MoveTo {
-        let latitude: Double
-        let longitude: Double
-        let z: Float
-    }
-    
-    private let drawingFrameRequester: DrawingFrameRequester
-    
-    fileprivate var mapCommand: MoveTo?
-    
-    init(drawingFrameRequester: DrawingFrameRequester) {
-        self.drawingFrameRequester = drawingFrameRequester
-    }
-    
-    func moveTo(latitude: Double, longitude: Double, z: Float) {
-        mapCommand = MoveTo(latitude: latitude, longitude: longitude, z: z)
-        drawingFrameRequester.renderNextStep()
-    }
-}

@@ -17,6 +17,17 @@ class MapSettingsBuilder {
         return mapCameraSettings
     }
     
+    
+    func initCameraPitch(_ pitch: Float) -> MapSettingsBuilder {
+        mapCameraSettings.initPitch = pitch
+        return self
+    }
+    
+    func initCameraYaw(_ yaw: Float) -> MapSettingsBuilder {
+        mapCameraSettings.initYaw = yaw
+        return self
+    }
+    
     func onContollerCreated(_ controller: ControllerCreated) -> MapSettingsBuilder {
         mapCommonSettings.controllerCreated = controller
         return self
@@ -152,12 +163,22 @@ struct MapCameraSettings {
     fileprivate var farPlaneIncreaseFactor: Float
     fileprivate var zoomLevelMax: Float
     fileprivate var maxTileZoom: Int
+    fileprivate var initPitch: Float
+    fileprivate var initYaw: Float
     
     fileprivate var baseFov: Float
     fileprivate var poleFov: Float
     
     fileprivate var camAffectDistStartZ: Float
     fileprivate var camAffectDistEndZ: Float
+    
+    public func getInitPitch() -> Float {
+        return initPitch
+    }
+    
+    public func getInitYaw() -> Float {
+        return initYaw
+    }
     
     public func getCamAffectDistStartZ() -> Float {
         return camAffectDistStartZ
@@ -242,6 +263,8 @@ struct MapCameraSettings {
          poleFov: Float = Float.pi / 6.0,
          camAffectDistStartZ: Float = 1,
          camAffectDistEndZ: Float = 3,
+         initPitch: Float = 0,
+         initYaw: Float = 0
     ) {
         self.maxTileZoom = maxTileZoom
         self.zoomLevelMax = zoomLevelMax
@@ -256,6 +279,8 @@ struct MapCameraSettings {
         self.minCameraPitch = minCameraPitch
         self.camAffectDistStartZ = camAffectDistStartZ
         self.camAffectDistEndZ = camAffectDistEndZ
+        self.initPitch = initPitch
+        self.initYaw = initYaw
         
         self.baseFov = baseFov
         self.poleFov = poleFov

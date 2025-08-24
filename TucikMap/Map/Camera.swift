@@ -207,26 +207,23 @@ class Camera {
         let quaternionDelta = newCameraPitch - cameraPitch
         // Rotate around local X-axis (pitch)
         if abs(quaternionDelta) > 0 {
-            let right = cameraQuaternion.act(SIMD3<Float>(1, 0, 0))
-            let pitchQuaternion = simd_quatf(angle: quaternionDelta, axis: right)
-            cameraQuaternion = pitchQuaternion * cameraQuaternion
             cameraPitch = newCameraPitch
         }
         
         // Rotation
         // Rotate around world Z-axis (yaw)
         rotationYaw += rotationDeltaYaw
-        let yawQuaternion = simd_quatf(angle: rotationDeltaYaw, axis: SIMD3<Float>(0, 0, 1))
-        cameraQuaternion = yawQuaternion * cameraQuaternion // for camera
-        cameraYawQuaternion = yawQuaternion * cameraYawQuaternion // for panning
+        
+        updateYawAndPitchCam()
         
         // Pan
         // Move target position in camera's local
-        let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
         let forward = cameraYawQuaternion.act(SIMD3<Float>(0, 1, 0))
+        let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
         let newMapPanning = mapPanning + SIMD3<Double>(right * panDeltaX + forward * panDeltaY)
         mapPanning.y = newMapPanning.y
         mapPanning.x = newMapPanning.x
+        
             
         updateMap(view: view, size: view.drawableSize)
         //print("rotationYaw = \(rotationYaw), cameraPitch = \(cameraPitch)")
@@ -237,7 +234,26 @@ class Camera {
         return MapMathUtils.getLatLonDegreesByPan(mapSize: mapSize, panX: mapPanning.x, panY: mapPanning.y)
     }
     
-    func moveTo(lat: Double, lon: Double, zoom: Float, view: MTKView, size: CGSize) {
+    func setYawAndPitch(yaw: Float, pitch: Float) {
+        rotationYaw = yaw
+        
+        let maxCameraPitch = mapSettings.getMapCameraSettings().getMaxCameraPitch()
+        let minCameraPitch = mapSettings.getMapCameraSettings().getMinCameraPitch()
+        let newCameraPitch = max(min(pitch, maxCameraPitch), minCameraPitch)
+        cameraPitch = newCameraPitch
+        
+        updateYawAndPitchCam()
+    }
+    
+    private func updateYawAndPitchCam() {
+        let yawQuaternion = simd_quatf(angle: rotationYaw, axis: SIMD3<Float>(0, 0, 1))
+        cameraYawQuaternion = yawQuaternion // for panning
+        let right = cameraYawQuaternion.act(SIMD3<Float>(1, 0, 0))
+        let pitchQuaternion = simd_quatf(angle: cameraPitch, axis: right)
+        cameraQuaternion = pitchQuaternion * yawQuaternion
+    }
+    
+    func moveTo(lat: Double, lon: Double, zoom: Float) {
         mapZoom = zoom
         
         let lat = -lat
@@ -254,9 +270,6 @@ class Camera {
         let newX = mapSize / 2 - x
         let newY = mapSize / 2 - y
         mapPanning = SIMD3<Double>(newX, newY, 0)
-        
-        // Шаг 4: Обновление карты
-        updateMap(view: view, size: size)
     }
     
     func moveToPanningPoint(point: MapPanningTilePoint, zoom: Float, view: MTKView, size: CGSize) {
