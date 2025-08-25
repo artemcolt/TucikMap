@@ -17,9 +17,9 @@ struct ContentView: View {
     init() {
         mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN))
             .debugUI(enabled: true)
-            .drawGrid(enabled: false)
+            .drawGrid(enabled: true)
             .style(mapStyle: DefaultMapStyle())
-            .initPosition(z: 6.6, latLon: Locations.russia.coordinate) // SIMD2<Double>(0,0)
+            .initPosition(z: 5.5, latLon: Locations.russia.coordinate) // SIMD2<Double>(0,0)
             .initCameraPitch(1.5)
             .onContollerCreated(mapControllerCreated)
             .build()

@@ -183,7 +183,7 @@ class GlobeMode {
         }
         
         if assembledMap.isTilesStateChanged(compareId: tilesStateId) {
-            generateTextureCount = maxBuffersInFlight
+            generateTextureCount = 1
             tilesStateId = assembledMap.setTilesId
         }
         
@@ -209,7 +209,7 @@ class GlobeMode {
                                                         transition: transition)
         
         let buffered        = planesBuffered[currentFbIndex]
-        let texture         = globeTexturing.getTexture(frameBufferIndex: currentFbIndex)
+        let texture         = globeTexturing.globeTexture
         let verticesBuffer  = buffered.verticesBuffer
         let indicesBuffer   = buffered.indicesBuffer
         let indicesCount    = buffered.indicesCount

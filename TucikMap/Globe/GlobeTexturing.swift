@@ -14,12 +14,9 @@ class GlobeTexturing {
     private let drawTile            : DrawTile = DrawTile()
     private let uniformsBuffer      : MTLBuffer
     private let textureSize         : Int
-    private var texturesBuffered    : [MTLTexture] = []
     private let mapSettings         : MapSettings
+    let globeTexture                : MTLTexture
     
-    func getTexture(frameBufferIndex: Int) -> MTLTexture {
-        return texturesBuffered[frameBufferIndex]
-    }
     
     init(metalDevide: MTLDevice,
          metalCommandQueue: MTLCommandQueue,
@@ -45,12 +42,7 @@ class GlobeTexturing {
                                                                          mipmapped: false)
         textureDescriptor.usage = [.renderTarget, .shaderRead]
         
-        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
-        texturesBuffered.reserveCapacity(maxBuffersInFlight)
-        for _ in 0..<maxBuffersInFlight {
-            let texture = metalDevide.makeTexture(descriptor: textureDescriptor)!
-            texturesBuffered.append(texture)
-        }
+        globeTexture = metalDevide.makeTexture(descriptor: textureDescriptor)!
     }
     
     func render(currentFBIndex: Int,
@@ -77,11 +69,9 @@ class GlobeTexturing {
         let windowSize = Float(areaRange.tileXCount)
         let windowTileFraction = Float(1) / windowSize
         
-        let texture                 = texturesBuffered[currentFBIndex]
-        let renderPassDescriptor    = MTLRenderPassDescriptor()
-        
         // Указываем текстуру как цель рендеринга
-        renderPassDescriptor.colorAttachments[0].texture    = texture
+        let renderPassDescriptor = MTLRenderPassDescriptor()
+        renderPassDescriptor.colorAttachments[0].texture    = globeTexture
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 1, blue: 1, alpha: 1)
         
