@@ -10,8 +10,8 @@ import MetalKit
 class GlobePipeline {
     struct Vertex {
         let texcoord: SIMD2<Float>
-        let yCoord: Float
         let xCoord: Float
+        let yCoord: Float
     }
     
     struct GlobeParams {
@@ -19,6 +19,7 @@ class GlobePipeline {
         let uShift              : Float
         let globeRadius         : Float
         let transition          : Float
+        let startAndEndUV       : SIMD4<Float>
     }
     
     let pipelineState: MTLRenderPipelineState

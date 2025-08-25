@@ -14,15 +14,13 @@ class GlobeMode {
         let verticesBuffer          : MTLBuffer
         let indicesBuffer           : MTLBuffer
         var indicesCount            : Int
-        var globeWidthFactor        : Float
-        var globeHeightFactor       : Float
         
         func isEmpty() -> Bool {
             return indicesCount == 0
         }
     }
     
-    private var planesBuffered          : [GlobePlane] = []
+    private var globeGeometryPlane      : GlobePlane
     private let metalDevice             : MTLDevice
     private var globeTexturing          : GlobeTexturing
     private var metalTilesStorage       : MetalTilesStorage
@@ -52,10 +50,6 @@ class GlobeMode {
     private var tilesStateId            : UInt = 0
     private var generatePlaneCount      : Int = 0
     private var generateTextureCount    : Int = 0
-    
-    private let maxGeomVerticesCount    : Int = 10_000
-    private let maxGeomIndicesCount     : Int = 40_000
-    
     
     init(metalDevice: MTLDevice,
          pipelines: Pipelines,
@@ -122,31 +116,20 @@ class GlobeMode {
         samplerDescriptor.tAddressMode = .clampToEdge
         samplerState = metalDevice.makeSamplerState(descriptor: samplerDescriptor)!
         
-        let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
-        for _ in 0..<maxBuffersInFlight {
-            // TODO адаптировать размеры буфферов
-            let verticesBuffer = metalDevice.makeBuffer(length: MemoryLayout<GlobePipeline.Vertex>.stride * maxGeomVerticesCount)!
-            let indicesBuffer  = metalDevice.makeBuffer(length: MemoryLayout<UInt32>.stride * maxGeomIndicesCount)!
-            planesBuffered.append(GlobePlane(
-                verticesBuffer: verticesBuffer,
-                indicesBuffer: indicesBuffer,
-                indicesCount: 0,
-                globeWidthFactor: 0,
-                globeHeightFactor: 0))
-        }
+        
+        // Create globe geometry
+        let newPlane = globeGeometry.createPlane(segments: 130)
+        var vertices = newPlane.vertices
+        var indices  = newPlane.indices
+        
+        let verticesBuffer = metalDevice.makeBuffer(bytes: &vertices,length: MemoryLayout<GlobePipeline.Vertex>.stride * vertices.count)!
+        let indicesBuffer  = metalDevice.makeBuffer(bytes: &indices, length: MemoryLayout<UInt32>.stride * indices.count)!
+        
+        globeGeometryPlane = GlobePlane(verticesBuffer: verticesBuffer,
+                                        indicesBuffer: indicesBuffer,
+                                        indicesCount: newPlane.indices.count)
     }
     
-    func changePlane(bufferIndex: Int, segments: Int, areaRange: AreaRange) {
-        let newPlane = globeGeometry.createPlane(segments: segments, areaRange: areaRange)
-        let vertices = newPlane.vertices
-        let indices  = newPlane.indices
-        
-        planesBuffered[bufferIndex].verticesBuffer.contents().copyMemory(from: vertices,
-                                                      byteCount: MemoryLayout<GlobePipeline.Vertex>.stride * vertices.count)
-        planesBuffered[bufferIndex].indicesBuffer.contents().copyMemory(from: indices,
-                                                     byteCount: MemoryLayout<UInt32>.stride * indices.count)
-        planesBuffered[bufferIndex].indicesCount = newPlane.indices.count
-    }
     
     func draw(in view: MTKView, renderPassWrapper: RenderPassWrapper) {
         
@@ -159,22 +142,22 @@ class GlobeMode {
         let panX            = Float(camera.mapPanning.x)
         
         var uShiftMap = panX
-        if areaRange.isFullMap == false {
-            let uTileSize = Float(1.0) / Float(areaRange.tileXCount)
-            let halfTilesCount = Float(tilesCount) / 2.0
-            let uShift = (panX * 2.0) * halfTilesCount * uTileSize
-            
-            let isOdd = areaRange.tileXCount % 2 == 1
-            var additional = Float(0)
-            if isOdd {
-                additional = uTileSize / 2
-            }
-            
-            uShiftMap = additional + uShift.truncatingRemainder(dividingBy: uTileSize)
-            if uShift > 0 && isOdd {
-                uShiftMap -= uTileSize
-            }
-        }
+//        if areaRange.isFullMap == false {
+//            let uTileSize = Float(1.0) / Float(areaRange.tileXCount)
+//            let halfTilesCount = Float(tilesCount) / 2.0
+//            let uShift = (panX * 2.0) * halfTilesCount * uTileSize
+//            
+//            let isOdd = areaRange.tileXCount % 2 == 1
+//            var additional = Float(0)
+//            if isOdd {
+//                additional = uTileSize / 2
+//            }
+//            
+//            uShiftMap = additional + uShift.truncatingRemainder(dividingBy: uTileSize)
+//            if uShift > 0 && isOdd {
+//                uShiftMap -= uTileSize
+//            }
+//        }
         
         let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         if assembledMap.isAreaStateChanged(compareId: areaStateId) {
@@ -189,7 +172,6 @@ class GlobeMode {
         
         if generatePlaneCount > 0 {
             // TODO segments сколько выставлять
-            changePlane(bufferIndex: currentFbIndex, segments: 80, areaRange: areaRange)
             generatePlaneCount -= 1
         }
         
@@ -203,18 +185,12 @@ class GlobeMode {
         
         let globeRadius     = camera.globeRadius
         let transition      = switchMapMode.transition
-        var globeParams     = GlobePipeline.GlobeParams(globeRotation: camera.latitude,
-                                                        uShift: uShiftMap,
-                                                        globeRadius: globeRadius,
-                                                        transition: transition)
-        
-        let buffered        = planesBuffered[currentFbIndex]
         let texture         = globeTexturing.globeTexture
-        let verticesBuffer  = buffered.verticesBuffer
-        let indicesBuffer   = buffered.indicesBuffer
-        let indicesCount    = buffered.indicesCount
+        let verticesBuffer  = globeGeometryPlane.verticesBuffer
+        let indicesBuffer   = globeGeometryPlane.indicesBuffer
+        let indicesCount    = globeGeometryPlane.indicesCount
         
-        if buffered.isEmpty() == false {
+        if globeGeometryPlane.isEmpty() == false {
             
             // Рисуем окружение планеты
             let renderEncoderSpace = renderPassWrapper.createSpaceEnvEncoder()
@@ -233,6 +209,24 @@ class GlobeMode {
             // рисуем крышки глобуса
             globeCaps.drawCapsFor(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
             
+            let tilesCount = mapZoomState.tilesCount
+            
+            let startTexV = Float(areaRange.minY) / Float(tilesCount)
+            let endTexV = (Float(areaRange.maxY) + 1) / Float(tilesCount)
+            
+            let startTexU = Float(areaRange.startX) / Float(tilesCount)
+            let endTexU = (Float(areaRange.endX) + 1) / Float(tilesCount)
+            var startAndEndUV = SIMD4<Float>(startTexU, endTexU, startTexV, endTexV)
+            if areaRange.isFullMap {
+                startAndEndUV = SIMD4<Float>(0, 1, 0, 1)
+            }
+            
+            
+            var globeParams = GlobePipeline.GlobeParams(globeRotation: camera.latitude,
+                                                        uShift: uShiftMap,
+                                                        globeRadius: globeRadius,
+                                                        transition: transition,
+                                                        startAndEndUV: startAndEndUV)
             
             pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
             renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)

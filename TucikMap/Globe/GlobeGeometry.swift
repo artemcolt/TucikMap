@@ -14,37 +14,23 @@ class GlobeGeometry {
         let indices: [UInt32]
     }
     
-    func createPlane(segments: Int, areaRange: AreaRange) -> PlaneData {
-        let maxY = Float(areaRange.maxY)
-        let minY = Float(areaRange.minY)
-        let z = Int(areaRange.z)
-        let tileXCount = Float(areaRange.tileXCount)
-        
-        let tilesNum = pow(2.0, Float(z))
-        let initialY = -(minY / tilesNum) * 2 + 1
-        let finalY = -((maxY + 1) / tilesNum) * 2 + 1
-        
-        let ySize = abs(finalY - initialY)
-        let yStep = ySize / Float(segments)
-        
-        let initialX = Float(-1)
-        let finalX = (tileXCount / tilesNum) * 2 - 1
-        let xSize = abs(finalX - initialX)
-        let xStep = xSize / Float(segments)
-        let xHalfSize = xSize / 2
+    func createPlane(segments: Int) -> PlaneData {
+        let yStep = Float(2.0) / Float(segments)
+        let xStep = Float(2.0) / Float(segments)
         
         var vertices: [GlobePipeline.Vertex] = []
-        for j in 0...segments {
-            let yCoord = finalY + yStep * Float(j)
-            for i in 0...segments {
-                let u = Float(i) / Float(segments)
-                let v = Float(j) / Float(segments)
+        for xSegment in 0...segments {
+            let xCoord = -1.0 + xStep * Float(xSegment)
+            
+            for ySegment in 0...segments {
+                let yCoord = -1.0 + Float(ySegment) * yStep
                 
-                let xCoord = -xHalfSize + Float(i) * xStep
+                let u = Float(ySegment) / Float(segments)
+                let v = Float(xSegment) / Float(segments)
                 
-                vertices.append(GlobePipeline.Vertex(texcoord: SIMD2<Float>(1 - u, 1 - v),
-                                                     yCoord: yCoord,
-                                                     xCoord: xCoord))
+                vertices.append(GlobePipeline.Vertex(texcoord: SIMD2<Float>(u, 1 - v),
+                                                     xCoord: xCoord,
+                                                     yCoord: yCoord))
             }
         }
         
@@ -56,7 +42,8 @@ class GlobeGeometry {
                 let br = bl + 1
                 let tl = UInt32((j + 1) * width + i)
                 let tr = tl + 1
-                indices.append(contentsOf: [bl, tl, br, br, tl, tr])
+                //indices.append(contentsOf: [bl, tl, br, br, tl, tr])
+                indices.append(contentsOf: [tr, tl, br, br, tl, bl])
             }
         }
         

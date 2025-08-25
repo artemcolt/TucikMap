@@ -32,12 +32,13 @@ struct GlobeParams {
     float uShift;
     float globeRadius;
     float transition;
+    float4 startAndEndUV;
 };
 
 vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
                                    constant Uniforms& uniforms [[buffer(1)]],
                                    constant GlobeParams& globeParams [[buffer(2)]]) {
-    float2 sphereGenCoord = float2(vertexIn.xCoord, vertexIn.yCoord) * float2(-1, 1);
+    float2 sphereGenCoord = float2(vertexIn.xCoord, vertexIn.yCoord);
     
     float PI = M_PI_F;
     float radius = globeParams.globeRadius;
@@ -54,7 +55,7 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     float perimeter           = 2.0 * PI * radius;
     float halfPerimeter       = perimeter / 2.0;
     float planeFactor         = distortion * halfPerimeter;
-    float4 planeWorldPosition = float4(-vertexIn.xCoord * planeFactor, vertexIn.yCoord * planeFactor + planeShiftY * planeFactor, 0, 1);
+    float4 planeWorldPosition = float4(vertexIn.xCoord * planeFactor, vertexIn.yCoord * planeFactor + planeShiftY * planeFactor, 0, 1);
     
 
     float transition          = globeParams.transition;
@@ -64,8 +65,20 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     float4 clipPosition       = uniforms.projectionMatrix * viewPosition;
     
     VertexOut out;
-    out.position = clipPosition;
-    out.texCoord = vertexIn.texCoord - float2(globeParams.uShift, 0);
+    out.position        = clipPosition;
+    
+    float startTexU     = globeParams.startAndEndUV[0];
+    float endTexU       = globeParams.startAndEndUV[1];
+    float startTexV     = globeParams.startAndEndUV[2];
+    float endTexV       = globeParams.startAndEndUV[3];
+    
+    
+    float2 tex          = vertexIn.texCoord - float2(globeParams.uShift, 0);
+    tex.x               = (tex.x - startTexU) / (endTexU - startTexU);
+    tex.y               = (tex.y - startTexV) / (endTexV - startTexV);
+    
+    out.texCoord        = tex;
+    
     return out;
 }
 

@@ -19,6 +19,15 @@ struct TilePositionTranslate {
 }
 
 class MapMathUtils {
+    static func normalizeCoord(coord: Int, z: Int) -> Int {
+        let n = 1 << z
+        var normalized = coord % n
+        if normalized < 0 {
+            normalized += n
+        }
+        return normalized
+    }
+    
     static func normalizeLatLonDegrees(latLon: SIMD2<Double>) -> SIMD2<Double> {
         return SIMD2<Double>(latLon.x / 90, latLon.y / 180)
     }

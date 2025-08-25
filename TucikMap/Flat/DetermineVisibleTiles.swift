@@ -50,12 +50,7 @@ class DetermineVisibleTiles {
     }
     
     private func normalize(coord: Int, z: Int) -> Int {
-        let n = 1 << z
-        var normalized = coord % n
-        if normalized < 0 {
-            normalized += n
-        }
-        return normalized
+        return MapMathUtils.normalizeCoord(coord: coord, z: z)
     }
     
     private func determineRealArea() -> (tiles: [VisibleTile], areaRange: AreaRange)  {
