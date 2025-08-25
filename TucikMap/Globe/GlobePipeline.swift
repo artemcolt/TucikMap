@@ -50,7 +50,6 @@ class GlobePipeline {
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
         
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        pipelineDescriptor.colorAttachments[1].pixelFormat = .r8Unorm
         
         self.pipelineState = try! metalDevice.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }

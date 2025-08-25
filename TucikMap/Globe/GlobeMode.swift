@@ -246,21 +246,6 @@ class GlobeMode {
                                                 indexBuffer: indicesBuffer,
                                                 indexBufferOffset: 0)
             renderEncoder.endEncoding()
-            
-            
-            let blurKernel = MPSImageGaussianBlur(device: metalDevice, sigma: 20)
-            blurKernel.encode(commandBuffer: renderPassWrapper.commandBuffer,
-                              sourceTexture: renderPassWrapper.ur8Texture0,
-                              destinationTexture: renderPassWrapper.ur8Texture1)
-            
-            //TODO Это не "textureAdder"
-            textureAdder.addTextures(sceneTex: renderPassWrapper.texture0,
-                                     bluredTex: renderPassWrapper.ur8Texture1,
-                                     maskedTex: renderPassWrapper.ur8Texture0,
-                                     outTexture: renderPassWrapper.texture1,
-                                     commandBuffer: renderPassWrapper.commandBuffer)
-            
-            renderPassWrapper.changeScreenTexture(texture: renderPassWrapper.texture1)
         }
         
         

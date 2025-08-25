@@ -161,6 +161,9 @@ class Camera {
         latitude        = Float(2.0 * atan(exp(mercY)) - Double.pi / 2)
         distortion      = Float(abs(cos(latitude)))
         
+        mapZoom = max(0, min(mapZoom, mapSettings.getMapCameraSettings().getZoomLevelMax()))
+        mapZoomState.update(zoomLevelFloat: mapZoom, mapSize: self.mapSize)
+        
         let zFloat = mapZoomState.zoomLevelFloat
         let range = endZDistortionAffect - startZDistortionAffect
         let distortionAffectValue: Float = max(0, min(1, (zFloat - startZDistortionAffect) / range))
@@ -170,9 +173,7 @@ class Camera {
         let currentBaseCamDistance = undistortedDistance + (distortedDistance - undistortedDistance) * distortionAffectValue
         //print("distortion = ", distortion, " camBaseDist = ", currentBaseCamDistance)
         
-        mapZoom = max(0, min(mapZoom, mapSettings.getMapCameraSettings().getZoomLevelMax()))
         cameraDistance = currentBaseCamDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
-        mapZoomState.update(zoomLevelFloat: mapZoom, mapSize: self.mapSize)
         
         // Compute camera position based on distance and orientation
         let forward = cameraQuaternion.act(SIMD3<Float>(0, 0, 1)) // Default forward vector

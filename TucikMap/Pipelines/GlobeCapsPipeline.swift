@@ -18,7 +18,6 @@ class GlobeCapsPipeline {
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        pipelineDescriptor.colorAttachments[1].pixelFormat = .r8Unorm
         pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float_stencil8
         pipelineDescriptor.stencilAttachmentPixelFormat = .depth32Float_stencil8
         

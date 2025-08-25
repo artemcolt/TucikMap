@@ -19,7 +19,6 @@ class DrawFlatMarkers {
     private let sampler: MTLSamplerState
     
     
-    
     init(metalDevice: MTLDevice,
          markersPipeline: MarkersPipeline,
          screenUnifroms: ScreenUniforms,

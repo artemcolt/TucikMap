@@ -19,7 +19,8 @@ struct ContentView: View {
             .debugUI(enabled: true)
             .drawGrid(enabled: false)
             .style(mapStyle: DefaultMapStyle())
-            .initPosition(z: 7.5, latLon: Locations.russia.coordinate) // SIMD2<Double>(0,0)
+            .initPosition(z: 6.6, latLon: Locations.russia.coordinate) // SIMD2<Double>(0,0)
+            .initCameraPitch(1.5)
             .onContollerCreated(mapControllerCreated)
             .build()
     }

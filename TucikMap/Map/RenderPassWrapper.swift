@@ -13,9 +13,6 @@ class RenderPassWrapper {
     
     private var view: MTKView!
     private(set) var texture0: MTLTexture!
-    private(set) var texture1: MTLTexture!
-    private(set) var ur8Texture0: MTLTexture!
-    private(set) var ur8Texture1: MTLTexture!
     private(set) var commandBuffer: MTLCommandBuffer!
     
     private var renderPassDescriptor: MTLRenderPassDescriptor!
@@ -32,21 +29,9 @@ class RenderPassWrapper {
                                                                               height: Int(size.height),
                                                                               mipmapped: false)
         
-        sceneTextureDescriptor.usage = [.shaderRead, .shaderWrite, .renderTarget]
+        sceneTextureDescriptor.usage = [.renderTarget, .shaderRead]
         sceneTextureDescriptor.storageMode = .private
         texture0 = metalDevice.makeTexture(descriptor: sceneTextureDescriptor)!
-        texture1 = metalDevice.makeTexture(descriptor: sceneTextureDescriptor)!
-        
-        
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm,
-                                                                  width: Int(size.width),
-                                                                  height: Int(size.height),
-                                                                  mipmapped: false)
-        descriptor.usage = [.shaderRead, .renderTarget]
-        descriptor.storageMode = .private
-        ur8Texture0 = metalDevice.makeTexture(descriptor: descriptor)!
-        descriptor.usage = [.shaderWrite, .shaderRead, .renderTarget]
-        ur8Texture1 = metalDevice.makeTexture(descriptor: descriptor)!
     }
     
     func createGlobeTransversalEncoder() -> MTLRenderCommandEncoder {
@@ -150,12 +135,8 @@ class RenderPassWrapper {
         renderPassDescriptor.colorAttachments[0].storeAction = .store
         renderPassDescriptor.depthAttachment.texture = view.depthStencilTexture
         renderPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
-        renderPassDescriptor.colorAttachments[1].loadAction = .clear
-        renderPassDescriptor.colorAttachments[1].texture = ur8Texture0
         renderPassDescriptor.depthAttachment.storeAction = .store
-        let encoder = encoder(renderPassDescriptor)
-        renderPassDescriptor.colorAttachments[1].texture = nil
-        return encoder
+        return encoder(renderPassDescriptor)
     }
     
     func createLabelsEncoder() -> MTLRenderCommandEncoder {

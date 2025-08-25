@@ -197,11 +197,6 @@ class Coordinator: NSObject, MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         renderPassWrapper.mtkView(view: view, drawableSizeWillChange: size)
         
-        cameraStorage.currentView.updateMap(view: view, size: size)
-        renderFrameControl.updateView(view: view)
-        screenUniforms.update(size: size)
-        flatMode.mtkView(view, drawableSizeWillChange: size)
-        
         let camera = cameraStorage.currentView
         let cameraSettings = mapSettings.getMapCameraSettings()
         let latLon = cameraSettings.getLatLon()
@@ -214,6 +209,10 @@ class Coordinator: NSObject, MTKViewDelegate {
         let initPitch = cameraSettings.getInitPitch()
         camera.setYawAndPitch(yaw: initYaw, pitch: initPitch)
         camera.updateMap(view: view, size: size)
+        
+        renderFrameControl.updateView(view: view)
+        screenUniforms.update(size: size)
+        flatMode.mtkView(view, drawableSizeWillChange: size)
     }
     
     func draw(in view: MTKView) {
