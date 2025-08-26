@@ -170,8 +170,14 @@ class Camera {
         
         let undistortedDistance = mapSettings.getMapCameraSettings().getNullZoomCameraDistance()
         let distortedDistance = undistortedDistance * distortion
-        let currentBaseCamDistance = undistortedDistance + (distortedDistance - undistortedDistance) * distortionAffectValue
+        var currentBaseCamDistance = undistortedDistance + (distortedDistance - undistortedDistance) * distortionAffectValue
         //print("distortion = ", distortion, " camBaseDist = ", currentBaseCamDistance)
+        
+        let startZ = Float(0)
+        let endZ = Float(6.0)
+        let interpVal = min(1.0, max(0.0, (zFloat - startZ) / (endZ - startZ) )) + 1
+        //print(interpVal)
+        currentBaseCamDistance = currentBaseCamDistance * interpVal
         
         cameraDistance = currentBaseCamDistance / pow(2.0, mapZoom.truncatingRemainder(dividingBy: 1))
         

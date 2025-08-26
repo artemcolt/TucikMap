@@ -43,6 +43,8 @@ class DrawFlatMarkers {
     
     func drawMarkers(renderEncoder: MTLRenderCommandEncoder,
                      uniformsBuffer: MTLBuffer) {
+        if markersStorage.markers.isEmpty { return }
+        
         let markersBuffer = markersStorage.markersFlatBuffer
         let markersMetaBuffer = markersStorage.markersMetaFlatBuffer
         let verticesCount = markersStorage.verticesCountFlat

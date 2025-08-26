@@ -116,7 +116,7 @@ class GlobeMode {
         
         
         // Create globe geometry
-        let newPlane = globeGeometry.createPlane(segments: 130)
+        let newPlane = globeGeometry.createPlane(segments: 200)
         var vertices = newPlane.vertices
         var indices  = newPlane.indices
         
@@ -221,14 +221,14 @@ class GlobeMode {
         // На глобусе рисуем названия стран, городов, рек, морей
         let labelsRenderEncoder = renderPassWrapper.createLabelsEncoder()
         pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
-        drawGlobeLabels.draw(
-            renderEncoder: labelsRenderEncoder,
-            uniformsBuffer: uniformsBuffer,
-            geoLabels: assembledMap.tileGeoLabels,
-            currentFBIndex: currentFbIndex,
-            globeRadius: globeRadius,
-            transition: transition
-        )
+//        drawGlobeLabels.draw(
+//            renderEncoder: labelsRenderEncoder,
+//            uniformsBuffer: uniformsBuffer,
+//            geoLabels: assembledMap.tileGeoLabels,
+//            currentFBIndex: currentFbIndex,
+//            globeRadius: globeRadius,
+//            transition: transition
+//        )
         
         drawMarkers.drawMarkers(renderEncoder: labelsRenderEncoder, uniformsBuffer: uniformsBuffer)
         

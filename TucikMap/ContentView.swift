@@ -17,7 +17,7 @@ struct ContentView: View {
     init() {
         mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN))
             .debugUI(enabled: true)
-            .drawGrid(enabled: true)
+            .drawGrid(enabled: false)
             .style(mapStyle: DefaultMapStyle())
             .initPosition(z: 0.0, latLon:  SIMD2<Double>(0,0)) // SIMD2<Double>(0,0) Locations.russia.coordinate
             .initCameraPitch(0.0)

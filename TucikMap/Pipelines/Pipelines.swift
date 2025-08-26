@@ -21,7 +21,6 @@ class Pipelines {
     private(set) var globeLabelsPipeline: GlobeLabelsPipeline!
     private(set) var globeGlowingPipeline: GlobeGlowingPipeline!
     private(set) var globeCapsPipeline: GlobeCapsPipeline!
-    private(set) var globeGeomPipeline: GlobeGeomPipeline!
     private(set) var postProcessing: DrawTextureOnScreenPipeline!
     private(set) var textureAdderPipeline: TextureAdderPipeline!
     private(set) var globeMarkersPipeline: GlobeMarkersPipeline!
@@ -43,7 +42,6 @@ class Pipelines {
         spacePipeline = SpacePipeline(metalDevice: metalDevice, library: library)
         globeGlowingPipeline = GlobeGlowingPipeline(metalDevice: metalDevice, library: library)
         globeCapsPipeline = GlobeCapsPipeline(metalDevice: metalDevice, library: library)
-        globeGeomPipeline = GlobeGeomPipeline(metalDevice: metalDevice, library: library)
         postProcessing = DrawTextureOnScreenPipeline(metalDevice: metalDevice, library: library)
         textureAdderPipeline = TextureAdderPipeline(metalDevice: metalDevice, library: library)
         globeMarkersPipeline = GlobeMarkersPipeline(metalDevice: metalDevice, library: library)

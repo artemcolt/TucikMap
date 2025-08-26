@@ -38,8 +38,8 @@ class MarkersStorage {
         // TODO
         // там в шейдере x - это longitude а y это latitude
         // надо будет потом привести к общему виду Разобраться че к чему
-        addMarker(image: uiImage, size: 200, latLonDegrees: Locations.russia.coordinate)
-        refresh()
+        //addMarker(image: uiImage, size: 200, latLonDegrees: Locations.russia.coordinate)
+        //refresh()
     }
     
     private func addMarker(image: UIImage, size: Float, latLonDegrees: SIMD2<Double>) {

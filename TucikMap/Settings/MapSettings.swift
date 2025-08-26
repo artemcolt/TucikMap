@@ -286,6 +286,8 @@ struct MapCameraSettings {
         self.poleFov = poleFov
         
         nullZoomCameraDistance = 1.0 / (2 * tan(baseFov / 2))
+        //nullZoomCameraDistance = 1.1
+        
         minCameraDistance = nullZoomCameraDistance / pow(2, 18)
     }
 }
@@ -461,8 +463,8 @@ struct MapCommonSettings {
         forceRenderOnDisplayUpdate: Bool = false,
         maxBuffersInFlight: Int = 3,
         seeTileInDirectionFlat: Int = 3,
-        seeTileInDirectionGlobe: Int = 30,
-        globeTextureSize: Int = 4096,
+        seeTileInDirectionGlobe: Int = 1,
+        globeTextureSize: Int = 8192,
         clearDownloadedOnDiskTiles: Bool = false,
         spaceUnicodeNumber: Int = 32,
         spaceSize: Float = 0.2,
