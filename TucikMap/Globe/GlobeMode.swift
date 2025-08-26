@@ -37,7 +37,6 @@ class GlobeMode {
     private let drawSpace               : DrawSpace
     private let drawGlobeGlowing        : DrawGlobeGlowing
     private let globeCaps               : GlobeCaps
-    private let drawGlobeGeom           : DrawGlobeGeom
     private let textureAdder            : TextureAdder
     private let mapSettings             : MapSettings
     private let drawMarkers             : DrawGlobeMarkers
@@ -75,7 +74,6 @@ class GlobeMode {
                                                       metalDevice: metalDevice,
                                                       camera: cameraStorage.currentView,
                                                       mapSettigns: mapSettings)
-        self.drawGlobeGeom          = DrawGlobeGeom(metalDevice: metalDevice, mapSettings: mapSettings)
         self.textureAdder           = textureAdder
         self.drawGlobeGlowing       = drawGlobeGlowing
         self.drawSpace              = drawSpace
@@ -138,26 +136,8 @@ class GlobeMode {
         let metalTiles      = assembledMap.tiles
         let currentFbIndex  = updateBufferedUniform.getCurrentFrameBufferIndex()
         let uniformsBuffer  = updateBufferedUniform.getCurrentFrameBuffer()
-        let tilesCount      = mapZoomState.tilesCount
         let panX            = Float(camera.mapPanning.x)
-        
-        var uShiftMap = panX
-//        if areaRange.isFullMap == false {
-//            let uTileSize = Float(1.0) / Float(areaRange.tileXCount)
-//            let halfTilesCount = Float(tilesCount) / 2.0
-//            let uShift = (panX * 2.0) * halfTilesCount * uTileSize
-//            
-//            let isOdd = areaRange.tileXCount % 2 == 1
-//            var additional = Float(0)
-//            if isOdd {
-//                additional = uTileSize / 2
-//            }
-//            
-//            uShiftMap = additional + uShift.truncatingRemainder(dividingBy: uTileSize)
-//            if uShift > 0 && isOdd {
-//                uShiftMap -= uTileSize
-//            }
-//        }
+        let uShiftMap       = panX
         
         let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         if assembledMap.isAreaStateChanged(compareId: areaStateId) {
@@ -168,11 +148,6 @@ class GlobeMode {
         if assembledMap.isTilesStateChanged(compareId: tilesStateId) {
             generateTextureCount = 1
             tilesStateId = assembledMap.setTilesId
-        }
-        
-        if generatePlaneCount > 0 {
-            // TODO segments сколько выставлять
-            generatePlaneCount -= 1
         }
         
         if generateTextureCount > 0 {
