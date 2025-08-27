@@ -10,13 +10,11 @@ A prototype vector-tile map engine built with Swift and Metal. This project rend
 - Debug options like grid overlay (disabled by default).
 
 ## Screenshots
-<img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2615.PNG" alt="Global View" width="300">  
-*Global continent view with labels.*
-<img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2617.PNG" alt="City Zoom" width="300">  
-*Zoomed into Lower Manhattan, New York.*
-<img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2616.PNG" alt="Regional View" width="300">  
-*Northeastern US and Canada region.*
 
+| | | |
+|-|-|-|
+| <img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2615.PNG" alt="Global View" width="100%"> | <img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2617.PNG" alt="City Zoom" width="100%"> | <img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2616.PNG" alt="Regional View" width="100%"> |
+| *Global continent view with labels.* | *Zoomed into Lower Manhattan, New York.* | *Northeastern US and Canada region.* |
 
 ## Getting Started
 1. Clone the repo: `git clone https://github.com/artemcolt/TucikMap.git`
