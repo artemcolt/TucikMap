@@ -20,7 +20,7 @@ A prototype vector-tile map engine built with Swift and Metal. This project rend
 <div align="center">
   <img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/video.gif" alt="Interactive Demo" height="400"/>
 </div>
-*Demonstrating interactive zooming and panning (note: large file, 18 MB).*
+Demonstrating interactive zooming and panning (note: large file, 18 MB).
 
 ## Getting Started
 1. Clone the repo: `git clone https://github.com/artemcolt/TucikMap.git`
