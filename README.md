@@ -10,19 +10,18 @@ A prototype vector-tile map engine built with Swift and Metal. This project rend
 - Debug options like grid overlay (disabled by default).
 
 ## Screenshots
-![Global View](path/to/global-view-screenshot.png)  
+![Global View](https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2616.PNG)  
 *Global continent view with labels.*
 
-![City Zoom](path/to/city-zoom-screenshot.png)  
+![City Zoom](https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2617.PNG)  
 *Zoomed into Lower Manhattan, New York.*
 
-![Regional View](path/to/regional-view-screenshot.png)  
+![Regional View](https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2616.PNG)  
 *Northeastern US and Canada region.*
 
-(Replace `path/to/...` with actual file paths in your repo.)
 
 ## Getting Started
-1. Clone the repo: `git clone https://github.com/yourusername/TucikMap.git`
+1. Clone the repo: `git clone https://github.com/artemcolt/TucikMap.git`
 2. Open in Xcode.
 3. Replace the Mapbox token in `ContentView.swift` with your own (get one at [mapbox.com](https://mapbox.com)).
 4. Build and run on iOS simulator or device.
