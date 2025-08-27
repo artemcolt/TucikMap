@@ -137,13 +137,13 @@ class DetermineVisibleTiles {
         // cортируем в порядке самых нужных
         // сначала будут расположены тайлы которые ближе всего к камере
         var visibleTilesList = Array(visibleTiles).map { tile in
-            let dx1 = Float(abs(tile.x - centerTileX))
-            let dy1 = Float(abs(tile.y - centerTileY))
-            return VisibleTile(tile: tile, tilesFromCenterTile: SIMD2<Float>(dx1, dy1))
+            let dx1 = abs(tile.x - centerTileX)
+            let dy1 = abs(tile.y - centerTileY)
+            return VisibleTile(tile: tile, tilesFromCenterTile: SIMD2<Int>(dx1, dy1))
         }
         visibleTilesList.sort { tile1, tile2 in
-            let distSq1 = length(tile1.tilesFromCenterTile)
-            let distSq2 = length(tile2.tilesFromCenterTile)
+            let distSq1 = tile1.tilesFromCenterTile.x + tile1.tilesFromCenterTile.y
+            let distSq2 = tile2.tilesFromCenterTile.x + tile2.tilesFromCenterTile.y
             return distSq1 > distSq2
         }
         return visibleTilesList

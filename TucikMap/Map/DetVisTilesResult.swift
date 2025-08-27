@@ -27,7 +27,7 @@ struct AreaRange {
 
 struct VisibleTile {
     let tile: Tile
-    let tilesFromCenterTile: SIMD2<Float>
+    let tilesFromCenterTile: SIMD2<Int>
 }
 
 struct DetVisTilesResult {

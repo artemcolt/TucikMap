@@ -85,7 +85,7 @@ class MapUpdater {
         
         // тайлы для отображения поверхности
         var groundReplacementTiles = Set<MetalTile>()
-        var groundActualTiles = Set<MetalTile>()
+        var groundActualTiles: [MetalTile] = []
         
         // тайлы для отображений гео лейблов
         var labelsActualTiles = Set<MetalTile>()
@@ -97,7 +97,7 @@ class MapUpdater {
             
             // current visible tile is ready
             if let metalTile = metalTilesStorage.getMetalTile(tile: tile) {
-                groundActualTiles.insert(metalTile)
+                groundActualTiles.append(metalTile)
                 
                 if shouldShowLabels(visTile: visTile, showLabelsOnTilesDist: showLabelsOnTilesDist) {
                     labelsActualTiles.insert(metalTile)
