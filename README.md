@@ -17,7 +17,9 @@ A prototype vector-tile map engine built with Swift and Metal. This project rend
 | *Global continent view with labels.* | *Zoomed into Lower Manhattan, New York.* | *Northeastern US and Canada region.* |
 
 ## Demo
-<img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/video.gif" alt="Interactive Demo" width="600"/>  
+<div align="center">
+  <img src="https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/video.gif" alt="Interactive Demo" height="400"/>
+</div>
 *Demonstrating interactive zooming and panning (note: large file, 18 MB).*
 
 ## Getting Started
