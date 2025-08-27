@@ -34,4 +34,4 @@ The core view is `TucikMapView`, configurable via `MapSettings`. See `ContentVie
 This is a prototype—pull requests welcome for bug fixes, features, or optimizations! Focus areas: improved tile caching, more map styles, or better performance.
 
 ## License
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](https://github.com/artemcolt/TucikMap/blob/main/LICENSE.md) for details.
