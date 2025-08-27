@@ -180,6 +180,10 @@ class MapRoadLabelsAssembler {
         let atlas                       = arraysForGpu.atlas
         let mapLabelCpuMeta             = arraysForGpu.mapLabelCpuMeta
         
+        if verticesCount == 0 {
+            return nil
+        }
+        
         let localPositionsBuffer        = metalDevice.makeBuffer(bytes: localPositions,
                                                                  length: MemoryLayout<LocalPosition>.stride * localPositions.count)!
             

@@ -25,6 +25,7 @@ struct Vertex {
 struct VertexOut {
     float4 position [[position]];
     float2 texCoord;
+    float2 extTexCoord;
 };
 
 struct GlobeParams {
@@ -74,6 +75,8 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     
     
     float2 tex          = vertexIn.texCoord - float2(globeParams.uShift, 0);
+    out.extTexCoord     = tex;
+    
     tex.x               = (tex.x - startTexU) / (endTexU - startTexU);
     tex.y               = (tex.y - startTexV) / (endTexV - startTexV);
     
@@ -88,10 +91,21 @@ struct FragmentOut {
 
 fragment FragmentOut fragmentShaderGlobe(VertexOut in [[stage_in]],
                                     texture2d<float> colorTexture [[texture(0)]],
+                                    texture2d<float> extensionTexture [[texture(1)]],
                                     sampler textureSampler[[sampler(0)]]) {
-    float4 color = colorTexture.sample(textureSampler, in.texCoord);
+    float2 mTexCrd = in.texCoord;
+    
+    float4 visibleZoneColor = colorTexture.sample(textureSampler, mTexCrd);
+    
+    float4 extensionColor = extensionTexture.sample(textureSampler, in.extTexCoord);
+    
+    float4 useColor = visibleZoneColor;
+    if (mTexCrd.x < 0 || mTexCrd.x > 1 || mTexCrd.y < 0 || mTexCrd.y > 1) {
+        useColor = extensionColor;
+    }
+    
     FragmentOut out;
-    out.color0 = color;
+    out.color0 = useColor;
     return out;
 }
 

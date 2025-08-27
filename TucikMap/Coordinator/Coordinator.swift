@@ -191,6 +191,8 @@ class Coordinator: NSObject, MTKViewDelegate {
             controllerCreated.onControllerReady(mapController: mapController)
         }
         
+        metalTilesStorage.requestMetalTile(tile: Tile(x: 0, y: 0, z: 0))
+        
         super.init()
     }
     

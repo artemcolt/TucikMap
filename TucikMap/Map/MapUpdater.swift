@@ -122,7 +122,15 @@ class MapUpdater {
         let sortedGroundReplacements = groundReplacementTiles.sorted {
             abs($0.tile.z - actualZ) > abs($1.tile.z - actualZ)
         }
-        let fullGroundTiles = sortedGroundReplacements + groundActualTiles
+        
+        var extTile: [MetalTile] = []
+        if mapZoomState.zoomLevel < 12 {
+            if let ext = metalTilesStorage.getMetalTile(tile: Tile(x: 0, y: 0, z: 0)) {
+                extTile.append(ext)
+            }
+        }
+        
+        let fullGroundTiles = extTile + sortedGroundReplacements + groundActualTiles
         self.assembledMap.setNewState(tiles: fullGroundTiles, areaRange: areaRange)
         
         let labelsActualTilesList = Array(labelsActualTiles)

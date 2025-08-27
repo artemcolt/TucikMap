@@ -15,7 +15,9 @@ class GlobeTexturing {
     private let uniformsBuffer      : MTLBuffer
     private let textureSize         : Int
     private let mapSettings         : MapSettings
+    
     let globeTexture                : MTLTexture
+    let extensionTexture            : MTLTexture
     
     
     init(metalDevide: MTLDevice,
@@ -41,12 +43,41 @@ class GlobeTexturing {
                                                                          height: textureSize,
                                                                          mipmapped: false)
         textureDescriptor.usage = [.renderTarget, .shaderRead]
-        
         globeTexture = metalDevide.makeTexture(descriptor: textureDescriptor)!
+        
+        
+        let extensionTextureDescriptor   = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm,
+                                                                                    width: 8192,
+                                                                                    height: 8192,
+                                                                                    mipmapped: false)
+        extensionTextureDescriptor.usage = [.renderTarget, .shaderRead]
+        extensionTexture = metalDevide.makeTexture(descriptor: extensionTextureDescriptor)!
     }
     
-    func render(currentFBIndex: Int,
-                commandBuffer: MTLCommandBuffer,
+    func renderExtensionTexture(commandBuffer: MTLCommandBuffer,
+                                metalTile: MetalTile) {
+        
+        // Указываем текстуру как цель рендеринга
+        let renderPassDescriptor = MTLRenderPassDescriptor()
+        renderPassDescriptor.colorAttachments[0].texture    = extensionTexture
+        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 1, blue: 1, alpha: 1)
+        
+        guard let commandEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
+        pipelines.polygonPipeline.selectPipeline(renderEncoder: commandEncoder)
+        
+        drawTile.setUniforms(renderEncoder: commandEncoder, uniformsBuffer: uniformsBuffer)
+        drawTile.setTileConsts(renderEncoder: commandEncoder, tile2dBuffers: metalTile.tile2dBuffers)
+        
+        let modelMatrix = matrix_identity_float4x4
+        drawTile.draw(renderEncoder: commandEncoder,
+                      modelMatrix: modelMatrix,
+                      tile2dBuffers: metalTile.tile2dBuffers)
+        
+        commandEncoder.endEncoding()
+    }
+    
+    func render(commandBuffer: MTLCommandBuffer,
                 metalTiles: [MetalTile],
                 areaRange: AreaRange) {
         

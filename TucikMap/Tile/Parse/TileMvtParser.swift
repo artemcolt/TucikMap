@@ -364,17 +364,18 @@ class TileMvtParser {
                 
                 let renderOnlyRoadsArray = mapSettings.getMapDebugSettings().getRenderOnlyRoadsArray()
                 let renderRoadArrayFromTo = mapSettings.getMapDebugSettings().getRenderRoadArrayFromTo()
-                let name = properties["name_en"] as? String
+                let name_en = properties["name_en"] as? String
+                let name = properties["name"] as? String
                 if layerName == "road" && name != nil {
                     let testCondition = renderOnlyRoadsArray.contains(name!) || renderOnlyRoadsArray.isEmpty
                     let fromToTestCond = renderRoadArrayFromTo.isEmpty ||
                         (renderRoadArrayFromTo[0] <= parsedCountTest && parsedCountTest <= renderRoadArrayFromTo[1])
                     if testCondition {
                         if fromToTestCond {
-                            if let parsed = await tryParseRoadLine(geometry: geometry, name: name ?? "no street name", tileCoords: tileCoords) {
+                            if let parsed = await tryParseRoadLine(geometry: geometry, name: name ?? name_en ?? "", tileCoords: tileCoords) {
                                 roadLabels.append(parsed)
                             }
-                            if let parsed = await tryParseRoadMultiLine(geometry: geometry, name: name ?? "no street name", tileCoords: tileCoords) {
+                            if let parsed = await tryParseRoadMultiLine(geometry: geometry, name: name ?? name_en ?? "", tileCoords: tileCoords) {
                                 roadLabels.append(contentsOf: parsed)
                             }
                         }

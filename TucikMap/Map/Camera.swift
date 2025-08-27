@@ -8,7 +8,7 @@
 import MetalKit
 
 class Camera {
-    fileprivate var cameraContext       : CameraContext
+    fileprivate var cameraContext: CameraContext
     
     var mapSize : Float { get { return 0 } }
     var mapZoom : Float {
@@ -141,9 +141,7 @@ class Camera {
         applyMovementToCamera(view: view)
     }
     
-    func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
-        //switchMapMode.switchModeFlag = true
-    }
+    func handleDoubleTap(_ gesture: UITapGestureRecognizer) {}
     
     func updateMap(view: MTKView, size: CGSize) {
         // Зацикливаем карту
@@ -368,7 +366,7 @@ class CameraFlatView : Camera {
         let delta: Float        = 1.0
         let near: Float         = cameraDistance - delta - nearFactor * cameraDistance
         var far: Float          = cameraDistance + delta + farFactor  * cameraDistance
-        far += 5
+        far += 20
         
         return SIMD2<Float>(near, far)
     }

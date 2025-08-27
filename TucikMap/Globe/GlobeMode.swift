@@ -151,16 +151,19 @@ class GlobeMode {
         }
         
         if generateTextureCount > 0 {
-            globeTexturing.render(currentFBIndex: currentFbIndex,
-                                  commandBuffer: renderPassWrapper.commandBuffer,
+            globeTexturing.render(commandBuffer: renderPassWrapper.commandBuffer,
                                   metalTiles: metalTiles,
                                   areaRange: areaRange)
+            
+            if let extensionTile = metalTilesStorage.getMetalTile(tile: Tile(x: 0, y: 0, z: 0)) {
+                globeTexturing.renderExtensionTexture(commandBuffer: renderPassWrapper.commandBuffer, metalTile: extensionTile)
+            }
+            
             generateTextureCount -= 1
         }
         
         let globeRadius     = camera.globeRadius
         let transition      = switchMapMode.transition
-        let texture         = globeTexturing.globeTexture
         let verticesBuffer  = globeGeometryPlane.verticesBuffer
         let indicesBuffer   = globeGeometryPlane.indicesBuffer
         let indicesCount    = globeGeometryPlane.indicesCount
@@ -207,7 +210,8 @@ class GlobeMode {
             renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
             renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)
-            renderEncoder.setFragmentTexture(texture, index: 0)
+            renderEncoder.setFragmentTexture(globeTexturing.globeTexture, index: 0)
+            renderEncoder.setFragmentTexture(globeTexturing.extensionTexture, index: 1)
             renderEncoder.setFragmentSamplerState(samplerState, index: 0)
             renderEncoder.drawIndexedPrimitives(type: .triangle,
                                                 indexCount: indicesCount,
@@ -221,20 +225,20 @@ class GlobeMode {
         // На глобусе рисуем названия стран, городов, рек, морей
         let labelsRenderEncoder = renderPassWrapper.createLabelsEncoder()
         pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
-//        drawGlobeLabels.draw(
-//            renderEncoder: labelsRenderEncoder,
-//            uniformsBuffer: uniformsBuffer,
-//            geoLabels: assembledMap.tileGeoLabels,
-//            currentFBIndex: currentFbIndex,
-//            globeRadius: globeRadius,
-//            transition: transition
-//        )
+        drawGlobeLabels.draw(
+            renderEncoder: labelsRenderEncoder,
+            uniformsBuffer: uniformsBuffer,
+            geoLabels: assembledMap.tileGeoLabels,
+            currentFBIndex: currentFbIndex,
+            globeRadius: globeRadius,
+            transition: transition
+        )
         
         drawMarkers.drawMarkers(renderEncoder: labelsRenderEncoder, uniformsBuffer: uniformsBuffer)
         
         if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
             pipelines.texturePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
-            drawTexture.draw(textureEncoder: labelsRenderEncoder, texture: texture, sideWidth: 500)
+            drawTexture.draw(textureEncoder: labelsRenderEncoder, texture: globeTexturing.extensionTexture, sideWidth: 500)
             pipelines.basePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
             drawTexture.drawBorders(textureEncoder: labelsRenderEncoder, sideWidth: 500)
         }
