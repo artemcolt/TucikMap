@@ -10,7 +10,7 @@ A prototype vector-tile map engine built with Swift and Metal. This project rend
 - Debug options like grid overlay (disabled by default).
 
 ## Screenshots
-![Global View](https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2616.PNG)  
+![Global View](https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2615.PNG)  
 *Global continent view with labels.*
 
 ![City Zoom](https://raw.githubusercontent.com/artemcolt/TucikMap/refs/heads/main/Screenshots/IMG_2617.PNG)  
