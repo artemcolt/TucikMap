@@ -66,7 +66,7 @@ class RenderPassWrapper {
     func startFrame(renderPassDescriptor: MTLRenderPassDescriptor, commandBuffer: MTLCommandBuffer) {
         self.renderPassDescriptor = renderPassDescriptor
         self.commandBuffer = commandBuffer
-        renderPassDescriptor.colorAttachments[0].texture = texture0
+        //renderPassDescriptor.colorAttachments[0].texture = texture0
     }
     
     func updateClearColor(switchMapMode: SwitchMapMode) {
@@ -135,7 +135,9 @@ class RenderPassWrapper {
         renderPassDescriptor.colorAttachments[0].storeAction = .store
         renderPassDescriptor.depthAttachment.texture = view.depthStencilTexture
         renderPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
-        renderPassDescriptor.depthAttachment.storeAction = .store
+        renderPassDescriptor.depthAttachment.storeAction = .dontCare
+        renderPassDescriptor.stencilAttachment.storeAction = .dontCare
+        renderPassDescriptor.stencilAttachment.loadAction = .dontCare
         return encoder(renderPassDescriptor)
     }
     

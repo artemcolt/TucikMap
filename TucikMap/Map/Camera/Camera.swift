@@ -44,7 +44,7 @@ class Camera {
         set { cameraContext.rotationYaw = newValue }
     }
     
-    var mapPanning                              : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
+    fileprivate(set) var mapPanning             : SIMD3<Double> = SIMD3<Double>(0, 0, 0) // смещение карты
     private(set) var globeRadius                : Float = 0
     private(set) var latitude                   : Float = 0
     private(set) var longitude                  : Float = 0
@@ -143,7 +143,7 @@ class Camera {
     
     func handleDoubleTap(_ gesture: UITapGestureRecognizer) {}
     
-    func updateMap(view: MTKView, size: CGSize) {
+    fileprivate func updateMap(view: MTKView, size: CGSize) {
         // Зацикливаем карту
         let halfMapSize = Double(mapSize) / 2.0
         if mapPanning.x > halfMapSize {
@@ -200,7 +200,7 @@ class Camera {
         mapCadDisplayLoop.forceUpdateStates()
     }
     
-    func applyMovementToCamera(view: MTKView) {
+    fileprivate func applyMovementToCamera(view: MTKView) {
         // pinch
         // Adjust camera distance, with optional clamping to prevent extreme values
         mapZoom -= pinchDeltaDistance
@@ -239,7 +239,7 @@ class Camera {
         return MapMathUtils.getLatLonDegreesByPan(mapSize: mapSize, panX: mapPanning.x, panY: mapPanning.y)
     }
     
-    func setYawAndPitch(yaw: Float, pitch: Float) {
+    fileprivate func setYawAndPitch(yaw: Float, pitch: Float) {
         rotationYaw = yaw
         
         let maxCameraPitch = mapSettings.getMapCameraSettings().getMaxCameraPitch()
@@ -258,7 +258,11 @@ class Camera {
         cameraQuaternion = pitchQuaternion * yawQuaternion
     }
     
-    func moveTo(lat: Double, lon: Double, zoom: Float) {
+    fileprivate func moveTo(mapPanning: SIMD2<Double>) {
+        self.mapPanning = SIMD3<Double>(mapPanning.x, mapPanning.y, 0)
+    }
+    
+    fileprivate func moveTo(lat: Double, lon: Double, zoom: Float) {
         mapZoom = zoom
         
         let lat = -lat
@@ -277,7 +281,7 @@ class Camera {
         mapPanning = SIMD3<Double>(newX, newY, 0)
     }
     
-    func moveToPanningPoint(point: MapPanningTilePoint, zoom: Float, view: MTKView, size: CGSize) {
+    fileprivate func moveToPanningPoint(point: MapPanningTilePoint, zoom: Float, view: MTKView, size: CGSize) {
         self.mapZoom = zoom
         mapPanning = SIMD3<Double>(point.x, point.y, 0)
         updateMap(view: view, size: size)
@@ -316,7 +320,6 @@ class Camera {
         return changed
     }
 }
-
 
 
 
@@ -366,8 +369,46 @@ class CameraFlatView : Camera {
         let delta: Float        = 1.0
         let near: Float         = cameraDistance - delta - nearFactor * cameraDistance
         var far: Float          = cameraDistance + delta + farFactor  * cameraDistance
-        far += 20
+        far += 15
         
         return SIMD2<Float>(near, far)
+    }
+}
+
+
+class MapController {
+    private let drawingFrameRequester: DrawingFrameRequester
+    private let cameraStorage: CameraStorage
+    private var needUpdate: Bool = false
+
+    init(drawingFrameRequester: DrawingFrameRequester, cameraStorage: CameraStorage) {
+        self.drawingFrameRequester = drawingFrameRequester
+        self.cameraStorage = cameraStorage
+    }
+    
+    func updateMapIfNeeded(view: MTKView, size: CGSize) {
+        if needUpdate {
+            needUpdate = false
+            cameraStorage.currentView.updateMap(view: view, size: size)
+        }
+    }
+
+    // Controls
+    func moveTo(latitude: Double, longitude: Double, z: Float) {
+        cameraStorage.currentView.moveTo(lat: latitude, lon: longitude, zoom: z)
+        needUpdate = true
+        drawingFrameRequester.renderNextStep()
+    }
+    
+    func moveTo(mapPanning: SIMD2<Double>) {
+        cameraStorage.currentView.moveTo(mapPanning: mapPanning)
+        needUpdate = true
+        drawingFrameRequester.renderNextStep()
+    }
+    
+    func setYawAndPitch(yaw: Float, pitch: Float) {
+        cameraStorage.currentView.setYawAndPitch(yaw: yaw, pitch: pitch)
+        needUpdate = true
+        drawingFrameRequester.renderNextStep()
     }
 }

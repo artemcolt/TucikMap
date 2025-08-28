@@ -25,7 +25,7 @@ struct GlobeDrawTile {
         
         let startTexU = Float(range.startX) / Float(tilesCount)
         let endTexU = (Float(range.endX) + 1) / Float(tilesCount)
-        var startAndEndUV = SIMD4<Float>(startTexU, endTexU, startTexV, endTexV)
+        let startAndEndUV = SIMD4<Float>(startTexU, endTexU, startTexV, endTexV)
         
         uv = startAndEndUV
     }

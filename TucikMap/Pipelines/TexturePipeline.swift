@@ -33,8 +33,8 @@ class TexturePipeline {
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
-        pipelineDescriptor.depthAttachmentPixelFormat = .invalid
-        pipelineDescriptor.stencilAttachmentPixelFormat = .invalid
+        pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float_stencil8
+        pipelineDescriptor.stencilAttachmentPixelFormat = .depth32Float_stencil8
         
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
         

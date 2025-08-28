@@ -10,255 +10,78 @@ import MetalKit
 import MetalPerformanceShaders
 
 class Coordinator: NSObject, MTKViewDelegate {
-    var parent                              : TucikMapView
-    var cameraStorage                       : CameraStorage
-    let mapController                       : MapController
+    private let parent: TucikMapView
+    private let scene: InitScene
     
-    private var metalDevice                 : MTLDevice
-    private var metalCommandQueue           : MTLCommandQueue
-    private var semaphore                   : DispatchSemaphore
-    
-    private let mapSettings                 : MapSettings
-    private var determineFeatureStyle       : DetermineFeatureStyle
-    private var frameCounter                : FrameCounter
-    private var drawingFrameRequester       : DrawingFrameRequester
-    private var textTools                   : TextTools
-    private var mapCadDisplayLoop           : MapCADisplayLoop
-    private var mapZoomState                : MapZoomState
-    private var drawPoint                   : DrawPoint
-    private let drawSpace                   : DrawSpace
-    private let drawGlobeGlowing            : DrawGlobeGlowing
-    private let drawTextureOnScreen         : DrawTextureOnScreen
-    private let textureAdder                : TextureAdder
-    private let renderPassWrapper           : RenderPassWrapper
-    
-    private var metalTilesStorage           : MetalTilesStorage
-    private var renderFrameControl          : RenderFrameControl
-    private var drawUI                      : DrawUI
-    private var drawDebugData               : DrawDebugData
-    private var screenUniforms              : ScreenUniforms
-    private var pipelines                   : Pipelines
-    private var updateBufferedUniform       : UpdateBufferedUniform
-    private let mapModeStorage              : MapModeStorage
-    private let mapUpdaterStorage           : MapUpdaterStorage
-    private let globeTexturing              : GlobeTexturing
-    private let switchMapMode               : SwitchMapMode
-    private let applyLabelsState            : ApplyLabelsState
-    private let scrCollDetStorage           : ScrCollDetStorage
-    private let textureLoader               : TextureLoader
-    private let markersStorage              : MarkersStorage
-    
-    private let flatMode                    : FlatMode
-    private let globeMode                   : GlobeMode
+    var cameraInputsHandler: CameraInputsHandler {
+        get { scene.cameraInputsHandler }
+    }
     
     init(_ parent: TucikMapView, mapSettings: MapSettings) {
-        self.parent             = parent
-        self.mapSettings        = mapSettings
-        
-        let device              = MTLCreateSystemDefaultDevice()!
-        metalDevice             = device
-        metalCommandQueue       = device.makeCommandQueue()!
-        semaphore               = DispatchSemaphore(value: mapSettings.getMapCommonSettings().getMaxBuffersInFlight())
-        
-        mapZoomState            = MapZoomState()
-        screenUniforms          = ScreenUniforms(metalDevice: metalDevice)
-        drawPoint               = DrawPoint(metalDevice: metalDevice)
-        drawSpace               = DrawSpace(metalDevice: metalDevice)
-        drawGlobeGlowing        = DrawGlobeGlowing(metalDevice: metalDevice)
-        drawingFrameRequester   = DrawingFrameRequester(mapSettings: mapSettings)
-        frameCounter            = FrameCounter()
-        pipelines               = Pipelines(metalDevice: metalDevice)
-        textureAdder            = TextureAdder(metalDevice: metalDevice, textureAdderPipeline: pipelines.textureAdderPipeline)
-        drawTextureOnScreen     = DrawTextureOnScreen(metalDevice: metalDevice, postProcessingPipeline: pipelines.postProcessing)
-        mapModeStorage          = MapModeStorage()
-        textureLoader           = TextureLoader(metalDevice: metalDevice)
-        mapCadDisplayLoop       = MapCADisplayLoop(frameCounter: frameCounter,
-                                                   drawingFrameRequester: drawingFrameRequester,
-                                                   mapSettings: mapSettings)
-        cameraStorage           = CameraStorage(mapModeStorage: mapModeStorage,
-                                                mapZoomState: mapZoomState,
-                                                drawingFrameRequester: drawingFrameRequester,
-                                                mapCadDisplayLoop: mapCadDisplayLoop,
-                                                mapSettings: mapSettings)
-        determineFeatureStyle   = DetermineFeatureStyle(mapSettings: mapSettings)
-        textTools               = TextTools(metalDevice: metalDevice, frameCounter: frameCounter, mapSettings: mapSettings)
-        metalTilesStorage       = MetalTilesStorage(determineStyle: determineFeatureStyle,
-                                                    metalDevice: metalDevice,
-                                                    textTools: textTools,
-                                                    mapSettings: mapSettings)
-        switchMapMode           = SwitchMapMode(mapModeStorage: mapModeStorage,
-                                                cameraStorage: cameraStorage,
-                                                mapZoomState: mapZoomState,
-                                                mapSettings: mapSettings)
-        renderFrameControl      = RenderFrameControl(mapCADisplayLoop: mapCadDisplayLoop,
-                                                     drawingFrameRequester: drawingFrameRequester,
-                                                     mapSettings: mapSettings)
-        drawUI                  = DrawUI(device: metalDevice, textTools: textTools, screenUniforms: screenUniforms)
-        renderPassWrapper       = RenderPassWrapper(metalDevice: metalDevice)
-        drawDebugData           = DrawDebugData(basePipeline: pipelines.basePipeline,
-                                                metalDevice: metalDevice,
-                                                cameraStorage: cameraStorage,
-                                                textPipeline: pipelines.textPipeline,
-                                                drawUI: drawUI,
-                                                drawPoint: drawPoint,
-                                                mapZoomState: mapZoomState,
-                                                mapSettings: mapSettings)
-        
-        updateBufferedUniform   = UpdateBufferedUniform(device: metalDevice,
-                                                        mapZoomState: mapZoomState,
-                                                        cameraStorage: cameraStorage,
-                                                        frameCounter: frameCounter,
-                                                        mapSettings: mapSettings)
-        
-        scrCollDetStorage       = ScrCollDetStorage(mapModeStorage: mapModeStorage,
-                                                    metalDevice: metalDevice,
-                                                    library: pipelines.library,
-                                                    metalCommandQueue: metalCommandQueue,
-                                                    mapZoomState: mapZoomState,
-                                                    drawingFrameRequester: drawingFrameRequester,
-                                                    frameCounter: frameCounter,
-                                                    mapSettings: mapSettings)
-        
-        
-        globeTexturing          = GlobeTexturing(metalDevide: metalDevice,
-                                                 metalCommandQueue: metalCommandQueue,
-                                                 pipelines: pipelines,
-                                                 mapSettings: mapSettings)
-        
-        mapController           = MapController(drawingFrameRequester: drawingFrameRequester, cameraStorage: cameraStorage)
-        let mapUpdaterContext   = MapUpdaterContext()
-        mapUpdaterStorage       = MapUpdaterStorage(mapModeStorage: mapModeStorage,
-                                                    mapZoomState: mapZoomState,
-                                                    metalDevice: metalDevice,
-                                                    camera: cameraStorage,
-                                                    textTools: textTools,
-                                                    drawingFrameRequester: drawingFrameRequester,
-                                                    frameCounter: frameCounter,
-                                                    metalTilesStorage: metalTilesStorage,
-                                                    mapCadDisplayLoop: mapCadDisplayLoop,
-                                                    scrCollDetStorage: scrCollDetStorage,
-                                                    updateBufferedUniform: updateBufferedUniform,
-                                                    globeTexturing: globeTexturing,
-                                                    mapUpdaterContext: mapUpdaterContext,
-                                                    mapSettings: mapSettings)
-        
-        applyLabelsState        = ApplyLabelsState(scrCollDetStorage: scrCollDetStorage,
-                                                   assembledMap: mapUpdaterContext.assembledMap)
-        
-        markersStorage          = MarkersStorage(metalDevice: metalDevice,
-                                                 mapSettings: mapSettings,
-                                                 cameraStorage: cameraStorage)
-        
-        flatMode                = FlatMode(metalDevice: metalDevice,
-                                           metalCommandQueue: metalCommandQueue,
-                                           frameCounter: frameCounter,
-                                           drawingFrameRequester: drawingFrameRequester,
-                                           textTools: textTools,
-                                           metalTilesStorage: metalTilesStorage,
-                                           mapCadDisplayLoop: mapCadDisplayLoop,
-                                           screenUniforms: screenUniforms,
-                                           cameraStorage: cameraStorage,
-                                           pipelines: pipelines,
-                                           mapZoomState: mapZoomState,
-                                           updateBufferedUniform: updateBufferedUniform,
-                                           mapModeStorage: mapModeStorage,
-                                           drawPoint: drawPoint,
-                                           mapUpdaterFlat: mapUpdaterStorage.flat,
-                                           mapSettings: mapSettings,
-                                           textureLoader: textureLoader,
-                                           markersStorage: markersStorage)
-        
-        globeMode               = GlobeMode(metalDevice: metalDevice,
-                                            pipelines: pipelines,
-                                            metalTilesStorage: metalTilesStorage,
-                                            cameraStorage: cameraStorage,
-                                            mapZoomState: mapZoomState,
-                                            drawingFrameRequester: drawingFrameRequester,
-                                            mapCadDisplayLoop: mapCadDisplayLoop,
-                                            updateBufferedUniform: updateBufferedUniform,
-                                            globeTexturing: globeTexturing,
-                                            screenUniforms: screenUniforms,
-                                            mapUpdater: mapUpdaterStorage.globe,
-                                            switchMapMode: switchMapMode,
-                                            drawSpace: drawSpace,
-                                            drawGlobeGlowing: drawGlobeGlowing,
-                                            textureAdder: textureAdder,
-                                            mapSettings: mapSettings,
-                                            textureLoader: textureLoader,
-                                            markersStorage: markersStorage)
-        
-        if let controllerCreated = mapSettings.getMapCommonSettings().getControllerCreated() {
-            controllerCreated.onControllerReady(mapController: mapController)
-        }
-        
-        metalTilesStorage.requestMetalTile(tile: Tile(x: 0, y: 0, z: 0))
+        self.parent = parent
+        self.scene = InitScene(mapSettings: mapSettings)
         
         super.init()
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        renderPassWrapper.mtkView(view: view, drawableSizeWillChange: size)
+        scene.renderPassWrapper.mtkView(view: view, drawableSizeWillChange: size)
         
-        let camera = cameraStorage.currentView
-        let cameraSettings = mapSettings.getMapCameraSettings()
+        let cameraSettings = scene.mapSettings.getMapCameraSettings()
         let latLon = cameraSettings.getLatLon()
         let z = cameraSettings.getZ()
-        camera.moveTo(lat: latLon.x,
-                      lon: latLon.y,
-                      zoom: z)
+        scene.mapController.moveTo(latitude: latLon.x, longitude: latLon.y, z: z)
         
         let initYaw = cameraSettings.getInitYaw()
         let initPitch = cameraSettings.getInitPitch()
-        camera.setYawAndPitch(yaw: initYaw, pitch: initPitch)
-        camera.updateMap(view: view, size: size)
+        scene.mapController.setYawAndPitch(yaw: initYaw, pitch: initPitch)
+        scene.mapController.updateMapIfNeeded(view: view, size: size)
         
-        renderFrameControl.updateView(view: view)
-        screenUniforms.update(size: size)
-        flatMode.mtkView(view, drawableSizeWillChange: size)
+        scene.renderFrameControl.updateView(view: view)
+        scene.screenUniforms.update(size: size)
+        scene.flatMode.mtkView(view, drawableSizeWillChange: size)
     }
     
     func draw(in view: MTKView) {
         // Wait until the previous frame's GPU work has completed
         // This ensures we don't try to update a buffer that's still in use
-        _ = semaphore.wait(timeout: .distantFuture)
+        _ = scene.semaphore.wait(timeout: .distantFuture)
         
         // Обработка комманд карте
-        if mapController.getNeedUpdate() {
-            cameraStorage.currentView.updateMap(view: view, size: view.drawableSize)
-        }
+        scene.mapController.updateMapIfNeeded(view: view, size: view.drawableSize)
         
-        guard let commandBuffer = metalCommandQueue.makeCommandBuffer(),
+        guard let commandBuffer = scene.metalCommandQueue.makeCommandBuffer(),
               let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor?.copy() as? MTLRenderPassDescriptor else {
-            self.semaphore.signal()
+            scene.semaphore.signal()
             return
         }
         
-        renderPassWrapper.startFrame(renderPassDescriptor: renderPassDescriptor, commandBuffer: commandBuffer)
+        scene.renderPassWrapper.startFrame(renderPassDescriptor: renderPassDescriptor, commandBuffer: commandBuffer)
         
         // Add completion handler to signal the semaphore when GPU work is done
         commandBuffer.addCompletedHandler { [weak self] _ in
-            self?.semaphore.signal()
+            self?.scene.semaphore.signal()
         }
         
         // Поменять режим рендринга когда нужно
         // Глобус / Плоскость
-        let switched = switchMapMode.switchingMapMode(view: view)
-        renderPassWrapper.updateClearColor(switchMapMode: switchMapMode)
+        let switched = scene.switchMapMode.switchingMapMode(view: view)
+        scene.renderPassWrapper.updateClearColor(switchMapMode: scene.switchMapMode)
         
         // Юниформ для трансформации сцены в clip
-        updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
+        scene.updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
-        let uniformsBuffer = updateBufferedUniform.getCurrentFrameBuffer()
-        let currentFBIdx = updateBufferedUniform.getCurrentFrameBufferIndex()
-        let lastUniforms = updateBufferedUniform.lastUniforms!
-        let camera = cameraStorage.currentView
+        let uniformsBuffer = scene.updateBufferedUniform.getCurrentFrameBuffer()
+        let currentFBIdx = scene.updateBufferedUniform.getCurrentFrameBufferIndex()
+        let lastUniforms = scene.updateBufferedUniform.lastUniforms!
+        let camera = scene.cameraStorage.currentView
         let mapPanning = camera.mapPanning
         let mapSize = camera.mapSize
         
         // Если камера поменяла состояние то нужно обновить саму карту, тайлы
-        if cameraStorage.currentView.isMapStateUpdated() || switched {
-            mapUpdaterStorage.currentView.update(view: view, useOnlyCached: false)
+        if scene.cameraStorage.currentView.isMapStateUpdated() || switched {
+            scene.mapUpdaterStorage.currentView.update(view: view, useOnlyCached: false)
         }
         
         let cameraQuaternion = camera.cameraQuaternion;
@@ -266,50 +89,50 @@ class Coordinator: NSObject, MTKViewDelegate {
         let traversalPlaneNormal = cameraQuaternion.act(baseNormal)
         
         // Расчет экранной UI информации, пересечения текста например
-        if (mapCadDisplayLoop.checkEvaluateScreenData()) {
-            switch mapModeStorage.mapMode {
-            case .flat: let _ = scrCollDetStorage.flat.evaluateFlat(lastUniforms: lastUniforms,
-                                                                    mapPanning: mapPanning,
-                                                                    mapSize: mapSize)
-            case .globe: let _ = scrCollDetStorage.globe.evaluateGlobe(lastUniforms: lastUniforms,
-                                                                       latitude: camera.latitude,
-                                                                       longitude: camera.longitude,
-                                                                       globeRadius: camera.globeRadius,
-                                                                       cameraPosition: camera.cameraPosition,
-                                                                       transition: switchMapMode.transition,
-                                                                       planeNormal: traversalPlaneNormal)
+        if (scene.mapCadDisplayLoop.checkEvaluateScreenData()) {
+            switch scene.mapModeStorage.mapMode {
+            case .flat: let _ = scene.scrCollDetStorage.flat.evaluateFlat(lastUniforms: lastUniforms,
+                                                                          mapPanning: mapPanning,
+                                                                          mapSize: mapSize)
+            case .globe: let _ = scene.scrCollDetStorage.globe.evaluateGlobe(lastUniforms: lastUniforms,
+                                                                             latitude: camera.latitude,
+                                                                             longitude: camera.longitude,
+                                                                             globeRadius: camera.globeRadius,
+                                                                             cameraPosition: camera.cameraPosition,
+                                                                             transition: scene.switchMapMode.transition,
+                                                                             planeNormal: traversalPlaneNormal)
             }
         }
         
         // Применяем если есть актуальные данные меток для свежего кадра
-        applyLabelsState.apply(currentFBIdx: currentFBIdx)
+        scene.applyLabelsState.apply(currentFBIdx: currentFBIdx)
         
-        switch mapModeStorage.mapMode {
+        switch scene.mapModeStorage.mapMode {
         case .flat:
-            flatMode.draw(in: view, renderPassWrapper: renderPassWrapper)
+            scene.flatMode.draw(in: view, renderPassWrapper: scene.renderPassWrapper)
         case .globe:
-            globeMode.draw(in: view, renderPassWrapper: renderPassWrapper)
+            scene.globeMode.draw(in: view, renderPassWrapper: scene.renderPassWrapper)
         }
         
         
-        if mapSettings.getMapDebugSettings().getDrawTraversalPlane() == true {
-            drawDebugData.drawGlobeTraversalPlane(renderPassWrapper: renderPassWrapper,
-                                                  uniformsBuffer: uniformsBuffer,
-                                                  planeNormal: traversalPlaneNormal)
+        if scene.mapSettings.getMapDebugSettings().getDrawTraversalPlane() == true {
+            scene.drawDebugData.drawGlobeTraversalPlane(renderPassWrapper: scene.renderPassWrapper,
+                                                        uniformsBuffer: uniformsBuffer,
+                                                        planeNormal: traversalPlaneNormal)
         }
         
-        if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
-            drawDebugData.draw(renderPassWrapper: renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
+        if scene.mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
+            scene.drawDebugData.draw(renderPassWrapper: scene.renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
         }
         
 
         // Вывести на экран, на основную текстуру отрисованную текстуру
-        drawTextureOnScreen.draw(currentRenderPassDescriptor: view.currentRenderPassDescriptor,
-                                 commandBuffer: commandBuffer,
-                                 sceneTexture: renderPassWrapper.getScreenTexture())
+//        scene.drawTextureOnScreen.draw(currentRenderPassDescriptor: view.currentRenderPassDescriptor,
+//                                       commandBuffer: commandBuffer,
+//                                       sceneTexture: scene.renderPassWrapper.getScreenTexture())
         
         commandBuffer.present(drawable)
-        frameCounter.update(with: commandBuffer)
+        scene.frameCounter.update(with: commandBuffer)
         commandBuffer.commit()
     }
 }

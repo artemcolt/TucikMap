@@ -91,19 +91,10 @@ struct FragmentOut {
 
 fragment FragmentOut fragmentShaderGlobe(VertexOut in [[stage_in]],
                                     texture2d<float> colorTexture [[texture(0)]],
-                                    texture2d<float> extensionTexture [[texture(1)]],
                                     sampler textureSampler[[sampler(0)]]) {
     float2 mTexCrd = in.texCoord;
-    
     float4 visibleZoneColor = colorTexture.sample(textureSampler, mTexCrd);
-    
-    float4 extensionColor = extensionTexture.sample(textureSampler, in.extTexCoord);
-    
     float4 useColor = visibleZoneColor;
-    if (mTexCrd.x < 0 || mTexCrd.x > 1 || mTexCrd.y < 0 || mTexCrd.y > 1) {
-        useColor = extensionColor;
-    }
-    
     FragmentOut out;
     out.color0 = useColor;
     return out;

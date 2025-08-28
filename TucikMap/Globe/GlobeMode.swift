@@ -43,6 +43,7 @@ class GlobeMode {
     private let markersStorage          : MarkersStorage
     
     private var depthStencilState       : MTLDepthStencilState
+    private var dsAlwaysPassState       : MTLDepthStencilState
     private var samplerState            : MTLSamplerState
     
     private var areaStateId             : UInt = 0
@@ -107,6 +108,12 @@ class GlobeMode {
         depthStencilDescriptor.isDepthWriteEnabled = true
         depthStencilState = metalDevice.makeDepthStencilState(descriptor: depthStencilDescriptor)!
         
+        
+        let dsAlwaysPassDescriptor = MTLDepthStencilDescriptor()
+        dsAlwaysPassDescriptor.depthCompareFunction = .always
+        dsAlwaysPassDescriptor.isDepthWriteEnabled = false
+        dsAlwaysPassState = metalDevice.makeDepthStencilState(descriptor: dsAlwaysPassDescriptor)!
+        
         let samplerDescriptor = MTLSamplerDescriptor()
         samplerDescriptor.magFilter = .linear
         samplerDescriptor.minFilter = .linear
@@ -130,7 +137,6 @@ class GlobeMode {
     
     
     func draw(in view: MTKView, renderPassWrapper: RenderPassWrapper) {
-        
         let assembledMap    = mapUpdater.assembledMap
         let areaRange       = assembledMap.areaRange
         let metalTiles      = assembledMap.tiles
@@ -146,18 +152,15 @@ class GlobeMode {
         }
         
         if assembledMap.isTilesStateChanged(compareId: tilesStateId) {
-            generateTextureCount = 1
+            generateTextureCount = maxBuffersInFlight
             tilesStateId = assembledMap.setTilesId
         }
         
         if generateTextureCount > 0 {
             globeTexturing.render(commandBuffer: renderPassWrapper.commandBuffer,
                                   metalTiles: metalTiles,
-                                  areaRange: areaRange)
-            
-            if let extensionTile = metalTilesStorage.getMetalTile(tile: Tile(x: 0, y: 0, z: 0)) {
-                globeTexturing.renderExtensionTexture(commandBuffer: renderPassWrapper.commandBuffer, metalTile: extensionTile)
-            }
+                                  areaRange: areaRange,
+                                  currentFbIndex: currentFbIndex)
             
             generateTextureCount -= 1
         }
@@ -210,38 +213,35 @@ class GlobeMode {
             renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
             renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
             renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)
-            renderEncoder.setFragmentTexture(globeTexturing.globeTexture, index: 0)
-            renderEncoder.setFragmentTexture(globeTexturing.extensionTexture, index: 1)
+            renderEncoder.setFragmentTexture(globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), index: 0)
             renderEncoder.setFragmentSamplerState(samplerState, index: 0)
             renderEncoder.drawIndexedPrimitives(type: .triangle,
                                                 indexCount: indicesCount,
                                                 indexType: .uint32,
                                                 indexBuffer: indicesBuffer,
                                                 indexBufferOffset: 0)
+            
+            renderEncoder.setDepthStencilState(dsAlwaysPassState)
+            pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: renderEncoder)
+            drawGlobeLabels.draw(
+                renderEncoder: renderEncoder,
+                uniformsBuffer: uniformsBuffer,
+                geoLabels: assembledMap.tileGeoLabels,
+                currentFBIndex: currentFbIndex,
+                globeRadius: globeRadius,
+                transition: transition
+            )
+            
+//            drawMarkers.drawMarkers(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
+            
+            if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
+                pipelines.texturePipeline.selectPipeline(renderEncoder: renderEncoder)
+                drawTexture.draw(textureEncoder: renderEncoder, texture: globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), sideWidth: 500)
+                pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
+                drawTexture.drawBorders(textureEncoder: renderEncoder, sideWidth: 500)
+            }
+            
             renderEncoder.endEncoding()
         }
-        
-        
-        // На глобусе рисуем названия стран, городов, рек, морей
-        let labelsRenderEncoder = renderPassWrapper.createLabelsEncoder()
-        pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
-        drawGlobeLabels.draw(
-            renderEncoder: labelsRenderEncoder,
-            uniformsBuffer: uniformsBuffer,
-            geoLabels: assembledMap.tileGeoLabels,
-            currentFBIndex: currentFbIndex,
-            globeRadius: globeRadius,
-            transition: transition
-        )
-        
-        drawMarkers.drawMarkers(renderEncoder: labelsRenderEncoder, uniformsBuffer: uniformsBuffer)
-        
-        if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
-            pipelines.texturePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
-            drawTexture.draw(textureEncoder: labelsRenderEncoder, texture: globeTexturing.extensionTexture, sideWidth: 500)
-            pipelines.basePipeline.selectPipeline(renderEncoder: labelsRenderEncoder)
-            drawTexture.drawBorders(textureEncoder: labelsRenderEncoder, sideWidth: 500)
-        }
-        labelsRenderEncoder.endEncoding()
     }
 }

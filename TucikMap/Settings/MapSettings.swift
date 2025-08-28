@@ -150,6 +150,8 @@ class MapSettings {
 }
 
 struct MapCameraSettings {
+    let addPitchSlider: Bool
+    fileprivate var useTwoFingerPinchGesture: Bool
     fileprivate var z: Float
     fileprivate var latLon: SIMD2<Double> //55.74958790780624, 37.62346867711091
     fileprivate var rotationSensitivity: Float
@@ -171,6 +173,10 @@ struct MapCameraSettings {
     
     fileprivate var camAffectDistStartZ: Float
     fileprivate var camAffectDistEndZ: Float
+    
+    public func getUseTwoFingerPinchGesture() -> Bool {
+        return useTwoFingerPinchGesture
+    }
     
     public func getInitPitch() -> Float {
         return initPitch
@@ -264,8 +270,12 @@ struct MapCameraSettings {
          camAffectDistStartZ: Float = 1,
          camAffectDistEndZ: Float = 3,
          initPitch: Float = 0,
-         initYaw: Float = 0
+         initYaw: Float = 0,
+         useTwoFingerPinchGesture: Bool = false,
+         addPitchSlider: Bool = true
     ) {
+        self.addPitchSlider = addPitchSlider
+        self.useTwoFingerPinchGesture = useTwoFingerPinchGesture
         self.maxTileZoom = maxTileZoom
         self.zoomLevelMax = zoomLevelMax
         self.farPlaneIncreaseFactor = farPlaneIncreaseFactor

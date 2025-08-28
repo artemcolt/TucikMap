@@ -13,14 +13,20 @@ class SwitchMapMode {
     private var cameraStorage: CameraStorage
     private var mapZoomState: MapZoomState
     private var mapSettings: MapSettings
+    private var mapController: MapController
     private(set) var switchModeFlag: Bool = false
     private(set) var transition: Float = 0
     
-    init(mapModeStorage: MapModeStorage, cameraStorage: CameraStorage, mapZoomState: MapZoomState, mapSettings: MapSettings) {
+    init(mapModeStorage: MapModeStorage,
+         cameraStorage: CameraStorage,
+         mapZoomState: MapZoomState,
+         mapSettings: MapSettings,
+         mapController: MapController) {
         self.mapModeStorage = mapModeStorage
         self.cameraStorage = cameraStorage
         self.mapZoomState = mapZoomState
         self.mapSettings = mapSettings
+        self.mapController = mapController
     }
     
     func switchingMapMode(view: MTKView) -> Bool {
@@ -52,8 +58,8 @@ class SwitchMapMode {
                 let globePanY = flatPanning.y / halfFlatMapSize * halfGlobeMapSize
                 //print("globePanX \(globePanX) globePanY \(globePanY)")
                 
-                globeCam.mapPanning = SIMD3<Double>(globePanX, globePanY, 0)
-                globeCam.updateMap(view: view, size: view.drawableSize)
+                mapController.moveTo(mapPanning: SIMD2<Double>(globePanX, globePanY))
+                //mapController.updateMapIfNeeded(view: view, size: view.drawableSize)
                 return true
             case .globe:
                 cameraStorage.flatView.applyDistortion(distortion: globeCam.distortion)
@@ -65,8 +71,8 @@ class SwitchMapMode {
                 let flatPanX = globePanning.x * 2.0 * halfFlatMapSize
                 let flatPanY = globePanning.y * 2.0 * halfFlatMapSize
                 
-                flatCam.mapPanning = SIMD3<Double>(flatPanX, flatPanY, 0)
-                flatCam.updateMap(view: view, size: view.drawableSize)
+                mapController.moveTo(mapPanning: SIMD2<Double>(flatPanX, flatPanY))
+                //mapController.updateMapIfNeeded(view: view, size: view.drawableSize)
                 return true
             }
         }

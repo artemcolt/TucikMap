@@ -12,14 +12,14 @@ struct ContentView: View {
     let mapSettings: MapSettings
     
     init() {
-        
         guard let mapboxToken = ProcessInfo.processInfo.environment["MAPBOX_TOKEN"] else {
             fatalError("MAPBOX_TOKEN environment variable is not set")
         }
         
         mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: mapboxToken))
-            .debugUI(enabled: false)
+            .debugUI(enabled: true)
             .drawGrid(enabled: false)
+            .renderOnDisplayUpdate(enabled: false)
             .style(mapStyle: DefaultMapStyle())
             .initPosition(z: 0.0, latLon:  SIMD2<Double>(0,0)) // SIMD2<Double>(0,0) Locations.russia.coordinate
             .initCameraPitch(0.0)

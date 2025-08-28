@@ -34,7 +34,7 @@ class MarkersStorage {
         markersFlatBuffer = metalDevice.makeBuffer(length: MemoryLayout<MarkersPipeline.MarkerVertex>.stride * 6 * maxMarkersVisible)!
         markersMetaFlatBuffer = metalDevice.makeBuffer(length: MemoryLayout<MarkersPipeline.MapMarkerMeta>.stride * maxMarkersVisible)!
         
-        let uiImage = ImageUtils.loadUIImage(name: "3dicons-3d-coin-dynamic-color", fileExt: "png")!
+        //let uiImage = ImageUtils.loadUIImage(name: "3dicons-3d-coin-dynamic-color", fileExt: "png")!
         // TODO
         // там в шейдере x - это longitude а y это latitude
         // надо будет потом привести к общему виду Разобраться че к чему
