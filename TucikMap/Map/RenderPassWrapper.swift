@@ -80,7 +80,7 @@ class RenderPassWrapper {
         renderPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
     }
     
-    func create3dBuildingFirstEncoder() -> MTLRenderCommandEncoder {
+    func createBuidingPrepassEncoder() -> MTLRenderCommandEncoder {
         let depthPrePassDescriptor = renderPassDescriptor.copy() as! MTLRenderPassDescriptor
         depthPrePassDescriptor.colorAttachments[0].loadAction = .dontCare  // No color load needed
         depthPrePassDescriptor.colorAttachments[0].storeAction = .dontCare // Disable color writes
@@ -92,8 +92,6 @@ class RenderPassWrapper {
     
     func create3dBuildingSecondEncoder() -> MTLRenderCommandEncoder {
         let colorPassDescriptor = renderPassDescriptor.copy() as! MTLRenderPassDescriptor
-        colorPassDescriptor.depthAttachment.texture = view.depthStencilTexture
-        colorPassDescriptor.stencilAttachment.texture = view.depthStencilTexture
         colorPassDescriptor.colorAttachments[0].loadAction = .load
         colorPassDescriptor.colorAttachments[0].storeAction = .store
         colorPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1) // Background color
@@ -105,6 +103,8 @@ class RenderPassWrapper {
     func createFlatEncoder() -> MTLRenderCommandEncoder {
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].storeAction = .store
+        renderPassDescriptor.depthAttachment.loadAction = .load
+        renderPassDescriptor.depthAttachment.storeAction = .dontCare    
         return encoder(renderPassDescriptor)
     }
     

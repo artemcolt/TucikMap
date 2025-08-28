@@ -94,7 +94,7 @@ class DefaultMapStyle: MapStyle {
             "background": mapBaseColors.getTileBgColor(),
             "border": SIMD4<Float>(0.0, 0.0, 0.0, 1.0),
             
-            "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.7),         // Warm beige
+            "building": SIMD4<Float>(0.8, 0.7, 0.6, 0.8),         // Warm beige
         ]
         
         switch data.layerName {

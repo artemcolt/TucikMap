@@ -10,6 +10,7 @@ import MetalKit
 class Draw3dBuildings {
     private var depthStencilStatePrePass        : MTLDepthStencilState!
     private var depthStencilStateColorPass      : MTLDepthStencilState!
+    private var depthStencilStateAllowAll       : MTLDepthStencilState!
     
     private let polygon3dPipeline               : Polygon3dPipeline
     private let drawAssembledMap                : DrawAssembledMap
@@ -20,7 +21,7 @@ class Draw3dBuildings {
         self.drawAssembledMap = drawAssembledMap
         self.metalDevice = metalDevice
         
-        let depthPrePassDescriptor  = MTLDepthStencilDescriptor()
+        let depthPrePassDescriptor = MTLDepthStencilDescriptor()
         depthPrePassDescriptor.depthCompareFunction = .less
         depthPrePassDescriptor.isDepthWriteEnabled = true
         depthStencilStatePrePass = metalDevice.makeDepthStencilState(descriptor: depthPrePassDescriptor)
@@ -28,6 +29,7 @@ class Draw3dBuildings {
         let depthColorPassDescriptor = MTLDepthStencilDescriptor()
         depthColorPassDescriptor.depthCompareFunction = .equal  // Key change: only equal depths pass
         depthColorPassDescriptor.isDepthWriteEnabled = false   // No need to write depth again
+        
         // Настройка stencil-теста
         let stencilDescriptor = MTLStencilDescriptor()
         stencilDescriptor.stencilCompareFunction = .equal
@@ -38,33 +40,39 @@ class Draw3dBuildings {
         stencilDescriptor.writeMask = 0xFF
         depthColorPassDescriptor.frontFaceStencil = stencilDescriptor
         depthStencilStateColorPass = metalDevice.makeDepthStencilState(descriptor: depthColorPassDescriptor)!
+        
+        
+        let depthColorPassDescriptor3 = MTLDepthStencilDescriptor()
+        depthColorPassDescriptor.depthCompareFunction = .always  // Key change: only equal depths pass
+        depthColorPassDescriptor.isDepthWriteEnabled = false   // No need to write depth again
+        depthStencilStateAllowAll = metalDevice.makeDepthStencilState(descriptor: depthColorPassDescriptor3)!
     }
     
-    func draw(renderPassWrapper: RenderPassWrapper, uniformsBuffer: MTLBuffer, assembledTiles: [MetalTile], tileFrameProps: TileFrameProps) {
-        renderPassWrapper.useDepthStencil()
-        let depthPrePassEncoder = renderPassWrapper.create3dBuildingFirstEncoder()
-        polygon3dPipeline.selectPipeline(renderEncoder: depthPrePassEncoder)
-        depthPrePassEncoder.setDepthStencilState(depthStencilStatePrePass)
-        depthPrePassEncoder.setCullMode(.back)
+    func draw(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, assembledTiles: [MetalTile], tileFrameProps: TileFrameProps) {
+        polygon3dPipeline.selectPipeline(renderEncoder: renderEncoder)
+        renderEncoder.setDepthStencilState(depthStencilStateColorPass)
+        renderEncoder.setStencilReferenceValue(0)
+        renderEncoder.setCullMode(.back)
         drawAssembledMap.draw3dTiles(
-            renderEncoder: depthPrePassEncoder,
+            renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
             tileFrameProps: tileFrameProps
         )
-        depthPrePassEncoder.endEncoding()
         
-        let colorPassEncoder = renderPassWrapper.create3dBuildingSecondEncoder()
-        polygon3dPipeline.selectPipeline(renderEncoder: colorPassEncoder)
-        colorPassEncoder.setDepthStencilState(depthStencilStateColorPass)
-        colorPassEncoder.setStencilReferenceValue(0)
-        colorPassEncoder.setCullMode(.back)
+        renderEncoder.setCullMode(.front)
+        renderEncoder.setDepthStencilState(depthStencilStateAllowAll)
+    }
+    
+    func prepass(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, assembledTiles: [MetalTile], tileFrameProps: TileFrameProps) {
+        polygon3dPipeline.selectPipeline(renderEncoder: renderEncoder)
+        renderEncoder.setDepthStencilState(depthStencilStatePrePass)
+        renderEncoder.setCullMode(.back)
         drawAssembledMap.draw3dTiles(
-            renderEncoder: colorPassEncoder,
+            renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
             tileFrameProps: tileFrameProps
         )
-        colorPassEncoder.endEncoding()
     }
 }

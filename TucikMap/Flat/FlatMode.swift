@@ -99,6 +99,13 @@ class FlatMode {
                                                      areaRange: areaRange,
                                                      cameraFlatView: camera)
         
+        let buildingsDepthPrepassEncoder = renderPassWrapper.createBuidingPrepassEncoder()
+        draw3dBuildings.prepass(renderEncoder: buildingsDepthPrepassEncoder,
+                                uniformsBuffer: uniformsBuffer,
+                                assembledTiles: assembledTiles,
+                                tileFrameProps: tileFrameProps)
+        buildingsDepthPrepassEncoder.endEncoding()
+        
         
         let renderEncoder = renderPassWrapper.createFlatEncoder()
         pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
@@ -121,10 +128,10 @@ class FlatMode {
         )
         
         
-//        draw3dBuildings.draw(renderPassWrapper: renderPassWrapper,
-//                             uniformsBuffer: uniformsBuffer,
-//                             assembledTiles: assembledTiles,
-//                             tileFrameProps: tileFrameProps)
+        draw3dBuildings.draw(renderEncoder: renderEncoder,
+                             uniformsBuffer: uniformsBuffer,
+                             assembledTiles: assembledTiles,
+                             tileFrameProps: tileFrameProps)
         
         
         pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
