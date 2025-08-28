@@ -111,15 +111,16 @@ class TileMvtParser {
         if geometry.type != .lineString {return nil}
         guard let line = geometry as? LineString else {return nil}
         
-        //guard let clippedLine = line.clipped(to: boundingBox) else {return nil}
-        return parseLines(multiLine: MultiLineString([line], calculateBoundingBox: false)!, width: width)
+        guard let clippedLine = line.clipped(to: boundingBox) else {return nil}
+        //MultiLineString([clippedLine], calculateBoundingBox: false)!
+        return parseLines(multiLine: clippedLine, width: width)
     }
     
     private func tryParseMultiLine(geometry: GeoJsonGeometry, boundingBox: BoundingBox, width: Double) -> [ParsedLineRawVertices]? {
         if geometry.type != .multiLineString {return nil}
         guard let multiLine = geometry as? MultiLineString else {return nil}
-        //guard let clippedMultiLine = multiLine.clipped(to: boundingBox) else {return nil}
-        return parseLines(multiLine: multiLine, width: width)
+        guard let clippedMultiLine = multiLine.clipped(to: boundingBox) else {return nil}
+        return parseLines(multiLine: clippedMultiLine, width: width)
     }
     
     private func parseLines(multiLine: MultiLineString, width: Double) -> [ParsedLineRawVertices] {

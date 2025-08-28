@@ -48,14 +48,13 @@ class Draw3dBuildings {
         depthStencilStateAllowAll = metalDevice.makeDepthStencilState(descriptor: depthColorPassDescriptor3)!
     }
     
-    func draw(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, assembledTiles: [MetalTile], tileFrameProps: TileFrameProps) {
+    func draw(renderEncoder: MTLRenderCommandEncoder, assembledTiles: [MetalTile], tileFrameProps: TileFrameProps) {
         polygon3dPipeline.selectPipeline(renderEncoder: renderEncoder)
         renderEncoder.setDepthStencilState(depthStencilStateColorPass)
         renderEncoder.setStencilReferenceValue(0)
         renderEncoder.setCullMode(.back)
         drawAssembledMap.draw3dTiles(
             renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
             tileFrameProps: tileFrameProps
         )
@@ -64,13 +63,12 @@ class Draw3dBuildings {
         renderEncoder.setDepthStencilState(depthStencilStateAllowAll)
     }
     
-    func prepass(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, assembledTiles: [MetalTile], tileFrameProps: TileFrameProps) {
+    func prepass(renderEncoder: MTLRenderCommandEncoder, assembledTiles: [MetalTile], tileFrameProps: TileFrameProps) {
         polygon3dPipeline.selectPipeline(renderEncoder: renderEncoder)
         renderEncoder.setDepthStencilState(depthStencilStatePrePass)
         renderEncoder.setCullMode(.back)
         drawAssembledMap.draw3dTiles(
             renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
             tileFrameProps: tileFrameProps
         )

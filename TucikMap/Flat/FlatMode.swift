@@ -22,6 +22,11 @@ class FlatMode {
     private let mapSettings                 : MapSettings
     private let drawMarkers                 : DrawFlatMarkers
     private let markersStorage              : MarkersStorage
+    private let screenUniforms              : ScreenUniforms
+    private let drawUI                      : DrawUI
+    private let drawDebugData               : DrawDebugData
+    
+    private let drawBaseDebug               : Bool
     
     // Helpers
     private let drawPoint: DrawPoint
@@ -44,8 +49,13 @@ class FlatMode {
          mapUpdaterFlat: MapUpdaterFlat,
          mapSettings: MapSettings,
          textureLoader: TextureLoader,
-         markersStorage: MarkersStorage) {
+         markersStorage: MarkersStorage,
+         drawUI: DrawUI,
+         drawDebugData: DrawDebugData) {
         
+        self.drawDebugData              = drawDebugData
+        self.screenUniforms             = screenUniforms
+        self.drawBaseDebug              = mapSettings.getMapDebugSettings().getDrawBaseDebug()
         self.markersStorage             = markersStorage
         self.mapSettings                = mapSettings
         self.drawPoint                  = drawPoint
@@ -56,6 +66,7 @@ class FlatMode {
         self.mapZoomState               = mapZoomState
         self.updateBufferedUniform      = updateBufferedUniform
         self.mapUpdaterFlat             = mapUpdaterFlat
+        self.drawUI                     = drawUI
         
         camera                      = cameraStorage.flatView
         
@@ -100,18 +111,20 @@ class FlatMode {
                                                      cameraFlatView: camera)
         
         let buildingsDepthPrepassEncoder = renderPassWrapper.createBuidingPrepassEncoder()
+        buildingsDepthPrepassEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+        
         draw3dBuildings.prepass(renderEncoder: buildingsDepthPrepassEncoder,
-                                uniformsBuffer: uniformsBuffer,
                                 assembledTiles: assembledTiles,
                                 tileFrameProps: tileFrameProps)
         buildingsDepthPrepassEncoder.endEncoding()
         
         
         let renderEncoder = renderPassWrapper.createFlatEncoder()
+        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+        
         pipelines.polygonPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawAssembledMap.drawTiles(
             renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer,
             tiles: assembledTiles,
             areaRange: areaRange,
             tileFrameProps: tileFrameProps
@@ -121,7 +134,6 @@ class FlatMode {
         pipelines.roadLabelPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawAssembledMap.drawRoadLabels(
             renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer,
             roadLabelsDrawing: assembledMap.roadLabels,
             currentFBIndex: currentFBIdx,
             tileFrameProps: tileFrameProps
@@ -129,7 +141,6 @@ class FlatMode {
         
         
         draw3dBuildings.draw(renderEncoder: renderEncoder,
-                             uniformsBuffer: uniformsBuffer,
                              assembledTiles: assembledTiles,
                              tileFrameProps: tileFrameProps)
         
@@ -137,7 +148,6 @@ class FlatMode {
         pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawAssembledMap.drawMapLabels(
             renderEncoder: renderEncoder,
-            uniformsBuffer: uniformsBuffer,
             geoLabels: assembledMap.tileGeoLabels,
             currentFBIndex: currentFBIdx,
             tileFrameProps: tileFrameProps
@@ -152,6 +162,16 @@ class FlatMode {
 //        }
         
         //drawMarkers.drawMarkers(renderEncoder: basicRenderEncoder, uniformsBuffer: uniformsBuffer)
+        
+        if drawBaseDebug {
+            pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
+            drawDebugData.drawGlobePoint(renderEncoder: renderEncoder)
+            drawDebugData.drawAxes(renderEncoder: renderEncoder)
+            
+            pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)
+            renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
+            drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder, size: view.drawableSize, mapZoomState: mapZoomState)
+        }
         
         renderEncoder.endEncoding()
     }

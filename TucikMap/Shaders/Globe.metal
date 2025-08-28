@@ -25,7 +25,7 @@ struct Vertex {
 struct VertexOut {
     float4 position [[position]];
     float2 texCoord;
-    float2 extTexCoord;
+    bool clipTexture;
 };
 
 struct GlobeShadersParams {
@@ -78,7 +78,7 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     
     
     float2 tex          = vertexIn.texCoord - float2(globeShadersParams.uShift, 0);
-    out.extTexCoord     = tex;
+    out.clipTexture     = globeShadersParams.scale > 8;
     
     tex.x               = (tex.x - startTexU) / (endTexU - startTexU);
     tex.y               = (tex.y - startTexV) / (endTexV - startTexV);
@@ -101,7 +101,7 @@ fragment FragmentOut fragmentShaderGlobe(VertexOut in [[stage_in]],
     FragmentOut out;
     out.color0 = useColor;
     
-    if (mTexCrd.x < 0 || mTexCrd.x > 1 || mTexCrd.y < 0 || mTexCrd.y > 1) {
+    if ((mTexCrd.x < 0 || mTexCrd.x > 1 || mTexCrd.y < 0 || mTexCrd.y > 1) && in.clipTexture) {
         out.color0 = float4(1);
     }
     

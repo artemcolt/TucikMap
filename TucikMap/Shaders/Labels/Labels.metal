@@ -51,10 +51,10 @@ struct MapLabelIntersection {
 
 
 vertex VertexOut labelsVertexShader(VertexIn in [[stage_in]],
-                                    constant Uniforms &screenUniforms [[buffer(1)]],
+                                    constant Uniforms &screenUniforms [[buffer(4)]],
                                     constant MapLabelSymbolMeta* symbolsMeta [[buffer(2)]],
                                     constant MapLabelLineMeta* linesMeta [[buffer(3)]],
-                                    constant Uniforms &worldUniforms [[buffer(4)]],
+                                    constant Uniforms &worldUniforms [[buffer(1)]],
                                     constant MapLabelIntersection* intersections [[buffer(5)]],
                                     constant float& animationDuration [[buffer(6)]],
                                     constant float4x4& modelMatrix [[buffer(7)]],

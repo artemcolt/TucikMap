@@ -165,7 +165,9 @@ class InitScene {
                                            mapUpdaterFlat: mapUpdaterStorage.flat,
                                            mapSettings: mapSettings,
                                            textureLoader: textureLoader,
-                                           markersStorage: markersStorage)
+                                           markersStorage: markersStorage,
+                                           drawUI: drawUI,
+                                           drawDebugData: drawDebugData)
         
         globeMode               = GlobeMode(metalDevice: metalDevice,
                                             pipelines: pipelines,

@@ -38,14 +38,11 @@ class DrawAssembledMap {
     
     func drawTiles(
         renderEncoder: MTLRenderCommandEncoder,
-        uniformsBuffer: MTLBuffer,
         tiles: [MetalTile],
         areaRange: AreaRange,
         tileFrameProps: TileFrameProps
     ) {
         guard tiles.isEmpty == false else { return }
-        drawTile.setUniforms(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
-        
         for tile in tiles {
             let tile2dBuffers = tile.tile2dBuffers
             drawTile.setTileConsts(renderEncoder: renderEncoder, tile2dBuffers: tile2dBuffers)
@@ -61,13 +58,10 @@ class DrawAssembledMap {
     
     func draw3dTiles(
         renderEncoder: MTLRenderCommandEncoder,
-        uniformsBuffer: MTLBuffer,
         tiles: [MetalTile],
         tileFrameProps: TileFrameProps
     ) {
         guard tiles.isEmpty == false else { return }
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
-        
         
         for metalTile in tiles {
             let tileBuffers = metalTile.tile3dBuffers
@@ -97,7 +91,6 @@ class DrawAssembledMap {
     
     func drawMapLabels(
         renderEncoder: MTLRenderCommandEncoder,
-        uniformsBuffer: MTLBuffer,
         geoLabels: [MetalTile.TextLabels],
         currentFBIndex: Int,
         tileFrameProps: TileFrameProps
@@ -106,8 +99,7 @@ class DrawAssembledMap {
         
         var labelsFadeAnimationTimeSeconds = mapSettings.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
         renderEncoder.setVertexBytes(&labelsFadeAnimationTimeSeconds, length: MemoryLayout<Float>.stride,   index: 6)
-        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 1)
-        renderEncoder.setVertexBuffer(uniformsBuffer,                           offset: 0, index: 4)
+        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 4)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         
         for metalTile in geoLabels {
@@ -138,7 +130,6 @@ class DrawAssembledMap {
     
     func drawRoadLabels(
         renderEncoder: MTLRenderCommandEncoder,
-        uniformsBuffer: MTLBuffer,
         roadLabelsDrawing: [FinalDrawRoadLabel],
         currentFBIndex: Int,
         tileFrameProps: TileFrameProps
@@ -147,8 +138,7 @@ class DrawAssembledMap {
         var animationTime = labelsFadeAnimationTimeSeconds
         guard roadLabelsDrawing.isEmpty == false else { return }
         
-        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
-        renderEncoder.setVertexBuffer(uniformsBuffer,                     offset: 0, index: 4)
+        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 4)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         
         var rotationYaw = (camera.rotationYaw - Float.pi / 2).truncatingRemainder(dividingBy: 2 * Float.pi)
