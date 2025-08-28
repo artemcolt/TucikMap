@@ -7,15 +7,17 @@
 
 import SwiftUI
 
-let MAPBOX_TOKEN: String = "pk.eyJ1IjoiaW52ZWN0eXMiLCJhIjoiY2w0emRzYWx5MG1iMzNlbW91eWRwZzdldCJ9.EAByLTrB_zc7-ytI6GDGBw"
-
-
 struct ContentView: View {
     let mapControllerCreated: MapControllerCreated = MapControllerCreated()
     let mapSettings: MapSettings
     
     init() {
-        mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: MAPBOX_TOKEN))
+        
+        guard let mapboxToken = ProcessInfo.processInfo.environment["MAPBOX_TOKEN"] else {
+            fatalError("MAPBOX_TOKEN environment variable is not set")
+        }
+        
+        mapSettings = MapSettingsBuilder(getMapTileDownloadUrl: MapBoxGetMapTileUrl(accessToken: mapboxToken))
             .debugUI(enabled: false)
             .drawGrid(enabled: false)
             .style(mapStyle: DefaultMapStyle())
