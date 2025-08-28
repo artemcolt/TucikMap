@@ -16,7 +16,6 @@ class GlobeCaps {
     private let vertexCount             : Int
     private let cameraGlobeView         : CameraGlobeView
     private let mapZoomState            : MapZoomState
-    private let globeCapsPipeline       : GlobeCapsPipeline
     private let startZ                  : Float
     private let endZ                    : Float
     
@@ -24,11 +23,9 @@ class GlobeCaps {
     init(metalDevice: MTLDevice,
          mapSettings: MapSettings,
          cameraGlobeView: CameraGlobeView,
-         mapZoomState: MapZoomState,
-         globeCapsPipeline: GlobeCapsPipeline) {
+         mapZoomState: MapZoomState) {
         self.cameraGlobeView = cameraGlobeView
         self.mapZoomState = mapZoomState
-        self.globeCapsPipeline = globeCapsPipeline
         self.startZ = mapSettings.getMapCommonSettings().getFadeCapsStartZ()
         self.endZ = mapSettings.getMapCommonSettings().getFadeCapsEndZ()
         
@@ -105,20 +102,17 @@ class GlobeCaps {
         self.colorsBuffer = metalDevice.makeBuffer(bytes: colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count)!
     }
     
-    private func drawCaps(renderEncoder: MTLRenderCommandEncoder, globeShadersParams: GlobeShadersParams) {
-        var globeShadersParams = globeShadersParams
+    private func drawCaps(renderEncoder: MTLRenderCommandEncoder) {
         renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
-        renderEncoder.setVertexBuffer(colorsBuffer, offset: 0, index: 2)
-        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 3)
+        renderEncoder.setVertexBuffer(colorsBuffer, offset: 0, index: 3)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
     }
     
-    func drawCapsFor(renderEncoder: MTLRenderCommandEncoder, globeShadersParams: GlobeShadersParams) {
+    func drawCapsFor(renderEncoder: MTLRenderCommandEncoder) {
         let currentZ = mapZoomState.zoomLevelFloat
         let interpolation: Float = 1.0 - max(0, min(1, (currentZ - startZ) / (endZ - startZ)))
         if interpolation != 0 {
-            globeCapsPipeline.selectPipeline(renderEncoder: renderEncoder)
-            drawCaps(renderEncoder: renderEncoder, globeShadersParams: globeShadersParams)
+            drawCaps(renderEncoder: renderEncoder)
         }
     }
 }

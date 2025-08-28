@@ -185,7 +185,8 @@ class InitScene {
                                             mapSettings: mapSettings,
                                             textureLoader: textureLoader,
                                             markersStorage: markersStorage,
-                                            drawDebugData: drawDebugData)
+                                            drawDebugData: drawDebugData,
+                                            drawUI: drawUI)
         
         if let controllerCreated = mapSettings.getMapCommonSettings().getControllerCreated() {
             controllerCreated.onControllerReady(mapController: mapController)

@@ -42,6 +42,7 @@ class GlobeMode {
     private let drawMarkers             : DrawGlobeMarkers
     private let markersStorage          : MarkersStorage
     private let drawDebugData           : DrawDebugData
+    private let drawUI                  : DrawUI
     
     private let drawBaseDebug           : Bool
     private let drawTraversalPlane      : Bool
@@ -73,8 +74,10 @@ class GlobeMode {
          mapSettings: MapSettings,
          textureLoader: TextureLoader,
          markersStorage: MarkersStorage,
-         drawDebugData: DrawDebugData) {
+         drawDebugData: DrawDebugData,
+         drawUI: DrawUI) {
         
+        self.drawUI                 = drawUI
         self.drawTraversalPlane     = mapSettings.getMapDebugSettings().getDrawTraversalPlane()
         self.drawBaseDebug          = mapSettings.getMapDebugSettings().getDrawBaseDebug()
         self.drawDebugData          = drawDebugData
@@ -87,7 +90,7 @@ class GlobeMode {
         self.drawGlobeGlowing       = drawGlobeGlowing
         self.drawSpace              = drawSpace
         self.switchMapMode          = switchMapMode
-        self.drawTexture            = DrawTexture(screenUniforms: screenUniforms)
+        self.drawTexture            = DrawTexture()
         self.screenUniforms         = screenUniforms
         self.globeGeometry          = GlobeGeometry()
         self.mapZoomState           = mapZoomState
@@ -108,8 +111,7 @@ class GlobeMode {
         self.globeCaps              = GlobeCaps(metalDevice: metalDevice,
                                                 mapSettings: mapSettings,
                                                 cameraGlobeView: cameraStorage.globeView,
-                                                mapZoomState: mapZoomState,
-                                                globeCapsPipeline: pipelines.globeCapsPipeline)
+                                                mapZoomState: mapZoomState)
         
         let depthStencilDescriptor = MTLDepthStencilDescriptor()
         depthStencilDescriptor.depthCompareFunction = .less
@@ -206,24 +208,22 @@ class GlobeMode {
         
         let renderEncoder = renderPassWrapper.createGlobeModeEncoder()
         renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
-        
+        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 2)
         
         pipelines.spacePipeline.selectPipeline(renderEncoder: renderEncoder)
-        drawSpace.draw(renderEncoder: renderEncoder,
-                       globeShadersParams: globeShadersParams)
+        drawSpace.draw(renderEncoder: renderEncoder)
         
         renderEncoder.setDepthStencilState(depthStencilState)
         renderEncoder.setCullMode(.front)
         
         // рисуем крышки глобуса
-        globeCaps.drawCapsFor(renderEncoder: renderEncoder, globeShadersParams: globeShadersParams)
+        pipelines.globeCapsPipeline.selectPipeline(renderEncoder: renderEncoder)
+        globeCaps.drawCapsFor(renderEncoder: renderEncoder)
         
-        
-        
+        let globeTexture = globeTexturing.getCurrentTexture(fbIndex: currentFbIndex)
         pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
         renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
-        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 2)
-        renderEncoder.setFragmentTexture(globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), index: 0)
+        renderEncoder.setFragmentTexture(globeTexture, index: 0)
         renderEncoder.setFragmentSamplerState(samplerState, index: 0)
         renderEncoder.drawIndexedPrimitives(type: .triangle,
                                             indexCount: indicesCount,
@@ -236,31 +236,27 @@ class GlobeMode {
         drawGlobeLabels.draw(
             renderEncoder: renderEncoder,
             geoLabels: assembledMap.tileGeoLabels,
-            currentFBIndex: currentFbIndex,
-            globeShadersParams: globeShadersParams
+            currentFBIndex: currentFbIndex
         )
         
         //drawMarkers.drawMarkers(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
         
         if drawBaseDebug {
+            
             pipelines.texturePipeline.selectPipeline(renderEncoder: renderEncoder)
-            drawTexture.draw(textureEncoder: renderEncoder, texture: globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), sideWidth: 500)
-        }
-        
-        pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
-        if drawBaseDebug {
-            drawTexture.drawBorders(textureEncoder: renderEncoder, sideWidth: 500)
-            drawDebugData.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer, view: view)
-        }
-        
-        if drawTraversalPlane {
-            let cameraQuaternion = camera.cameraQuaternion;
-            let baseNormal = SIMD3<Float>(0, 0, 1)
-            let traversalPlaneNormal = cameraQuaternion.act(baseNormal)
-
-            drawDebugData.drawGlobeTraversalPlane(renderEncoder: renderEncoder,
-                                                  uniformsBuffer: uniformsBuffer,
-                                                  planeNormal: traversalPlaneNormal)
+            renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 1)
+            drawTexture.draw(renderEncoder: renderEncoder, texture: globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), sideWidth: 500)
+            
+            pipelines.textPipeline.selectPipeline(renderEncoder: renderEncoder)
+            drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder, size: view.drawableSize, mapZoomState: mapZoomState)
+            
+            pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
+            drawTexture.drawBorders(renderEncoder: renderEncoder, sideWidth: 500)
+            
+            renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+            drawDebugData.drawGlobePoint(renderEncoder: renderEncoder)
+            drawDebugData.drawAxes(renderEncoder: renderEncoder)
+            
         }
         
         renderEncoder.endEncoding()

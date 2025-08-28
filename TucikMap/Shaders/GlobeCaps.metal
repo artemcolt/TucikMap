@@ -36,8 +36,9 @@ struct GlobeShadersParams {
 vertex Vertex globeCapsVertex(uint vertexID [[vertex_id]],
                               constant float3 *positions [[buffer(0)]],
                               constant Uniforms &uniforms [[buffer(1)]],
-                              constant float4 *colors [[buffer(2)]],
-                              constant GlobeShadersParams &globeShadersParams [[buffer(3)]]) {
+                              constant GlobeShadersParams &globeShadersParams [[buffer(2)]],
+                              constant float4 *colors [[buffer(3)]]
+                              ) {
     
     float4x4 scale = scale_matrix(float3(globeShadersParams.scale));
     float4x4 rotateLatitude = rotation_matrix(globeShadersParams.latitude, float3(1, 0, 0));

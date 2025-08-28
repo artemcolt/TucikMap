@@ -50,8 +50,6 @@ class RenderPassWrapper {
     }
     
     func createLabelsFlatEncoder() -> MTLRenderCommandEncoder {
-        renderPassDescriptor.depthAttachment = nil
-        renderPassDescriptor.stencilAttachment = nil
         return encoder(renderPassDescriptor)
     }
     
@@ -107,17 +105,12 @@ class RenderPassWrapper {
     func createFlatEncoder() -> MTLRenderCommandEncoder {
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].storeAction = .store
-        renderPassDescriptor.depthAttachment = nil
-        renderPassDescriptor.stencilAttachment = nil
-        
         return encoder(renderPassDescriptor)
     }
     
     func createRoadLabelsEncoder() -> MTLRenderCommandEncoder {
         renderPassDescriptor.colorAttachments[0].loadAction = .load
         renderPassDescriptor.colorAttachments[0].storeAction = .store
-        renderPassDescriptor.depthAttachment = nil
-        renderPassDescriptor.stencilAttachment = nil
         return encoder(renderPassDescriptor)
     }
     

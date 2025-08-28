@@ -35,7 +35,6 @@ class DrawUI {
         
         textTools.drawText.renderTextBytes(
             renderEncoder: renderCommandEncoder,
-            uniforms: screenUniforms.screenUniformBuffer,
             drawTextData: drawTextData
         )
     }

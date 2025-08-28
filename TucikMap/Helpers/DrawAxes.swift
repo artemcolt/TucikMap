@@ -44,8 +44,7 @@ class DrawAxes {
         
         // Set vertex buffers
         renderEncoder.setVertexBytes(&positions, length: MemoryLayout<SIMD3<Float>>.stride * positions.count, index: 0)
-        renderEncoder.setVertexBytes(&colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 1)
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)
+        renderEncoder.setVertexBytes(&colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 2)
         
         // Draw the axes as three separate lines (6 vertices)
         renderEncoder.drawPrimitives(type: .line, vertexStart: 0, vertexCount: 6)

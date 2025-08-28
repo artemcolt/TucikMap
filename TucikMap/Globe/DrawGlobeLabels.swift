@@ -46,18 +46,15 @@ class DrawGlobeLabels {
     func draw(
         renderEncoder: MTLRenderCommandEncoder,
         geoLabels: [MetalTile.TextLabels],
-        currentFBIndex: Int,
-        globeShadersParams: GlobeShadersParams
+        currentFBIndex: Int
     ) {
         guard geoLabels.isEmpty == false else { return }
         
-        var globeShadersParams = globeShadersParams
         let labelsFadeAnimationTimeSeconds = mapSettigns.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
         var animationTime = labelsFadeAnimationTimeSeconds
         
-        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 8)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)
-        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 4)
+        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer, offset: 0, index: 4)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         
         for metalTile in geoLabels {
@@ -72,7 +69,7 @@ class DrawGlobeLabels {
             let atlasTexture            = metalDrawMapLabels.atlas
             
             renderEncoder.setVertexBuffer(vertexBuffer,         offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(mapLabelSymbolMeta,   offset: 0, index: 2)
+            renderEncoder.setVertexBuffer(mapLabelSymbolMeta,   offset: 0, index: 8)
             renderEncoder.setVertexBuffer(mapLabelGpuMeta,      offset: 0, index: 3)
             renderEncoder.setVertexBuffer(intersectionsBuffer,  offset: 0, index: 5)
             renderEncoder.setFragmentTexture(atlasTexture, index: 0)

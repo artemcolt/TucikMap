@@ -109,48 +109,44 @@ class FlatMode {
             areaRange: areaRange,
             tileFrameProps: tileFrameProps
         )
-        renderEncoder.endEncoding()
         
         
-        let roadLabelsEncoder = renderPassWrapper.createRoadLabelsEncoder()
-        pipelines.roadLabelPipeline.selectPipeline(renderEncoder: roadLabelsEncoder)
+        pipelines.roadLabelPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawAssembledMap.drawRoadLabels(
-            renderEncoder: roadLabelsEncoder,
+            renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             roadLabelsDrawing: assembledMap.roadLabels,
             currentFBIndex: currentFBIdx,
             tileFrameProps: tileFrameProps
         )
-        roadLabelsEncoder.endEncoding()
         
         
-        draw3dBuildings.draw(renderPassWrapper: renderPassWrapper,
-                             uniformsBuffer: uniformsBuffer,
-                             assembledTiles: assembledTiles,
-                             tileFrameProps: tileFrameProps)
+//        draw3dBuildings.draw(renderPassWrapper: renderPassWrapper,
+//                             uniformsBuffer: uniformsBuffer,
+//                             assembledTiles: assembledTiles,
+//                             tileFrameProps: tileFrameProps)
         
         
-        let basicRenderEncoder = renderPassWrapper.createLabelsFlatEncoder()
-        pipelines.labelsPipeline.selectPipeline(renderEncoder: basicRenderEncoder)
+        pipelines.labelsPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawAssembledMap.drawMapLabels(
-            renderEncoder: basicRenderEncoder,
+            renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
             geoLabels: assembledMap.tileGeoLabels,
             currentFBIndex: currentFBIdx,
             tileFrameProps: tileFrameProps
         )
         
-        let drawRoadPointsDebug = mapSettings.getMapDebugSettings().getDrawRoadPointsDebug()
-        if drawRoadPointsDebug {
-            drawRoadPoints(assembledMap: assembledMap,
-                           tileFrameProps: tileFrameProps,
-                           basicRenderEncoder: basicRenderEncoder,
-                           uniformsBuffer: uniformsBuffer)
-        }
+//        let drawRoadPointsDebug = mapSettings.getMapDebugSettings().getDrawRoadPointsDebug()
+//        if drawRoadPointsDebug {
+//            drawRoadPoints(assembledMap: assembledMap,
+//                           tileFrameProps: tileFrameProps,
+//                           basicRenderEncoder: basicRenderEncoder,
+//                           uniformsBuffer: uniformsBuffer)
+//        }
         
-        drawMarkers.drawMarkers(renderEncoder: basicRenderEncoder, uniformsBuffer: uniformsBuffer)
+        //drawMarkers.drawMarkers(renderEncoder: basicRenderEncoder, uniformsBuffer: uniformsBuffer)
         
-        basicRenderEncoder.endEncoding()
+        renderEncoder.endEncoding()
     }
     
     private func drawRoadPoints(

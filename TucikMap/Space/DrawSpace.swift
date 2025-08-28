@@ -43,10 +43,8 @@ class DrawSpace {
         vertexBuffer = metalDevice.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout<Vertex>.stride, options: [])!
     }
     
-    func draw(renderEncoder: MTLRenderCommandEncoder, globeShadersParams: GlobeShadersParams) {
-        var globeShadersParams = globeShadersParams
+    func draw(renderEncoder: MTLRenderCommandEncoder) {
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 2)
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: starCount)
     }
 }

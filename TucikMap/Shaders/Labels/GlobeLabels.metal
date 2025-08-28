@@ -69,13 +69,13 @@ struct GlobeLabelsParams {
 
 vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
                                          constant Uniforms &worldUniforms [[buffer(1)]],
-                                         constant Uniforms &screenUniforms [[buffer(4)]],
-                                         constant MapLabelSymbolMeta* symbolsMeta [[buffer(2)]],
+                                         constant GlobeShadersParams& globeShadersParams [[buffer(2)]],
                                          constant MapLabelLineMeta* linesMeta [[buffer(3)]],
+                                         constant Uniforms &screenUniforms [[buffer(4)]],
                                          constant MapLabelIntersection* intersections [[buffer(5)]],
                                          constant float& animationDuration [[buffer(6)]],
                                          constant GlobeLabelsParams& globeLabelsParams [[buffer(7)]],
-                                         constant GlobeShadersParams& globeShadersParams [[buffer(8)]],
+                                         constant MapLabelSymbolMeta* symbolsMeta [[buffer(8)]],
                                          uint vertexID [[vertex_id]]
                                          ) {
     int symbolIndex = vertexID / 6;

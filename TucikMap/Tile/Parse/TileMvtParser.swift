@@ -365,7 +365,8 @@ class TileMvtParser {
                 let renderOnlyRoadsArray = mapSettings.getMapDebugSettings().getRenderOnlyRoadsArray()
                 let renderRoadArrayFromTo = mapSettings.getMapDebugSettings().getRenderRoadArrayFromTo()
                 let name_en = properties["name_en"] as? String
-                let name = properties["name"] as? String
+                var name = properties["name"] as? String
+                name = name_en
                 if layerName == "road" && name != nil {
                     let testCondition = renderOnlyRoadsArray.contains(name!) || renderOnlyRoadsArray.isEmpty
                     let fromToTestCond = renderRoadArrayFromTo.isEmpty ||

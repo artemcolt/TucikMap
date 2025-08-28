@@ -31,8 +31,8 @@ class RoadLabelPipeline {
         pipelineDescriptor.fragmentFunction = library.makeFunction(name: "roadLabelsFragmentShader")
         pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
-        pipelineDescriptor.depthAttachmentPixelFormat = .invalid
-        pipelineDescriptor.stencilAttachmentPixelFormat = .invalid
+        pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float_stencil8
+        pipelineDescriptor.stencilAttachmentPixelFormat = .depth32Float_stencil8
         
         // Настройка смешивания для поддержки прозрачности
         pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true

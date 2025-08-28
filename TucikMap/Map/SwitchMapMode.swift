@@ -59,7 +59,7 @@ class SwitchMapMode {
                 //print("globePanX \(globePanX) globePanY \(globePanY)")
                 
                 mapController.moveTo(mapPanning: SIMD2<Double>(globePanX, globePanY))
-                //mapController.updateMapIfNeeded(view: view, size: view.drawableSize)
+                mapController.updateMapIfNeeded(view: view, size: view.drawableSize)
                 return true
             case .globe:
                 cameraStorage.flatView.applyDistortion(distortion: globeCam.distortion)
@@ -72,7 +72,7 @@ class SwitchMapMode {
                 let flatPanY = globePanning.y * 2.0 * halfFlatMapSize
                 
                 mapController.moveTo(mapPanning: SIMD2<Double>(flatPanX, flatPanY))
-                //mapController.updateMapIfNeeded(view: view, size: view.drawableSize)
+                mapController.updateMapIfNeeded(view: view, size: view.drawableSize)
                 return true
             }
         }

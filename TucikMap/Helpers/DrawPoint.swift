@@ -43,8 +43,8 @@ class DrawPoint {
         
         // Set vertex buffers
         renderEncoder.setVertexBytes(&positions, length: MemoryLayout<SIMD3<Float>>.stride * positions.count, index: 0)
-        renderEncoder.setVertexBytes(&colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 1)
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)
+        renderEncoder.setVertexBytes(&colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count, index: 2)
+        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
         
         // Draw the point as two triangles (6 vertices)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
