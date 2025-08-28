@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		AC0D5A722E57718E00F86FA0 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = AC0D5A712E57718800F86FA0 /* README.md */; };
 		AC0D5A742E57742800F86FA0 /* LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = AC0D5A732E57742500F86FA0 /* LICENSE.md */; };
+		AC43039B2E6033FD001AA476 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = AC43039A2E6033F6001AA476 /* .gitignore */; };
 		AC96346E2DE7465D0040488F /* MVTTools in Frameworks */ = {isa = PBXBuildFile; productRef = AC96346D2DE7465D0040488F /* MVTTools */; };
 		AC9634782DE788140040488F /* SwiftEarcut in Frameworks */ = {isa = PBXBuildFile; productRef = AC9634772DE788140040488F /* SwiftEarcut */; };
 /* End PBXBuildFile section */
@@ -27,6 +28,7 @@
 		AC0D5A712E57718800F86FA0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		AC0D5A732E57742500F86FA0 /* LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
 		AC1A53882DE5BAA4007E96AD /* TucikMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TucikMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC43039A2E6033F6001AA476 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		ACD42D392E13BBD5002CE195 /* TucikMapTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TucikMapTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -71,6 +73,7 @@
 		AC1A537F2DE5BAA4007E96AD = {
 			isa = PBXGroup;
 			children = (
+				AC43039A2E6033F6001AA476 /* .gitignore */,
 				ACD83F0C2E5F39320033DCF1 /* Screenshots */,
 				AC0D5A732E57742500F86FA0 /* LICENSE.md */,
 				AC0D5A712E57718800F86FA0 /* README.md */,
@@ -190,6 +193,7 @@
 			files = (
 				AC0D5A742E57742800F86FA0 /* LICENSE.md in Resources */,
 				AC0D5A722E57718E00F86FA0 /* README.md in Resources */,
+				AC43039B2E6033FD001AA476 /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
