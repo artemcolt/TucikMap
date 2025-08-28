@@ -55,6 +55,7 @@ DerivedData/
 !default.perspectivev3
 
 ### Xcode Patch ###
+*.xcodeproj/
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
