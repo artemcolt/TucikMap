@@ -28,24 +28,27 @@ struct VertexOut {
     float2 extTexCoord;
 };
 
-struct GlobeParams {
-    float globeRotation;
+struct GlobeShadersParams {
+    float latitude;
+    float longitude;
+    float scale;
     float uShift;
     float globeRadius;
     float transition;
     float4 startAndEndUV;
+    float3 planeNormal;
 };
 
 vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
                                    constant Uniforms& uniforms [[buffer(1)]],
-                                   constant GlobeParams& globeParams [[buffer(2)]]) {
+                                   constant GlobeShadersParams& globeShadersParams [[buffer(2)]]) {
     float2 sphereGenCoord = float2(vertexIn.xCoord, vertexIn.yCoord);
     
     float PI = M_PI_F;
-    float radius = globeParams.globeRadius;
+    float radius = globeShadersParams.globeRadius;
     float4 spherePos = float4(getSpherePos(sphereGenCoord, radius), 1.0);
     
-    float rotation            = globeParams.globeRotation;
+    float rotation            = globeShadersParams.latitude;
     float4x4 translation      = translation_matrix(float3(0, 0, -radius));
     float4x4 globeRotation    = rotation_matrix(rotation, float3(1, 0, 0));
     float4 globeWorldPosition = translation * globeRotation * spherePos;
@@ -59,7 +62,7 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     float4 planeWorldPosition = float4(vertexIn.xCoord * planeFactor, vertexIn.yCoord * planeFactor + planeShiftY * planeFactor, 0, 1);
     
 
-    float transition          = globeParams.transition;
+    float transition          = globeShadersParams.transition;
     
     float4 worldPosition      = mix(globeWorldPosition, planeWorldPosition, transition);
     float4 viewPosition       = uniforms.viewMatrix * worldPosition;
@@ -68,13 +71,13 @@ vertex VertexOut vertexShaderGlobe(Vertex vertexIn [[stage_in]],
     VertexOut out;
     out.position        = clipPosition;
     
-    float startTexU     = globeParams.startAndEndUV[0];
-    float endTexU       = globeParams.startAndEndUV[1];
-    float startTexV     = globeParams.startAndEndUV[2];
-    float endTexV       = globeParams.startAndEndUV[3];
+    float startTexU     = globeShadersParams.startAndEndUV[0];
+    float endTexU       = globeShadersParams.startAndEndUV[1];
+    float startTexV     = globeShadersParams.startAndEndUV[2];
+    float endTexV       = globeShadersParams.startAndEndUV[3];
     
     
-    float2 tex          = vertexIn.texCoord - float2(globeParams.uShift, 0);
+    float2 tex          = vertexIn.texCoord - float2(globeShadersParams.uShift, 0);
     out.extTexCoord     = tex;
     
     tex.x               = (tex.x - startTexU) / (endTexU - startTexU);

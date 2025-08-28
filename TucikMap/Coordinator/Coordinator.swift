@@ -72,7 +72,6 @@ class Coordinator: NSObject, MTKViewDelegate {
         // Юниформ для трансформации сцены в clip
         scene.updateBufferedUniform.updateUniforms(viewportSize: view.drawableSize)
         
-        let uniformsBuffer = scene.updateBufferedUniform.getCurrentFrameBuffer()
         let currentFBIdx = scene.updateBufferedUniform.getCurrentFrameBufferIndex()
         let lastUniforms = scene.updateBufferedUniform.lastUniforms!
         let camera = scene.cameraStorage.currentView
@@ -115,17 +114,6 @@ class Coordinator: NSObject, MTKViewDelegate {
         }
         
         
-        if scene.mapSettings.getMapDebugSettings().getDrawTraversalPlane() == true {
-            scene.drawDebugData.drawGlobeTraversalPlane(renderPassWrapper: scene.renderPassWrapper,
-                                                        uniformsBuffer: uniformsBuffer,
-                                                        planeNormal: traversalPlaneNormal)
-        }
-        
-        if scene.mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
-            scene.drawDebugData.draw(renderPassWrapper: scene.renderPassWrapper, uniformsBuffer: uniformsBuffer, view: view)
-        }
-        
-
         // Вывести на экран, на основную текстуру отрисованную текстуру
 //        scene.drawTextureOnScreen.draw(currentRenderPassDescriptor: view.currentRenderPassDescriptor,
 //                                       commandBuffer: commandBuffer,

@@ -96,8 +96,7 @@ class InitScene {
                                                      mapSettings: mapSettings)
         drawUI                  = DrawUI(device: metalDevice, textTools: textTools, screenUniforms: screenUniforms)
         renderPassWrapper       = RenderPassWrapper(metalDevice: metalDevice)
-        drawDebugData           = DrawDebugData(basePipeline: pipelines.basePipeline,
-                                                metalDevice: metalDevice,
+        drawDebugData           = DrawDebugData(metalDevice: metalDevice,
                                                 cameraStorage: cameraStorage,
                                                 textPipeline: pipelines.textPipeline,
                                                 drawUI: drawUI,
@@ -185,7 +184,8 @@ class InitScene {
                                             textureAdder: textureAdder,
                                             mapSettings: mapSettings,
                                             textureLoader: textureLoader,
-                                            markersStorage: markersStorage)
+                                            markersStorage: markersStorage,
+                                            drawDebugData: drawDebugData)
         
         if let controllerCreated = mapSettings.getMapCommonSettings().getControllerCreated() {
             controllerCreated.onControllerReady(mapController: mapController)

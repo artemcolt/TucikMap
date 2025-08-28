@@ -8,7 +8,6 @@
 import MetalKit
 
 class DrawDebugData {
-    private let basePipeline    : BasePipeline
     private let textPipeline    : TextPipeline
     private let drawPoint       : DrawPoint
     private let drawAxes        : DrawAxes
@@ -19,15 +18,13 @@ class DrawDebugData {
     
     private let depthStencilState: MTLDepthStencilState
     
-    init(basePipeline: BasePipeline,
-         metalDevice: MTLDevice,
+    init(metalDevice: MTLDevice,
          cameraStorage: CameraStorage,
          textPipeline: TextPipeline,
          drawUI: DrawUI,
          drawPoint: DrawPoint,
          mapZoomState: MapZoomState,
          mapSettings: MapSettings) {
-        self.basePipeline = basePipeline
         self.cameraStorage = cameraStorage
         self.textPipeline = textPipeline
         self.drawUI = drawUI
@@ -43,10 +40,8 @@ class DrawDebugData {
         depthStencilState = metalDevice.makeDepthStencilState(descriptor: depthStencilDescriptor)!
     }
     
-    func draw(renderPassWrapper: RenderPassWrapper, uniformsBuffer: MTLBuffer, view: MTKView) {
-        let renderEncoder = renderPassWrapper.createUIEncoder()
+    func draw(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, view: MTKView) {
         let cameraCenterPointSize = mapSettings.getMapDebugSettings().getCameraCenterPointSize()
-        basePipeline.selectPipeline(renderEncoder: renderEncoder)
         drawPoint.draw(
             renderEncoder: renderEncoder,
             uniformsBuffer: uniformsBuffer,
@@ -62,13 +57,10 @@ class DrawDebugData {
         
         textPipeline.selectPipeline(renderEncoder: renderEncoder)
         drawUI.drawZoomUiText(renderCommandEncoder: renderEncoder, size: view.drawableSize, mapZoomState: mapZoomState)
-        renderEncoder.endEncoding()
     }
     
     
-    func drawGlobeTraversalPlane(renderPassWrapper: RenderPassWrapper, uniformsBuffer: MTLBuffer, planeNormal: SIMD3<Float>) {
-        let renderEncoder = renderPassWrapper.createGlobeTransversalEncoder()
-        basePipeline.selectPipelineWithDepthStencil(renderEncoder: renderEncoder)
+    func drawGlobeTraversalPlane(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, planeNormal: SIMD3<Float>) {
         renderEncoder.setDepthStencilState(depthStencilState)
 
         

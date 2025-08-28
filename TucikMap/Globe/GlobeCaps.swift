@@ -9,13 +9,6 @@ import MetalKit
 import Foundation  // For math functions like sinh, atan
 
 class GlobeCaps {
-    struct MapParams {
-        let latitude: Float
-        let globeRadius: Float
-        let factor: Float
-        let fade: Float
-    };
-    
     private let slices = 60
     
     private let verticesBuffer          : MTLBuffer
@@ -112,28 +105,20 @@ class GlobeCaps {
         self.colorsBuffer = metalDevice.makeBuffer(bytes: colors, length: MemoryLayout<SIMD4<Float>>.stride * colors.count)!
     }
     
-    private func drawCaps(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, mapParams: MapParams) {
-        var mapParams = mapParams
+    private func drawCaps(renderEncoder: MTLRenderCommandEncoder, globeShadersParams: GlobeShadersParams) {
+        var globeShadersParams = globeShadersParams
         renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
-        renderEncoder.setVertexBuffer(colorsBuffer, offset: 0, index: 1)
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 2)
-        renderEncoder.setVertexBytes(&mapParams, length: MemoryLayout<MapParams>.stride, index: 3)
+        renderEncoder.setVertexBuffer(colorsBuffer, offset: 0, index: 2)
+        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 3)
         renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
     }
     
-    func drawCapsFor(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer) {
-        let camera = cameraGlobeView
+    func drawCapsFor(renderEncoder: MTLRenderCommandEncoder, globeShadersParams: GlobeShadersParams) {
         let currentZ = mapZoomState.zoomLevelFloat
         let interpolation: Float = 1.0 - max(0, min(1, (currentZ - startZ) / (endZ - startZ)))
-        let mapParams = GlobeCaps.MapParams(latitude: camera.latitude,
-                                            globeRadius: camera.globeRadius,
-                                            factor: mapZoomState.powZoomLevel,
-                                            fade: interpolation)
         if interpolation != 0 {
             globeCapsPipeline.selectPipeline(renderEncoder: renderEncoder)
-            drawCaps(renderEncoder: renderEncoder,
-                     uniformsBuffer: uniformsBuffer,
-                     mapParams: mapParams)
+            drawCaps(renderEncoder: renderEncoder, globeShadersParams: globeShadersParams)
         }
     }
 }

@@ -22,18 +22,23 @@ struct Uniforms {
     float elapsedTimeSeconds;
 };
 
-struct MapParams {
+struct GlobeShadersParams {
     float latitude;
     float longitude;
-    float factor;
+    float scale;
+    float uShift;
+    float globeRadius;
+    float transition;
+    float4 startAndEndUV;
+    float3 planeNormal;
 };
 
 vertex Vertex starVertex(uint vertexID [[vertex_id]],
                          constant Vertex* vertices [[buffer(0)]],
                          constant Uniforms& uniforms [[buffer(1)]],
-                         constant MapParams& mapParams [[buffer(2)]]) {
+                         constant GlobeShadersParams& mapParams [[buffer(2)]]) {
     
-    float factor = mapParams.factor;
+    float factor = mapParams.scale;
     float4x4 scale = scale_matrix(float3(factor));
     float4x4 latitudeRotation = rotation_matrix(mapParams.latitude, float3(1, 0, 0));
     float4x4 longitudeRotation = rotation_matrix(-mapParams.longitude, float3(0, 1, 0));

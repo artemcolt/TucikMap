@@ -8,12 +8,6 @@
 import MetalKit
 
 class DrawSpace {
-    struct MapParams {
-        let latitude: Float
-        let longitude: Float
-        let scale: Float
-    }
-    
     private struct Vertex {
         var position: SIMD4<Float>
         var pointSize: Float
@@ -49,11 +43,10 @@ class DrawSpace {
         vertexBuffer = metalDevice.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout<Vertex>.stride, options: [])!
     }
     
-    func draw(renderEncoder: MTLRenderCommandEncoder, uniformsBuffer: MTLBuffer, mapParams: MapParams) {
-        var mapParams = mapParams
+    func draw(renderEncoder: MTLRenderCommandEncoder, globeShadersParams: GlobeShadersParams) {
+        var globeShadersParams = globeShadersParams
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
-        renderEncoder.setVertexBytes(&mapParams, length: MemoryLayout<MapParams>.stride, index: 2)
+        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 2)
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: starCount)
     }
 }

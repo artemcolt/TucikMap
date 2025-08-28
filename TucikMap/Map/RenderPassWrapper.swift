@@ -122,11 +122,9 @@ class RenderPassWrapper {
     }
     
     
-    func createSpaceEnvEncoder() -> MTLRenderCommandEncoder {
+    func createGlobeModeEncoder() -> MTLRenderCommandEncoder {
         renderPassDescriptor.colorAttachments[0].loadAction = .clear
         renderPassDescriptor.colorAttachments[0].storeAction = .store
-        renderPassDescriptor.depthAttachment = nil
-        renderPassDescriptor.stencilAttachment = nil
         return encoder(renderPassDescriptor)
     }
     

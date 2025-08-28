@@ -50,11 +50,14 @@ struct MapLabelIntersection {
 };
 
 // на всю карту общие парметры
-struct GlobeParams {
+struct GlobeShadersParams {
     float latitude;
     float longitude;
+    float scale;
+    float uShift;
     float globeRadius;
     float transition;
+    float4 startAndEndUV;
     float3 planeNormal;
 };
 
@@ -65,14 +68,14 @@ struct GlobeLabelsParams {
 };
 
 vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
-                                         constant Uniforms &screenUniforms [[buffer(1)]],
+                                         constant Uniforms &worldUniforms [[buffer(1)]],
+                                         constant Uniforms &screenUniforms [[buffer(4)]],
                                          constant MapLabelSymbolMeta* symbolsMeta [[buffer(2)]],
                                          constant MapLabelLineMeta* linesMeta [[buffer(3)]],
-                                         constant Uniforms &worldUniforms [[buffer(4)]],
                                          constant MapLabelIntersection* intersections [[buffer(5)]],
                                          constant float& animationDuration [[buffer(6)]],
                                          constant GlobeLabelsParams& globeLabelsParams [[buffer(7)]],
-                                         constant GlobeParams& globeParams [[buffer(8)]],
+                                         constant GlobeShadersParams& globeShadersParams [[buffer(8)]],
                                          uint vertexID [[vertex_id]]
                                          ) {
     int symbolIndex = vertexID / 6;
@@ -92,23 +95,23 @@ vertex VertexOut globeLabelsVertexShader(VertexIn in [[stage_in]],
     float2 labelCoord = labelCoord4.xy;
     
     float PI = M_PI_F;
-    float radius = globeParams.globeRadius;
-    float longitude = globeParams.longitude;
-    float latitude = globeParams.latitude;
+    float radius = globeShadersParams.globeRadius;
+    float longitude = globeShadersParams.longitude;
+    float latitude = globeShadersParams.latitude;
     float4 globeWorldLabelPos = getGlobeWorldPosition(labelCoord, radius, longitude, latitude);
     
     
     // plane position of label
-    float distortion          = cos(globeParams.latitude);
-    float planeShiftY         = -latToMercatorY(globeParams.latitude);
+    float distortion          = cos(globeShadersParams.latitude);
+    float planeShiftY         = -latToMercatorY(globeShadersParams.latitude);
     float perimeter           = 2.0 * PI * radius;
     float halfPerimeter       = perimeter / 2.0;
     float planeFactor         = distortion * halfPerimeter;
-    float2 planeCoord         = float2(labelCoord.x - globeParams.longitude / PI, labelCoord.y);
+    float2 planeCoord         = float2(labelCoord.x - globeShadersParams.longitude / PI, labelCoord.y);
     float4 planeWorldPosition = float4(planeCoord.x * planeFactor, planeCoord.y * planeFactor + planeShiftY * planeFactor, 0, 1);
     
     // transit plane to globe and globe to plane
-    float transition          = globeParams.transition;
+    float transition          = globeShadersParams.transition;
     float4 worldPosition      = mix(globeWorldLabelPos, planeWorldPosition, transition);
     
     float4 clipPos = worldUniforms.projectionMatrix * worldUniforms.viewMatrix * worldPosition;

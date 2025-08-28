@@ -41,6 +41,10 @@ class GlobeMode {
     private let mapSettings             : MapSettings
     private let drawMarkers             : DrawGlobeMarkers
     private let markersStorage          : MarkersStorage
+    private let drawDebugData           : DrawDebugData
+    
+    private let drawBaseDebug           : Bool
+    private let drawTraversalPlane      : Bool
     
     private var depthStencilState       : MTLDepthStencilState
     private var dsAlwaysPassState       : MTLDepthStencilState
@@ -68,8 +72,12 @@ class GlobeMode {
          textureAdder: TextureAdder,
          mapSettings: MapSettings,
          textureLoader: TextureLoader,
-         markersStorage: MarkersStorage) {
+         markersStorage: MarkersStorage,
+         drawDebugData: DrawDebugData) {
         
+        self.drawTraversalPlane     = mapSettings.getMapDebugSettings().getDrawTraversalPlane()
+        self.drawBaseDebug          = mapSettings.getMapDebugSettings().getDrawBaseDebug()
+        self.drawDebugData          = drawDebugData
         self.markersStorage         = markersStorage
         self.drawGlobeLabels        = DrawGlobeLabels(screenUniforms: screenUniforms,
                                                       metalDevice: metalDevice,
@@ -144,6 +152,18 @@ class GlobeMode {
         let uniformsBuffer  = updateBufferedUniform.getCurrentFrameBuffer()
         let panX            = Float(camera.mapPanning.x)
         let uShiftMap       = panX
+        let tilesCount      = mapZoomState.tilesCount
+        
+        let startTexV       = Float(areaRange.minY) / Float(tilesCount)
+        let endTexV         = (Float(areaRange.maxY) + 1) / Float(tilesCount)
+        
+        let startTexU       = Float(areaRange.startX) / Float(tilesCount)
+        let endTexU         = (Float(areaRange.endX) + 1) / Float(tilesCount)
+        var startAndEndUV   = SIMD4<Float>(startTexU, endTexU, startTexV, endTexV)
+        
+        if areaRange.isFullMap {
+            startAndEndUV = SIMD4<Float>(0, 1, 0, 1)
+        }
         
         let maxBuffersInFlight = mapSettings.getMapCommonSettings().getMaxBuffersInFlight()
         if assembledMap.isAreaStateChanged(compareId: areaStateId) {
@@ -171,77 +191,78 @@ class GlobeMode {
         let indicesBuffer   = globeGeometryPlane.indicesBuffer
         let indicesCount    = globeGeometryPlane.indicesCount
         
-        if globeGeometryPlane.isEmpty() == false {
+        if globeGeometryPlane.isEmpty() { return }
             
-            // Рисуем окружение планеты
-            let renderEncoderSpace = renderPassWrapper.createSpaceEnvEncoder()
-            pipelines.spacePipeline.selectPipeline(renderEncoder: renderEncoderSpace)
-            drawSpace.draw(renderEncoder: renderEncoderSpace,
-                           uniformsBuffer: uniformsBuffer,
-                           mapParams: DrawSpace.MapParams(latitude: camera.latitude, longitude: camera.longitude, scale: mapZoomState.powZoomLevel))
-            renderEncoderSpace.endEncoding()
-            
-            
-            
-            let renderEncoder = renderPassWrapper.createGlobeEncoder()
-            renderEncoder.setDepthStencilState(depthStencilState)
-            renderEncoder.setCullMode(.front)
-            
-            // рисуем крышки глобуса
-            globeCaps.drawCapsFor(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
-            
-            let tilesCount = mapZoomState.tilesCount
-            
-            let startTexV = Float(areaRange.minY) / Float(tilesCount)
-            let endTexV = (Float(areaRange.maxY) + 1) / Float(tilesCount)
-            
-            let startTexU = Float(areaRange.startX) / Float(tilesCount)
-            let endTexU = (Float(areaRange.endX) + 1) / Float(tilesCount)
-            var startAndEndUV = SIMD4<Float>(startTexU, endTexU, startTexV, endTexV)
-            if areaRange.isFullMap {
-                startAndEndUV = SIMD4<Float>(0, 1, 0, 1)
-            }
-            
-            
-            var globeParams = GlobePipeline.GlobeParams(globeRotation: camera.latitude,
-                                                        uShift: uShiftMap,
-                                                        globeRadius: globeRadius,
-                                                        transition: transition,
-                                                        startAndEndUV: startAndEndUV)
-            
-            pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
-            renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
-            renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobePipeline.GlobeParams>.stride, index: 2)
-            renderEncoder.setFragmentTexture(globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), index: 0)
-            renderEncoder.setFragmentSamplerState(samplerState, index: 0)
-            renderEncoder.drawIndexedPrimitives(type: .triangle,
-                                                indexCount: indicesCount,
-                                                indexType: .uint32,
-                                                indexBuffer: indicesBuffer,
-                                                indexBufferOffset: 0)
-            
-            renderEncoder.setDepthStencilState(dsAlwaysPassState)
-            pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: renderEncoder)
-            drawGlobeLabels.draw(
-                renderEncoder: renderEncoder,
-                uniformsBuffer: uniformsBuffer,
-                geoLabels: assembledMap.tileGeoLabels,
-                currentFBIndex: currentFbIndex,
-                globeRadius: globeRadius,
-                transition: transition
-            )
-            
-//            drawMarkers.drawMarkers(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
-            
-            if mapSettings.getMapDebugSettings().getDrawBaseDebug() == true {
-                pipelines.texturePipeline.selectPipeline(renderEncoder: renderEncoder)
-                drawTexture.draw(textureEncoder: renderEncoder, texture: globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), sideWidth: 500)
-                pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
-                drawTexture.drawBorders(textureEncoder: renderEncoder, sideWidth: 500)
-            }
-            
-            renderEncoder.endEncoding()
+        let baseNormal          = SIMD3<Float>(0, 0, 1)
+        let planeNormal         = camera.cameraQuaternion.act(baseNormal)
+        var globeShadersParams  = GlobeShadersParams(latitude: camera.latitude,
+                                                     longitude: camera.longitude,
+                                                     scale: mapZoomState.powZoomLevel,
+                                                     uShift: uShiftMap,
+                                                     globeRadius: globeRadius,
+                                                     transition: transition,
+                                                     startAndEndUV: startAndEndUV,
+                                                     planeNormal: planeNormal)
+        
+        let renderEncoder = renderPassWrapper.createGlobeModeEncoder()
+        renderEncoder.setVertexBuffer(uniformsBuffer, offset: 0, index: 1)
+        
+        
+        pipelines.spacePipeline.selectPipeline(renderEncoder: renderEncoder)
+        drawSpace.draw(renderEncoder: renderEncoder,
+                       globeShadersParams: globeShadersParams)
+        
+        renderEncoder.setDepthStencilState(depthStencilState)
+        renderEncoder.setCullMode(.front)
+        
+        // рисуем крышки глобуса
+        globeCaps.drawCapsFor(renderEncoder: renderEncoder, globeShadersParams: globeShadersParams)
+        
+        
+        
+        pipelines.globePipeline.selectPipeline(renderEncoder: renderEncoder)
+        renderEncoder.setVertexBuffer(verticesBuffer, offset: 0, index: 0)
+        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 2)
+        renderEncoder.setFragmentTexture(globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), index: 0)
+        renderEncoder.setFragmentSamplerState(samplerState, index: 0)
+        renderEncoder.drawIndexedPrimitives(type: .triangle,
+                                            indexCount: indicesCount,
+                                            indexType: .uint32,
+                                            indexBuffer: indicesBuffer,
+                                            indexBufferOffset: 0)
+        
+        renderEncoder.setDepthStencilState(dsAlwaysPassState)
+        pipelines.globeLabelsPipeline.selectPipeline(renderEncoder: renderEncoder)
+        drawGlobeLabels.draw(
+            renderEncoder: renderEncoder,
+            geoLabels: assembledMap.tileGeoLabels,
+            currentFBIndex: currentFbIndex,
+            globeShadersParams: globeShadersParams
+        )
+        
+        //drawMarkers.drawMarkers(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer)
+        
+        if drawBaseDebug {
+            pipelines.texturePipeline.selectPipeline(renderEncoder: renderEncoder)
+            drawTexture.draw(textureEncoder: renderEncoder, texture: globeTexturing.getCurrentTexture(fbIndex: currentFbIndex), sideWidth: 500)
         }
+        
+        pipelines.basePipeline.selectPipeline(renderEncoder: renderEncoder)
+        if drawBaseDebug {
+            drawTexture.drawBorders(textureEncoder: renderEncoder, sideWidth: 500)
+            drawDebugData.draw(renderEncoder: renderEncoder, uniformsBuffer: uniformsBuffer, view: view)
+        }
+        
+        if drawTraversalPlane {
+            let cameraQuaternion = camera.cameraQuaternion;
+            let baseNormal = SIMD3<Float>(0, 0, 1)
+            let traversalPlaneNormal = cameraQuaternion.act(baseNormal)
+
+            drawDebugData.drawGlobeTraversalPlane(renderEncoder: renderEncoder,
+                                                  uniformsBuffer: uniformsBuffer,
+                                                  planeNormal: traversalPlaneNormal)
+        }
+        
+        renderEncoder.endEncoding()
     }
 }

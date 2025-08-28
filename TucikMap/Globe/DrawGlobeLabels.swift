@@ -45,30 +45,19 @@ class DrawGlobeLabels {
     
     func draw(
         renderEncoder: MTLRenderCommandEncoder,
-        uniformsBuffer: MTLBuffer,
         geoLabels: [MetalTile.TextLabels],
         currentFBIndex: Int,
-        globeRadius: Float,
-        transition: Float
+        globeShadersParams: GlobeShadersParams
     ) {
         guard geoLabels.isEmpty == false else { return }
         
+        var globeShadersParams = globeShadersParams
         let labelsFadeAnimationTimeSeconds = mapSettigns.getMapCommonSettings().getLabelsFadeAnimationTimeSeconds()
         var animationTime = labelsFadeAnimationTimeSeconds
-        let latitude = camera.latitude
-        let longitude = camera.longitude
-        let baseNormal = SIMD3<Float>(0, 0, 1)
-        let planeNormal = camera.cameraQuaternion.act(baseNormal)
-        var globeParams = GlobeParams(latitude: latitude,
-                                      longitude: longitude,
-                                      globeRadius: globeRadius,
-                                      transition: transition,
-                                      planeNormal: planeNormal)
         
-        renderEncoder.setVertexBytes(&globeParams, length: MemoryLayout<GlobeParams>.stride, index: 8)
+        renderEncoder.setVertexBytes(&globeShadersParams, length: MemoryLayout<GlobeShadersParams>.stride, index: 8)
         renderEncoder.setVertexBytes(&animationTime, length: MemoryLayout<Float>.stride,   index: 6)
-        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 1)
-        renderEncoder.setVertexBuffer(uniformsBuffer,                           offset: 0, index: 4)
+        renderEncoder.setVertexBuffer(screenUniforms.screenUniformBuffer,       offset: 0, index: 4)
         renderEncoder.setFragmentSamplerState(sampler, index: 0)
         
         for metalTile in geoLabels {
